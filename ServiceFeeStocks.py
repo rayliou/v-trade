@@ -1,10 +1,14 @@
 #!/usr/bin/env python3
 # coding=utf-8
-import re
+import re,io,logging
 from futu import *
 import datetime,sys
-import logging,json
+import json
+import numpy as np
+import pandas as pd
 from IPython.display import display, HTML
+
+from Log import logInit
 
 
 import math,sys
@@ -17,6 +21,19 @@ class ServiceFeeStocksUS:
 class ServiceFeeStocksHK:
 
 '''
+
+def clipCeilFloor(data,lower= None, upper=None):
+    if isinstance(data, pd.Series):
+        data.clip(lower,upper,inplace=True)
+    elif isinstance(clearingFee, float):
+        if lower is not None:
+            data = max(data,lower)
+        if upper is not None:
+            data = min(data,upper)
+        pass
+    else:
+        assert False , f'Unknow type {type(data)} for {data}'
+    return data
 
 class ServiceFeeStocksUS:
     log = logging.getLogger("main.ServiceFeeStocksUS")
@@ -36,7 +53,7 @@ class ServiceFeeStocksUS:
         # < 200 shares  1.99
         fee = platformFee = 0.0
         comission  = quantity * 0.01
-        comission  = max(1.99, comission)
+        comission  = clipCeilFloor(comission, 1.99)
         #self.log.debug('V0:comission/Platform Fee\t {},{}'.format(comission,platformFee))
         fee  += comission
         return fee
@@ -44,10 +61,10 @@ class ServiceFeeStocksUS:
     def comissionV1(self, quantity):
         fee =  0.0
         platformFee = 0.005 * quantity
-        platformFee = max(platformFee,1.00)
+        platformFee = clipCeilFloor(platformFee,1.00)
         fee += platformFee
         comission  = quantity * 0.0049
-        comission  = max(0.99, comission)
+        comission  = clipCeilFloor(comission,0.99)
         #self.log.debug('V1:comission/Platform Fee\t {},{}'.format(comission,platformFee))
         fee  += comission
         return fee
@@ -58,10 +75,10 @@ class ServiceFeeStocksUS:
         platformFee = 0.01 * quantity
         # 501 - 1k
         #platformFee = 0.008 * quantity
-        platformFee = max(platformFee,1.00)
+        platformFee = clipCeilFloor(platformFee,1.00)
         fee += platformFee
         comission  = quantity * 0.0049
-        comission  = max(0.99, comission)
+        comission  = clipCeilFloor(comission,0.99)
         #self.log.debug('V1:comission/Platform Fee\t {},{}'.format(comission,platformFee))
         fee  += comission
         return fee
@@ -81,12 +98,13 @@ class ServiceFeeStocksUS:
 
         #证监会规费（仅卖出订单收取）	0.0000051*交易金额，最低0.01	美国证监会
         #注：交收日在2021年02月25日及以后的交易，适用于证监会规费费率「0.0000051*交易金额，最低0.01」。
-        secFee = max(quantity* price * 0.0000051, 0.01)
+        secFee = quantity* price * 0.0000051
+        secFee = clipCeilFloor(secFee, 0.01)
         self.log.debug('secFee\t {}'.format(secFee))
         fee += secFee
         #交易活动费（仅卖出订单收取）	0.000119/股，最低0.01，最高5.95	美国金融业监管局
-        taf = max( 0.000119 * quantity, 0.01)
-        taf = min(taf, 5.95)
+        taf =  0.000119 * quantity
+        taf = clipCeilFloor( taf, 0.01, 5.95)
         self.log.debug('TAF Fee\t {}'.format(taf))
         fee += taf
         return fee
@@ -122,8 +140,8 @@ class ServiceFeeStocksHK:
         platformFee = 20
         fee += platformFee
         comission  = amount * 0.03 / 100
-        comission  = max(3, comission)
-        self.log.debug('V1:comission/Platform Fee\t {},{}'.format(comission,platformFee))
+        comission  = clipCeilFloor(comission,3)
+        self.log.debug('V1:comission/Platform Fee\t [{},{}]\n'.format(comission,platformFee))
         fee  += comission
         return fee
 
@@ -133,8 +151,8 @@ class ServiceFeeStocksHK:
         platformFee = 20
         fee += platformFee
         comission  = amount * 0.03 / 100
-        comission  = max(3, comission)
-        self.log.debug('V1:comission/Platform Fee\t {},{}'.format(comission,platformFee))
+        comission  = clipCeilFloor(comission,3)
+        self.log.debug('V2:comission/Platform Fee\t [{},{}]\n'.format(comission,platformFee))
         fee  += comission
         return fee
 
@@ -149,11 +167,10 @@ class ServiceFeeStocksHK:
         tradeSysFee  = 0.50
         self.log.debug(f'tradeSysFee:\t{tradeSysFee}')
         fee += tradeSysFee
-        #Settlement Fee	0.002% * transaction amount,   minimum HK$2.00, maximum HK$100.00	HKEx
+        #Settlement Fee	0.002% * transaction amount,   minimum HK$2.00, Lagest HK$100.00	HKEx
         clearingFee = amount * 0.002 /100
-        clearingFee = max(clearingFee,2.00)
-        clearingFee = min(clearingFee,100.00)
-        self.log.debug(f'clearingFee:\t{clearingFee}')
+        clearingFee = clipCeilFloor(clearingFee,2.00,100.00)
+        self.log.debug(f'clearingFee:\t[{clearingFee}]\n')
         fee += clearingFee
         # 股票交易印花税的税率将由目前买卖双方各付0.1%提高至0.13%。有关调整会在今年8月1日生效
         # https://finance.sina.com.cn/jjxw/2021-06-03/doc-ikqciyzi7556560.shtml
@@ -163,17 +180,20 @@ class ServiceFeeStocksHK:
 
 
         stampDuty = 0.1 /100 * amount
-        stampDuty = math.ceil(stampDuty)
-        self.log.debug(f'statmpDuty:\t{stampDuty}')
+        if isinstance(stampDuty , pd.Series):
+            stampDuty = np.ceil(stampDuty)
+        elif isinstance(stampDuty , float):
+            stampDuty = math.ceil(stampDuty)
+        self.log.debug(f'statmpDuty:\t\n[{stampDuty}\\n')
         fee += stampDuty
         #Trading Fee	0.005% * transaction amount,   minimum HK$0.01	HKEx
         tradeFee = 0.005 / 100 * amount
-        tradeFee = max(0.01, tradeFee)
+        tradeFee = clipCeilFloor( tradeFee,0.01)
         self.log.debug(f'tradeFee:\t{tradeFee}')
         fee += tradeFee
         #Transaction levy	0.0027% * transaction amount,   minimum HK$0.01	SFC
         transactionLevy = 0.0027 / 100 * amount
-        transactionLevy = max(0.01, transactionLevy)
+        transactionLevy = clipCeilFloor(transactionLevy,0.01)
         self.log.debug(f'transactionLevy:\t{transactionLevy}')
         fee += transactionLevy
         return fee
@@ -185,48 +205,35 @@ class ServiceFeeStocksHK:
 
     pass
 
-class ColorLogFormatter(logging.Formatter):
-    """Logging Formatter to add colors and count warning / errors"""
 
-    grey = "\x1b[38;21m"
-    yellow = "\x1b[33;21m"
-    red = "\x1b[31;21m"
-    bold_red = "\x1b[31;1m"
-    reset = "\x1b[0m"
+#log = logging.getLogger("main" )
 
-    #format = "%(asctime)s - %(name)s - %(levelname)s - %(message)s (%(filename)s:%(lineno)d)"
-    format = '%(levelname)s %(asctime)s [%(filename)s:%(lineno)d] %(funcName)s %(message)s %(process)d '
+def testFee():
+    positionList = '''code,stock_name,qty,can_sell_qty,cost_price,cost_price_valid,market_val,nominal_price,pl_ratio,pl_ratio_valid,pl_val,pl_val_valid,today_buy_qty,today_buy_val,today_pl_val,today_sell_qty,today_sell_val,position_side,unrealized_pl,realized_pl
+HK.09982,中原建业,2000.0,2000.0,3.0,True,4940.0,2.4699999999999998,-17.669999999999998,True,-1060.0,True,0.0,0.0,0.0,0.0,0.0,LONG,N/A,N/A
+HK.06862,海底捞,200.0,200.0,44.2,True,7960.0,39.8,-9.950000000000001,True,-880.0,True,0.0,0.0,0.0,0.0,0.0,LONG,N/A,N/A
+HK.02607,上海医药,100.0,100.0,17.76,True,1736.0,17.36,-2.25,True,-40.0,True,0.0,0.0,0.0,0.0,0.0,LONG,N/A,N/A
+HK.01810,小米集团-W,2600.0,2600.0,29.1538,True,73190.0,28.15,-3.44,True,-2610.0,True,0.0,0.0,0.0,0.0,0.0,LONG,N/A,N/A
+HK.00700,腾讯控股,200.0,200.0,607.75,True,119200.0,596.0,-1.9300000000000002,True,-2350.0,True,0.0,0.0,0.0,0.0,0.0,LONG,N/A,N/A '''
 
-    ##fmt = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+#https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.DataFrame.apply.html#pandas.DataFrame.apply
+    p = pd.read_csv(io.StringIO(positionList))
+    h = ServiceFeeStocksHK()
+    #f = h.fee(p.qty, p.nominal_price)
+    p2= p[['stock_name', 'qty', 'cost_price','nominal_price',]]
+    #insert new coloumn
+    f =  h.fee(p.qty, p.cost_price) *2
+    p2.loc[:,'fee'] = f * 2
+    p2.loc[:,'low_price'] = f /p.qty + p.cost_price
 
-    FORMATS = {
-        logging.DEBUG: grey + format + reset,
-        logging.INFO: grey + format + reset,
-        logging.WARNING: yellow + format + reset,
-        logging.ERROR: red + format + reset,
-        logging.CRITICAL: bold_red + format + reset
-    }
-
-    def format(self, record):
-        log_fmt = self.FORMATS.get(record.levelno)
-        formatter = logging.Formatter(log_fmt)
-        return formatter.format(record)
+    display(p2)
+    #p2 = pd.DataFrame()
+    #p = pd.read_json(positionList,orient="index")
+    pass
 
 if __name__ == '__main__':
-    log = logging.getLogger("main" )
-    log.setLevel(logging.DEBUG)
-
-    fmt = logging.Formatter(
-        '%(levelname)s %(asctime)s [%(filename)s:%(lineno)d] %(funcName)s %(message)s %(process)d ')
-
-    fmt = ColorLogFormatter()
-    s = logging.StreamHandler(sys.stderr)
-    s.setFormatter(fmt)
-    #s.setLevel(logging.DEBUG)
-    log.addHandler(s)
-    log.critical('cccc')
-    log.error('cccc')
-    log.fatal('cccc')
+    logInit(logging.ERROR)
+    testFee(); sys.exit(0)
 
     u = ServiceFeeStocksUS()
     h = ServiceFeeStocksHK()

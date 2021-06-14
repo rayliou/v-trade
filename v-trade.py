@@ -19,7 +19,9 @@ import shutil
 import random
 import getpass
 
-from lib import click
+#from lib import click
+
+import click
 
 
 
