@@ -4,6 +4,8 @@ import re
 from futu import *
 from IPython.display import display, HTML
 
+from ServiceFeeStocks import ServiceFeeStocksHK,ServiceFeeStocksUS
+
 
 '''
 -  加密 https://openapi.futunn.com/futu-api-doc/ftapi/init.html#2009
@@ -11,17 +13,35 @@ from IPython.display import display, HTML
 '''
 
 class Trade:
-    def __init__(self):
-        #self.ctx_ = OpenUSTradeContext(host='127.0.0.1', port=11111, is_encrypt=None, security_firm=SecurityFirm.FUTUSECURITIES)
-        self.ctx_ = OpenHKTradeContext(host='127.0.0.1', port=11111, security_firm=SecurityFirm.FUTUSECURITIES)
-
-        #print(data)
-
+    def __init__(self,market='US'):
+        self.market_ = market
+        if 'US' == market:
+            self.ctx_ = OpenUSTradeContext(host='127.0.0.1', port=11111, is_encrypt=None, security_firm=SecurityFirm.FUTUSECURITIES)
+        elif 'HK' == market:
+            self.ctx_ = OpenHKTradeContext(host='127.0.0.1', port=11111, security_firm=SecurityFirm.FUTUSECURITIES)
+        else:
+            assert False , f'Error market type {market}'
         #print('--------Order List----------')
         #ret, data = self.ctx_.order_list_query(order_id="", status_filter_list=[], code='', start='', end='', trd_env=TrdEnv.REAL, acc_id=0, acc_index=0, refresh_cache=False)
         #print(data)
 
         pass
+
+    def showPositionsFee(self):
+        if 'US' == self.market_:
+            sf = ServiceFeeStocksUS()
+        elif 'HK' == self.market_:
+            sf = ServiceFeeStocksHK()
+        p = self.getPositionList()
+        #https://zhuanlan.zhihu.com/p/41202576 SettingWithCopyWarning error
+        p2= p[['stock_name', 'qty', 'cost_price','nominal_price',]].copy()
+        #insert new coloumn
+        f =  sf.fee(p.qty, p.cost_price) *2
+        p2.loc[:,'fee'] = f * 2
+        p2.loc[:,'low_price'] = f /p.qty + p.cost_price
+        display(p2)
+        pass
+
     def getPositionList(self):
         '''
 
@@ -75,15 +95,14 @@ class Trade:
     pass
 
 if __name__ == '__main__':
-    t = Trade()
-    d = t.getPositionList()
-    #display(d[d.stock_name=='腾讯控股'].iloc[0])
-    #j = d.to_json(orient="index")
-    #j = d.to_json()
-    c  = d.to_csv(index=False)
-    print(c);
+    t = Trade('US')
+    t.showPositionsFee()
+    t.close()
+    t = Trade('HK')
+    t.showPositionsFee()
     t.close()
     sys.exit(0)
     d1 = pd.read_json(j,orient="index")
-    display(d1)
+    sys.exit(0)
+    #d1 = pd.read_json(j,orient="index")
     sys.exit(0)
