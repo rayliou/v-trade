@@ -34,7 +34,7 @@ class Trade:
             sf = ServiceFeeStocksHK()
         p = self.getPositionList()
         #https://zhuanlan.zhihu.com/p/41202576 SettingWithCopyWarning error
-        p2= p[['stock_name', 'qty', 'cost_price','nominal_price',]].copy()
+        p2= p[['code', 'stock_name', 'qty', 'cost_price','nominal_price',]].copy()
         #insert new coloumn
         f =  sf.fee(p.qty, p.cost_price) *2
         p2.loc[:,'fee'] = f * 2

@@ -58,7 +58,6 @@ class DataDownloadFutu:
         autype = AuType.QFQ
         max_count = 1024
         page_req_key = None
-        code = 'HK.00700'
         ret, data, page_req_key = self.ctx_.request_history_kline(code, start=start,end= end,autype=autype, max_count=max_count,page_req_key= page_req_key,ktype=ktype)
         if ret != RET_OK:
             self.log.critical(data); assert False, f'{data} start={start} end={end}'
@@ -100,9 +99,11 @@ if __name__ == '__main__':
     logInit()
     d = DataDownloadFutu()
     #d.downloadRehab('HK.00700')
-    #td.downloadKLine('HK.00700',KLType.K_DAY)
-    #d.downloadKLine('HK.00700',KLType.K_1M)
-    d.downloadKLine('HK.00700',KLType.K_WEEK)
-    d.downloadKLine('HK.00700',KLType.K_30M)
-    #d.getCapitalFlow('HK.00700')
+    code  = 'HK.01810'
+    code  = 'HK.03690'
+    d.downloadKLine(code,KLType.K_DAY)
+    d.downloadKLine(code,KLType.K_1M)
+    d.downloadKLine(code,KLType.K_WEEK)
+    d.downloadKLine(code,KLType.K_30M)
+    #d.getCapitalFlow(code)
     d.close()
