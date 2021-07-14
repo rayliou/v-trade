@@ -43,12 +43,12 @@ def logInit(level=logging.DEBUG):
     s.setFormatter(fmt)
     #s.setLevel(logging.DEBUG)
     log.addHandler(s)
-    log.critical('setup')
-    log.error('llllllllllllog')
-    log.fatal('Done')
-    log.warning('WARNING')
-    log.info('info')
-    log.debug('debug')
+    #log.critical('setup')
+    #log.error('llllllllllllog')
+    #log.fatal('Done')
+    #log.warning('WARNING')
+    #log.info('info')
+    #log.debug('debug')
     pass
 
 if __name__ == '__main__':

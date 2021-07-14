@@ -6,6 +6,8 @@ from IPython.display import display, HTML
 import talib
 import yfinance as yf
 import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
 
 
 
@@ -17,6 +19,14 @@ import numpy as np
 class History:
     def __init__(self):
         pass
+    def priceLineFutuCSV(self, filePath):
+        d = pd.read_csv(filePath,index_col=0,parse_dates=True).tail(8000)
+        p= (d.high + d.low + d.open + d.close)/4
+        pLog = np.log(d.volume +1)
+        p = p.round(3).hist(bins=100,figsize = (15,7))
+        display(p)
+        pass
+
     def priceLine(self):
         t =yf.Ticker("LI")
         t =yf.Ticker("GOOG")
@@ -88,6 +98,8 @@ class History:
 
 if __name__ == '__main__':
     h = History()
-    h.download()
+    h.priceLineFutuCSV('b.data/HK.01211.K1M.csv')
+    plt.show()
+    #h.download()
     sys.exit(0)
     h.priceLine()

@@ -99,11 +99,15 @@ if __name__ == '__main__':
     logInit()
     d = DataDownloadFutu()
     #d.downloadRehab('HK.00700')
-    code  = 'HK.01810'
     code  = 'HK.03690'
-    d.downloadKLine(code,KLType.K_DAY)
+    code  = 'HK.MIU210729P24000'
+    code  = 'HK.01810'
+    code  = 'HK.MIU210729C27000'
+    code  = 'HK.01211' #比亚迪股份
+    #d.downloadKLine(code,KLType.K_DAY)
     d.downloadKLine(code,KLType.K_1M)
+    d.close()
+    sys.exit(0)
     d.downloadKLine(code,KLType.K_WEEK)
     d.downloadKLine(code,KLType.K_30M)
     #d.getCapitalFlow(code)
-    d.close()
