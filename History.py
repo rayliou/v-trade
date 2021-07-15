@@ -9,40 +9,58 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 
+from DataDownloadFutu import DataDownloadFutu
+
 
 
 '''
 - HK https://openapi.futunn.com/futu-api-doc/trade/get-position-list.html
 - US https://github.com/ranaroussi/yfinance/
+-    https://aroussi.com/post/python-yahoo-finance
 '''
 
 class History:
     def __init__(self):
         pass
     def priceLineFutuCSV(self, filePath):
-        d = pd.read_csv(filePath,index_col=0,parse_dates=True).tail(8000)
-        p= (d.high + d.low + d.open + d.close)/4
-        pLog = np.log(d.volume +1)
+        pass
+
+    def priceLineGeneral(self, h,l,o,c,v):
+        p= (h+l+o+c)/4
+        pLog = np.log(v)
         p = p.round(3).hist(bins=100,figsize = (15,7))
         display(p)
         pass
 
-    def priceLine(self):
-        t =yf.Ticker("LI")
-        t =yf.Ticker("GOOG")
-        h = t.history(period="5d", interval='1m', )
-        display(h)
-        p= (h.High + h.Low + h.Open + h.Close)/4
-        pLog = np.log(h.Volume +1)
-        #pLog = p * pLog.round(2).hist()
-        #p = p.round(2).groupby(axis=1)
-        #p = p.round(2).value_counts()
-        p = p.round(3).hist(bins=100,figsize = (15,7))
-        display(p)
-        #display(pLog)
+    def priceLineYahoo(self, code = 'ABNB'):
+        #t =yf.Ticker("LI")
+        #t =yf.Ticker("GOOG")
+        t =yf.Ticker(code)
+        df = t.history(period="7d", interval='1m')
+        display(df)
 
-
+        h   = df.High
+        l   = df.Low
+        o   = df.Open
+        c   = df.Close
+        v   = df.Volume
+        self.priceLineGeneral(h,l,o,c,v)
         pass
+
+
+    def priceLineFutu(self, code = 'HK.01211'):
+        d  = DataDownloadFutu()
+        num = int(5.5 * 30 * 10)
+        df  = d.getKLine(code,KLType.K_1M,50).tail(num)
+        h   = df.high
+        l   = df.low
+        o   = df.open
+        c   = df.close
+        v   = df.volume
+        self.priceLineGeneral(h,l,o,c,v)
+        pass
+
+
     def download(self):
         data = yf.download(
                 tickers = "ES=F IWM",
@@ -98,7 +116,9 @@ class History:
 
 if __name__ == '__main__':
     h = History()
-    h.priceLineFutuCSV('b.data/HK.01211.K1M.csv')
+    #h.priceLineFutu()
+    h.priceLineYahoo('TSLA')
+    #h.priceLineFutuCSV('b.data/HK.01211.K1M.csv')
     plt.show()
     #h.download()
     sys.exit(0)

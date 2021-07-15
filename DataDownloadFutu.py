@@ -45,14 +45,20 @@ class DataDownloadFutu:
             t = 'UNKNOWN'
         return f'{dataDir}/{code}.{t}.csv'
 
-    def downloadKLine(self,code,ktype=KLType.K_DAY):
+    def downloadKLine(self,code,ktype=KLType.K_DAY,days=6*365):
+        dataRet = getKLine(code,type)
+        csvPath = self.getFileName(code,ktype,days)
+        dataRet.to_csv(csvPath)
+        pass
+
+    def getKLine(self,code,ktype=KLType.K_DAY, days=6*365):
         '''
         分 K 提供最近 2 年数据，日 K 及以上提供最近 10 年的数据。
         美股盘前和盘后 K 线仅支持 60 分钟及以下级别。由于美股盘前和盘后时段为非常规交易时段，此时段的 K 线数据可能不足 2 年。
         '''
         #AuType.NONE
         now = datetime.now()
-        start = now - timedelta(days=6*365)
+        start = now - timedelta(days=days)
         start = start.strftime('%Y-%m-%d')
         end = now.strftime('%Y-%m-%d')
         autype = AuType.QFQ
@@ -69,8 +75,8 @@ class DataDownloadFutu:
             dataRet.append(data)
         dataRet = pd.concat(dataRet,ignore_index=True)
         dataRet.set_index('time_key', inplace=True)
-        csvPath = self.getFileName(code,ktype)
-        dataRet.to_csv(csvPath)
+        return dataRet
+
 
         pass
 
@@ -105,6 +111,9 @@ if __name__ == '__main__':
     code  = 'HK.MIU210729C27000'
     code  = 'HK.01211' #比亚迪股份
     #d.downloadKLine(code,KLType.K_DAY)
+    df  = d.getKLine(code,KLType.K_1M,50)
+    display(df); d.close(); sys.exit(0)
+
     d.downloadKLine(code,KLType.K_1M)
     d.close()
     sys.exit(0)

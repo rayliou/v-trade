@@ -7,6 +7,16 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 
+from GBSOptionPricing import american,amer_implied_vol
+
+# def american(option_type, fs, x, t, r, q, v): # American Options (stock style, set q=0 for non-dividend paying options)
+# def amer_implied_vol(option_type, fs, x, t, r, q, cp):
+
+p = american('p', 654 ,655, 1/12.0, 0.01, 0, 0.52784)
+print(p)
+amer_implied_vol('p', 654 ,655, 1/12.0, 0.01, 0, 39.8049)
+
+
 '''
 https://qsctech-sange.github.io/option-price
 https://github.com/QSCTech-Sange/Options-Calculator/blob/master/Backend/Option.py
