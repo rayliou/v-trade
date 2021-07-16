@@ -5,6 +5,7 @@ from futu import *
 from IPython.display import display, HTML
 import numpy as np
 import matplotlib.pyplot as plt
+import pandas as pd
 
 
 from GBSOptionPricing import american_76,american,amer_implied_vol
@@ -13,12 +14,17 @@ import QuantLib as ql
 import scipy.stats as sps
 
 
-def QuantLibOptionPrice(option_type, fs, x, t, r, q, v,start,end):
+def QuantLibOptionPrice(option_type, fs, x, t, r, q, v,start=None,end=None):
     '''
         American Option Pricing with QuantLib and Python
         http://gouthamanbalaraman.com/blog/american-option-pricing-quantlib-python.html
     '''
     # option data
+    today = ql.Date.todaysDate()
+    start =  ql.Date(start, '%Y%m%d') if start is not None else today
+    end =  ql.Date(end, '%Y%m%d') if end is not None else start + ql.Period('1M')
+
+
     maturity_date = end
     spot_price = fs
     strike_price = x
@@ -162,8 +168,7 @@ def qscOption(option_type, fs, x, t, r, q, v):
     return f'bs={x},mc={x},bt={z}'
 
 
-
-def t(option_type, fs, x, r, q, v,start=None,end=None):
+def yearFractionDates(start = None, end=None):
     today = ql.Date.todaysDate()
     start =  ql.Date(start, '%Y%m%d') if start is not None else today
     end =  ql.Date(end, '%Y%m%d') if end is not None else start + ql.Period('1M')
@@ -175,7 +180,141 @@ def t(option_type, fs, x, r, q, v,start=None,end=None):
     dc=ql.Business252()
     T2=dc.dayCount(start,end)
     yf=dc.yearFraction(start,end)
-    t  = yf
+    return yf
+
+
+#import matplotlib.pyplot as plt
+from mpl_toolkits.mplot3d import Axes3D
+from matplotlib import cm
+from matplotlib.ticker import LinearLocator, FormatStrFormatter
+
+
+def FsXToPremium3D():
+    '''
+    https://matplotlib.org/2.0.2/mpl_toolkits/mplot3d/tutorial.html
+    '''
+    fs = 286
+    ratio = 0.3
+    low = fs *(1-ratio)
+    high = fs*(1+ratio)
+    fs,x = np.mgrid[low:high:20j, low:high:20j]
+    r  = 0.01
+    q  = 0
+    v  = 0.4
+    #v  = 0.43610
+    end =  '20210830'
+    t   = yearFractionDates(None,end)
+    def AmericanC(fs,x):
+        ret = american('c', fs, x, t, r, q, v)
+        return ret[0],ret[1]
+    def AmericanP(fs,x):
+        ret =  american('p', fs, x, t, r, q, v)
+        return ret[0],ret[1]
+    AmericanC = np.frompyfunc(AmericanC,2,2)
+    AmericanP = np.frompyfunc(AmericanP,2,2)
+
+    #c,delta_c = AmericanC(fs,x)
+    p,delta_p = AmericanP(fs,x)
+    fig = plt.figure(figsize = (12,8))
+    ax = fig.add_subplot(111, projection='3d')
+    ax.set_xlabel('Current Price')
+    ax.set_ylabel('Strike Price')
+    ax.set_zlabel('Premium')
+    #plt.xlabel('Current Price')
+    #plt.ylabel('Strike Price')
+    #plt.zlabel('Premium')
+    #ax = fig.gca(projection='3d')
+    p = p.astype(np.float64)
+    #surf = ax.plot_surface(fs, x, p)
+
+    surf = ax.plot_surface(fs, x, p, cmap=cm.coolwarm,
+           linewidth=0, antialiased=False)
+
+    # Customize the z axis.
+    #ax.set_zlim(0, 1000)
+    ax.zaxis.set_major_locator(LinearLocator(10))
+    ax.zaxis.set_major_formatter(FormatStrFormatter('%.02f'))
+
+    # Add a color bar which maps values to colors.
+    fig.colorbar(surf, shrink=0.5, aspect=5)
+
+    plt.show()
+    pass
+
+
+def strikePriceToPremium():
+    fs = 290.4
+    x  = 300
+    r  = 0.01
+    q  = 0
+    v  = 0.4
+    #v  = 0.43610
+    end =  '20210830'
+    t   = yearFractionDates(None,end)
+    def AmericanC(x):
+        ret = american('c', fs, x, t, r, q, v)
+        return ret[0],ret[1]
+    def AmericanP(x):
+        ret =  american('p', fs, x, t, r, q, v)
+        return ret[0],ret[1]
+    AmericanC = np.frompyfunc(AmericanC,1,2)
+    AmericanP = np.frompyfunc(AmericanP,1,2)
+
+    x = np.linspace(fs*0.7 ,fs*1.3,1000)
+    c,delta_c = AmericanC(x)
+    p,delta_p = AmericanP(x)
+    df = pd.DataFrame( {'c':c, 'p':p, 'delta_c': delta_c, 'delta_p':delta_p },index=x )
+
+    fig = plt.figure(figsize = (12,8))
+    ax = fig.add_subplot(111)  # 创建子图1
+    df[['c','p']].plot(ax=ax)
+    df[['delta_c','delta_p']].plot(secondary_y=True,ax=ax)
+    #ax.plot(x,c, 'r-', label='C')
+    #ax.plot(x,p, 'b-', label='P')
+    #ax2 = ax.secondary_yaxis('right')
+    #ax.plot(x,delta_c, 'r--', label='delta C')
+    #ax.plot(x,delta_p, 'b--', label='delta P')
+    plt.xlabel('Strike Price')
+    #plt.ylabel('Premium')
+    plt.grid()
+    #plt.legend()
+    plt.show()
+    pass
+
+def volatilitytoPremium():
+    fs = 290.4
+    x  = 300
+    r  = 0.01
+    q  = 0
+    #v  = 0.43610
+    end =  '20210830'
+    t   = yearFractionDates(None,end)
+    def AmericanC(v):
+        return american('c', fs, x, t, r, q, v)[0]
+    def AmericanP(v):
+        return american('p', fs, x, t, r, q, v)[0]
+    AmericanC = np.frompyfunc(AmericanC,1,1)
+    AmericanP = np.frompyfunc(AmericanP,1,1)
+
+    v = np.linspace(0.01, 0.5 ,1000)
+    v = np.linspace(0.3, 0.4 ,1000)
+    c = AmericanC(v)
+    p = AmericanP(v)
+
+    fig = plt.figure(figsize = (12,8))
+    ax = fig.add_subplot(111)  # 创建子图1
+    ax.plot(v,c, 'r-', label='C')
+    ax.plot(v,p, 'b-', label='P')
+    plt.xlabel('Volatility')
+    plt.ylabel('Premium')
+    #plt.grid()
+    plt.legend()
+    plt.show()
+    pass
+
+def t(option_type, fs, x, r, q, v,start=None,end=None):
+    print(f't({option_type}, {fs}, {x}, {r}, {q}, {v},{start},{end})')
+    t = yearFractionDates(start,end)
     #print(T1,T2,yf)
     print('american              : {}'.format(american(option_type, fs, x, t, r, q, v)))
     print('american_76           : {}'.format( american_76(option_type, fs, x, t, r, v)))
@@ -186,7 +325,22 @@ def t(option_type, fs, x, r, q, v,start=None,end=None):
 
 
 if __name__ == '__main__':
-    t('c', 657.49 ,710, 0.01, 0, 0.48413,start=None)
+    FsXToPremium3D();sys.exit(0)
+    strikePriceToPremium();sys.exit(0)
+    volatilitytoPremium();sys.exit(0)
+    t('p', 139.18 ,144, 0.01, 0, 0.26264,end='20210716')
+    t('c', 658.45 ,650, 0.01, 0, 0.53015,end='20210813')
+    t('c', 658.45 ,655, 0.01, 0, 0.53015,end='20210813')
+    sys.exit(0)
+
+    t('c', 90 ,100, 0.1, 0, 0.25,start='20210101',end='20210205') #0.1
+    print('--------------')
+    t('c', 90 ,100, 0.1, 0, 0.25,start='20210101',end='20210701') #0.5
+    print('--------------')
+    t('p', 90 ,100, 0.1, 0, 0.25,start='20210101',end='20210205') #0.1
+    print('--------------')
+    t('p', 90 ,100, 0.1, 0, 0.25,start='20210101',end='20210701') #0.5
+    sys.exit(0)
     t('c', 657.49 ,710, 0.01, 0, 0.48413,start=None,end='20210716')
     sys.exit(0)
     #ironCondor()
