@@ -74,6 +74,7 @@ class DataDownloadFutu:
                 self.log.critical(data); assert False, data
             dataRet.append(data)
         dataRet = pd.concat(dataRet,ignore_index=True)
+        dataRet.time_key  = dataRet.time_key.astype(np.datetime64)
         dataRet.set_index('time_key', inplace=True)
         return dataRet
 

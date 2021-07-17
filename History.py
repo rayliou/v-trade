@@ -25,10 +25,15 @@ class History:
     def priceLineFutuCSV(self, filePath):
         pass
 
-    def priceLineGeneral(self, h,l,o,c,v):
+    def priceLineGeneral(self, h,l,o,c,v,code):
         p= (h+l+o+c)/4
         pLog = np.log(v)
-        p = p.round(3).hist(bins=100,figsize = (15,7))
+        fig = plt.figure(figsize = (12,8))
+        ax = fig.add_subplot(111)
+        ax.set_xlabel(f'{code}:price or index '  )
+        ax.set_ylabel('Frequency')
+        p = p.round(3).hist(bins=100,ax=ax)
+        #p = p.round(3).hist(bins=100,figsize = (15,7))
         display(p)
         pass
 
@@ -44,7 +49,7 @@ class History:
         o   = df.Open
         c   = df.Close
         v   = df.Volume
-        self.priceLineGeneral(h,l,o,c,v)
+        self.priceLineGeneral(h,l,o,c,v,code)
         pass
 
 
@@ -117,7 +122,9 @@ class History:
 if __name__ == '__main__':
     h = History()
     #h.priceLineFutu()
-    h.priceLineYahoo('TSLA')
+    #h.priceLineYahoo('TSLA')
+    #h.priceLineYahoo('ABNB')
+    h.priceLineYahoo('^VIX')
     #h.priceLineFutuCSV('b.data/HK.01211.K1M.csv')
     plt.show()
     #h.download()

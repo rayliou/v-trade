@@ -5,6 +5,7 @@
 - https://github.com/matplotlib/mplfinance/blob/master/examples/addplot.ipynb
 '''
 
+from futu import *
 import math
 import matplotlib.pyplot as plt
 import pandas as pd
@@ -29,7 +30,8 @@ import mplfinance as mpf
 import pandas as pd
 import numpy as np
 import seaborn as sns
-import math
+
+from DataDownloadFutu import DataDownloadFutu
 
 def spy_iwm_cmp():
     '''
@@ -96,6 +98,58 @@ def logDiv(x):
 
 #%matplotlib inline
 
+def plot_AH_diff():
+    #比亚迪
+    a  ='SZ.002594'
+    h  ='HK.01211'
+
+    d  = DataDownloadFutu()
+    num = int(5.5 * 30 * 3)
+    dfa  = d.getKLine(a,KLType.K_1M,20)
+    dfh  = d.getKLine(h,KLType.K_1M,20)
+    df = pd.merge_asof(dfh, dfa, right_index=True, left_index=True, suffixes=('_h','_a'))
+    df  = df.tail(num)
+    df['m']  = (df.close_a  - df.close_h)/df.close_a
+    fig = plt.figure(figsize = (12,8))
+    ax1 = fig.add_subplot(111)
+    df.reset_index(drop=True,inplace=True)
+    #df[['close_s', 'scall_1s1o','scall_1s2o']].plot(ax=ax1)
+    df[['close_a']].plot(ax=ax1)
+    df[['close_h']].plot(ax=ax1)
+    df[['m']].plot(ax=ax1,secondary_y=True)
+    #df[['close_o']].plot(ax=ax1)
+    plt.show()
+
+    pass
+
+
+def plot_stock_and_sellcall():
+    #option = 'HK.TCH210830C610000'
+    #Tencent
+    stock  ='HK.00700'
+    option = 'HK.TCH210729C610000'
+    #MEituan
+    stock  ='HK.03690'
+    option = 'HK.MET210729C310000'
+
+    d  = DataDownloadFutu()
+    num = int(5.5 * 30 * 10)
+    dfs  = d.getKLine(stock,KLType.K_1M,20)
+    dfo  = d.getKLine(option,KLType.K_1M,20)
+    df = pd.merge_asof(dfo, dfs, right_index=True, left_index=True, suffixes=('_o','_s'))
+    df  = df.tail(num)
+    df['scall_1s1o']  = df.close_s  - df.close_o
+    df['scall_1s2o']  = df.close_s * 1 - df.close_o *2
+    fig = plt.figure(figsize = (12,8))
+    ax1 = fig.add_subplot(111)
+    df.reset_index(drop=True,inplace=True)
+    #df[['close_s', 'scall_1s1o','scall_1s2o']].plot(ax=ax1)
+    df[['close_s']].plot(ax=ax1)
+    df[['scall_1s1o']].plot(ax=ax1,secondary_y=True)
+    #df[['close_o']].plot(ax=ax1)
+    plt.show()
+    pass
+
 def visualize_stock2option_price():
     file = 'b.data/HK.01810.K1M.csv'
     df = pd.read_csv(file,index_col=0,parse_dates=True)
@@ -140,6 +194,8 @@ def visualize_stock2option_price():
     plt.show()
 
 if __name__ == '__main__':
+    plot_AH_diff(); sys.exit(0)
+    plot_stock_and_sellcall(); sys.exit(0)
     visualize_stock2option_price(); sys.exit(0)
     spy_iwm_cmp(); sys.exit(0)
     v  = VisualizeKLine()

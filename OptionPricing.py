@@ -193,11 +193,12 @@ def FsXToPremium3D():
     '''
     https://matplotlib.org/2.0.2/mpl_toolkits/mplot3d/tutorial.html
     '''
-    fs = 286
+    fs0 = 289
     ratio = 0.3
-    low = fs *(1-ratio)
-    high = fs*(1+ratio)
-    fs,x = np.mgrid[low:high:20j, low:high:20j]
+    low = fs0 *(1-ratio)
+    high = fs0*(1+ratio)
+    #fs,x = np.mgrid[low:high:20j, low:high:20j]
+    fs,x = np.mgrid[low:high:20j, 284:300:17j]
     r  = 0.01
     q  = 0
     v  = 0.4
@@ -210,13 +211,18 @@ def FsXToPremium3D():
     def AmericanP(fs,x):
         ret =  american('p', fs, x, t, r, q, v)
         return ret[0],ret[1]
+    def AmericanPFix(x):
+        ret =  american('p', fs0, x, t, r, q, v)
+        return ret[0],ret[1]
     AmericanC = np.frompyfunc(AmericanC,2,2)
     AmericanP = np.frompyfunc(AmericanP,2,2)
+    AmericanPFix = np.frompyfunc(AmericanPFix,1,2)
 
     #c,delta_c = AmericanC(fs,x)
-    p,delta_p = AmericanP(fs,x)
+    #p,delta_p = AmericanP(fs,x)
+    p,delta_p = AmericanPFix(x)
     fig = plt.figure(figsize = (12,8))
-    ax = fig.add_subplot(111, projection='3d')
+    ax = fig.add_subplot(211, projection='3d')
     ax.set_xlabel('Current Price')
     ax.set_ylabel('Strike Price')
     ax.set_zlabel('Premium')
@@ -224,6 +230,7 @@ def FsXToPremium3D():
     #plt.ylabel('Strike Price')
     #plt.zlabel('Premium')
     #ax = fig.gca(projection='3d')
+    p = fs  -p
     p = p.astype(np.float64)
     #surf = ax.plot_surface(fs, x, p)
 
@@ -237,6 +244,10 @@ def FsXToPremium3D():
 
     # Add a color bar which maps values to colors.
     fig.colorbar(surf, shrink=0.5, aspect=5)
+    ax2 = fig.add_subplot(212)
+    ax2.set_xlabel('Strike Price')
+    ax2.set_ylabel('Current Price')
+    ax2.contourf(x,fs,p)
 
     plt.show()
     pass
@@ -316,8 +327,9 @@ def t(option_type, fs, x, r, q, v,start=None,end=None):
     print(f't({option_type}, {fs}, {x}, {r}, {q}, {v},{start},{end})')
     t = yearFractionDates(start,end)
     #print(T1,T2,yf)
-    print('american              : {}'.format(american(option_type, fs, x, t, r, q, v)))
-    print('american_76           : {}'.format( american_76(option_type, fs, x, t, r, v)))
+    if v < 1:
+        print('american              : {}'.format(american(option_type, fs, x, t, r, q, v)))
+        print('american_76           : {}'.format( american_76(option_type, fs, x, t, r, v)))
     print('qscOption             : {}'.format(qscOption(option_type, fs, x, t, r, q, v)))
     print('QuantLibOptionPrice   : {}'.format(QuantLibOptionPrice(option_type, fs, x, t, r, q, v,start,end)))
     pass
@@ -325,22 +337,14 @@ def t(option_type, fs, x, r, q, v,start=None,end=None):
 
 
 if __name__ == '__main__':
+    #DIDI
+    t('p', 11.9 ,12, 0.01, 0, 0.56762,end='20210717');sys.exit(0)
+    #MOXC 魔线
+    t('c', 27.843 ,25, 0.01, 0, 2.3195,end='20210820')
+    t('p', 27.843 ,25, 0.01, 0, 2.3195,end='20210820');sys.exit(0)
     FsXToPremium3D();sys.exit(0)
     strikePriceToPremium();sys.exit(0)
     volatilitytoPremium();sys.exit(0)
-    t('p', 139.18 ,144, 0.01, 0, 0.26264,end='20210716')
-    t('c', 658.45 ,650, 0.01, 0, 0.53015,end='20210813')
-    t('c', 658.45 ,655, 0.01, 0, 0.53015,end='20210813')
-    sys.exit(0)
-
-    t('c', 90 ,100, 0.1, 0, 0.25,start='20210101',end='20210205') #0.1
-    print('--------------')
-    t('c', 90 ,100, 0.1, 0, 0.25,start='20210101',end='20210701') #0.5
-    print('--------------')
-    t('p', 90 ,100, 0.1, 0, 0.25,start='20210101',end='20210205') #0.1
-    print('--------------')
-    t('p', 90 ,100, 0.1, 0, 0.25,start='20210101',end='20210701') #0.5
-    sys.exit(0)
     t('c', 657.49 ,710, 0.01, 0, 0.48413,start=None,end='20210716')
     sys.exit(0)
     #ironCondor()
