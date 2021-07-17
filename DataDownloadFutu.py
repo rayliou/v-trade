@@ -22,15 +22,27 @@ Use class Visualize to display the candle figures.
 class DataDownloadFutu:
     log = logging.getLogger("main.DataDownloadFutu")
     def __init__(self):
+        self.ctx_ = None
+        self.df_ = None
+        pass
+
+    def open(self):
+        if self.ctx_ is not None:
+            return
         self.ctx_ = OpenQuoteContext(host='127.0.0.1', port=11111)
         pass
+
     def close(self):
+        if self.ctx_ is  None:
+            return
         self.ctx_.close()
         pass
     def getFileName(self,code,dataType):
         dataDir = f'{curDir}/b.data'
         if dataType == KLType.K_1M:
             t = 'K1M'
+        elif dataType == KLType.K_5M:
+            t = 'K5M'
         elif dataType == KLType.K_30M:
             t = 'K30M'
         elif dataType == KLType.K_DAY:
@@ -45,10 +57,15 @@ class DataDownloadFutu:
             t = 'UNKNOWN'
         return f'{dataDir}/{code}.{t}.csv'
 
+    def readKLineFromCsv(self,code,ktype=KLType.K_DAY):
+        csvPath = self.getFileName(code,ktype)
+        self.df_ = pd.read_csv(csvPath,index_col=0,parse_dates=True)
+        return self.df_
+
     def downloadKLine(self,code,ktype=KLType.K_DAY,days=6*365):
-        dataRet = getKLine(code,type)
-        csvPath = self.getFileName(code,ktype,days)
-        dataRet.to_csv(csvPath)
+        self.getKLine(code,ktype,days)
+        csvPath = self.getFileName(code,ktype)
+        self.df_.to_csv(csvPath)
         pass
 
     def getKLine(self,code,ktype=KLType.K_DAY, days=6*365):
@@ -57,6 +74,7 @@ class DataDownloadFutu:
         美股盘前和盘后 K 线仅支持 60 分钟及以下级别。由于美股盘前和盘后时段为非常规交易时段，此时段的 K 线数据可能不足 2 年。
         '''
         #AuType.NONE
+        self.open()
         now = datetime.now()
         start = now - timedelta(days=days)
         start = start.strftime('%Y-%m-%d')
@@ -71,39 +89,73 @@ class DataDownloadFutu:
         while page_req_key is not None:
             ret, data, page_req_key = self.ctx_.request_history_kline(code, start=start,end= end,autype=autype, max_count=max_count,page_req_key= page_req_key,ktype=ktype)
             if ret != RET_OK:
-                self.log.critical(data); assert False, data
+                self.log.critical(data); assert False, f'ktype:{ktype}   {data}'
             dataRet.append(data)
         dataRet = pd.concat(dataRet,ignore_index=True)
         dataRet.time_key  = dataRet.time_key.astype(np.datetime64)
         dataRet.set_index('time_key', inplace=True)
+        self.df_ = dataRet
         return dataRet
-
-
         pass
 
-        def downloadRehab(self,code):
-            '''
-            复权后价格 = 复权前价格 * 复权因子 A + 复权因子 B
-            '''
-            ret,data = self.ctx_.get_rehab(code)
-            if ret != RET_OK:
-                self.log.critical(data); assert False, data
-            print(data)
-            pass
-        def getCapitalFlow(self,code):
-            #ret,data = self.ctx_.get_capital_flow(code)
-            #ret,data = self.ctx_.get_capital_distribution(code)
-            # 所属板块
-            ret,data = self.ctx_.get_owner_plate(code)
-            if ret != RET_OK:
-                self.log.critical(data); assert False, data
-            print(data)
-            pass
+    def downloadRehab(self,code):
+        '''
+        复权后价格 = 复权前价格 * 复权因子 A + 复权因子 B
+        '''
+        self.open()
+        ret,data = self.ctx_.get_rehab(code)
+        if ret != RET_OK:
+            self.log.critical(data); assert False, data
+        print(data)
         pass
+    def getCapitalFlow(self,code):
+        #ret,data = self.ctx_.get_capital_flow(code)
+        #ret,data = self.ctx_.get_capital_distribution(code)
+        # 所属板块
+        self.open()
+        ret,data = self.ctx_.get_owner_plate(code)
+        if ret != RET_OK:
+            self.log.critical(data); assert False, data
+        print(data)
+        pass
+    def aggrOHLC(self, rule='5T'):
+        df1= self.df_.resample(rule).agg({
+            'open':'first'
+            ,'close':'last'
+            ,'high':'max'
+            ,'low':'min'
+            ,'volume':'sum'
+            })
+        #df1= self.df_.resample(rule).ohlc()
+        return df1
+        pass
+    pass
+
+def t_aggr():
+    code  = 'HK.00700'
+    d = DataDownloadFutu()
+    df = d.readKLineFromCsv(code,KLType.K_1M)
+    display(df.tail(15))
+    df1 = d.aggrOHLC('5T')
+    display(df1.tail(15))
+    d.close()
+    sys.exit(0)
+    pass
+
+def t_download():
+    code  = 'HK.00700'
+    d = DataDownloadFutu()
+    days = 30
+    d.downloadKLine(code,KLType.K_5M,days)
+    d.downloadKLine(code,KLType.K_1M,days)
+    d.close()
+    sys.exit(0)
     pass
 
 if __name__ == '__main__':
     logInit()
+    t_aggr()
+    t_download()
     d = DataDownloadFutu()
     #d.downloadRehab('HK.00700')
     code  = 'HK.03690'

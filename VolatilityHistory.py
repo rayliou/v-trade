@@ -59,6 +59,7 @@ def hv_GarmaanKlass(o2,c2,h2,l2):
     return sigma
 
 def hv_YangZhang2000(o2,c2,h2,l2):
+    #FIXME
     o1 = o2.shift()
     c1 = c2.shift()
     h1 = h2.shift()
@@ -66,37 +67,71 @@ def hv_YangZhang2000(o2,c2,h2,l2):
     oLog  = np.log(o2/o1)
     cLog  = np.log(c2/c1)
     N = oLog.size
-    sigma_o_square =  oLog.std() ** 2 *N/(N-1)
-    sigma_c_square =  cLog.std() ** 2 *N/(N-1)
-    sigma_rs_square =  (np.log(h2/c2)*np.log(h2/o2)+np.log(l2/c2)*np.log(l2/o2)).mean()
-    k = 0.34/(1. +(N+1)/(N-1))
+    sigma_o_square =  oLog.std() ** 2
+    sigma_c_square =  cLog.std() ** 2
+    sigma_rs_square =  (np.log(h2/c2)*np.log(h2/o2)+np.log(l2/c2)*np.log(l2/o2)).sum()/N
+    k = 0.34/(1.34 +(N+1)/(N-1))
+    #k = 0.34/(1. +(N+1)/(N-1))
     sigma  = np.sqrt(sigma_o_square  + k * sigma_c_square  + (1-k) * sigma_rs_square )
     return sigma
 
+def hv_ewma(o2,c2,h2,l2):
+    '''
+    df  = pd.DataFrame()
+    #df['std1_0.02'] = np.sqrt((np.log(c2/o2)**2).ewm(alpha=0.02,adjust=True).mean())
+    df['std1_0.04'] = np.sqrt((np.log(c2/o2)**2).ewm(alpha=0.04,adjust=True).mean())
+    df['std1_0.06'] = np.sqrt((np.log(c2/o2)**2).ewm(alpha=0.06,adjust=True).mean())
+    df['std2'] = np.log(c2/o2).ewm(alpha=0.06,adjust=True).std()
+    '''
+    return np.log(c2/o2).ewm(alpha=0.06,adjust=True).std()[-1:][0]
+
+
 from futu import *
 from DataDownloadFutu import DataDownloadFutu
-def t():
+
+g_funcs = [
+        hv_Parksinson1980,
+        hv_GarmaanKlass,
+        hv_YangZhang2000,
+        hv_ewma,
+        ]
+
+def t_period(period):
+    global g_funcs
     stock  ='HK.00700'
     d  = DataDownloadFutu()
-    num = int(5.5 * 30 * 10)
-    df  = d.getKLine(stock,KLType.K_5M,2)
+    #5.5 hours per day
+    coeff = 5.5  * 252
+    if period == '1M':
+        df = d.readKLineFromCsv(stock,KLType.K_1M)
+        coeff*= 60
+        pass
+    elif period == '5M':
+        df = d.readKLineFromCsv(stock,KLType.K_5M)
+        coeff*= 12
+        pass
+    else:
+        assert False
+    coeff = math.sqrt(coeff)
     o,c,h,l = df.open,df.close, df.high,df.low
-    p = hv_Parksinson1980(o,c,h,l)
-    g = hv_GarmaanKlass(o,c,h,l)
-    y = hv_YangZhang2000(o,c,h,l)
-    c5min= 5.5 * 12 * 252
-    c  = math.sqrt(c5min)
-    pY,gY,yY =  c*p,c*g,c*y
-    print(p,g,y)
-    print(pY,gY,yY)
+    return [f(o,c,h,l)*coeff for f in g_funcs]
+
+def t():
+    global g_funcs
+    df  = pd.DataFrame()
+    df['5M'] = t_period('5M')
+    df['1M'] = t_period('1M')
+    df['idx'] = [f.__name__ for f in g_funcs]
+    df.set_index('idx',inplace=True)
+    display(df)
     pass
 
 if __name__ == '__main__':
+    t();sys.exit()
     file = 'b.data/HK.00700.K1M.csv'
     df = pd.read_csv(file,index_col=0,parse_dates=True)
     df['h_shift'] = df.high.shift()
     df['h_shift_-1'] = df.high.shift(-1)
-    t();sys.exit()
 
     #display(df); sys.exit(0)
     stdErr(); sys.exit(0)
