@@ -57,6 +57,11 @@ class DataDownloadFutu:
             t = 'UNKNOWN'
         return f'{dataDir}/{code}.{t}.csv'
 
+    def ohlcv(self,df=None):
+        df = self.df_ if df is None else df
+        o,h,l,c,v = df.open,df.close, df.high,df.low,df.volume
+        return o,h,l,c,v
+
     def readKLineFromCsv(self,code,ktype=KLType.K_DAY):
         csvPath = self.getFileName(code,ktype)
         self.df_ = pd.read_csv(csvPath,index_col=0,parse_dates=True)
@@ -66,6 +71,10 @@ class DataDownloadFutu:
         self.getKLine(code,ktype,days)
         csvPath = self.getFileName(code,ktype)
         self.df_.to_csv(csvPath)
+        h = self.df_.head(1).index[0]
+        t = self.df_.tail(1).index[0]
+        print(f'f,h,t:({csvPath,h,t}) downloaded!')
+
         pass
 
     def getKLine(self,code,ktype=KLType.K_DAY, days=6*365):
@@ -154,8 +163,8 @@ def t_download():
 
 if __name__ == '__main__':
     logInit()
-    t_aggr()
     t_download()
+    t_aggr()
     d = DataDownloadFutu()
     #d.downloadRehab('HK.00700')
     code  = 'HK.03690'

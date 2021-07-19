@@ -8,6 +8,8 @@ import yfinance as yf
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
+from datetime import datetime
+from datetime import timedelta
 
 from DataDownloadFutu import DataDownloadFutu
 
@@ -21,10 +23,8 @@ from DataDownloadFutu import DataDownloadFutu
 
 class History:
     def __init__(self):
+        self.df_ = pd.DataFrame()
         pass
-    def priceLineFutuCSV(self, filePath):
-        pass
-
     def priceLineGeneral(self, h,l,o,c,v,code):
         p= (h+l+o+c)/4
         pLog = np.log(v)
@@ -37,35 +37,68 @@ class History:
         display(p)
         pass
 
-    def priceLineYahoo(self, code = 'ABNB'):
-        #t =yf.Ticker("LI")
-        #t =yf.Ticker("GOOG")
-        t =yf.Ticker(code)
-        df = t.history(period="7d", interval='1m')
-        display(df)
+    def daysToStartEnd(self, days):
+        now = datetime.now()
+        start = now - timedelta(days=days)
+        start = start.strftime('%Y-%m-%d')
+        end = now.strftime('%Y-%m-%d')
+        return start,end
 
+    def ohlcv(self,df=None):
+        assert False, 'You must implement it in subclass'
+        return None
+
+    def getKLineFromCSV(self,code,ktype=None,filePath=None):
+        assert False, 'You must implement it in subclass'
+        return None
+    def getKLineOnline(self,code,
+            days = 5,
+            interval = '1m',   #data interval (intraday data cannot extend last 60 days) Valid intervals are: 1m, 2m, 5m, 15m, 30m, 60m, 90m, 1h, 1d, 5d, 1wk, 1mo, 3mo
+            start = None,      # If not using days - Download start date string (YYYY-MM-DD) or datetime.
+            end   = None,       # If not using days - Download end date string (YYYY-MM-DD) or datetime.
+            auto_adjust = True,
+            prepost = False     # Include Pre and Post market data in results? (Default is False)
+            #actions: Download stock dividends and stock splits events? (Default is True)
+            ):
+        assert False, 'You must implement it in subclass'
+        return None
+
+    pass
+
+class HistoryYahoo(History):
+    def __init__(self):
+        super().__init__()
+        pass
+    def getKLineOnline(self,code,
+            days = 5,
+            interval = '1m',   #data interval (intraday data cannot extend last 60 days) Valid intervals are: 1m, 2m, 5m, 15m, 30m, 60m, 90m, 1h, 1d, 5d, 1wk, 1mo, 3mo
+            start = None,      # If not using days - Download start date string (YYYY-MM-DD) or datetime.
+            end   = None,       # If not using days - Download end date string (YYYY-MM-DD) or datetime.
+            auto_adjust = True,
+            prepost = False    # Include Pre and Post market data in results? (Default is False)
+            #actions: Download stock dividends and stock splits events? (Default is True)
+            ):
+        t =yf.Ticker(code)
+        if start is None:
+            start ,end = self.daysToStartEnd(days)
+
+        df = t.history(start=start,end=end, interval=interval,auto_adjust=auto_adjust,prepost=prepost)
+        self.df_ = df
+        return self.ohlcv()
+
+    def ohlcv(self,df=None):
+        df  = self.df_ if df is None else df
+        o   = df.Open
         h   = df.High
         l   = df.Low
-        o   = df.Open
         c   = df.Close
         v   = df.Volume
+        return o,h,l,c,v
+
+    def priceLineYahoo(self, code = 'ABNB'):
+        o,h,l,c,v = self.getKLineOnline(code)
         self.priceLineGeneral(h,l,o,c,v,code)
         pass
-
-
-    def priceLineFutu(self, code = 'HK.01211'):
-        d  = DataDownloadFutu()
-        num = int(5.5 * 30 * 10)
-        df  = d.getKLine(code,KLType.K_1M,50).tail(num)
-        h   = df.high
-        l   = df.low
-        o   = df.open
-        c   = df.close
-        v   = df.volume
-        self.priceLineGeneral(h,l,o,c,v)
-        pass
-
-
     def download(self):
         data = yf.download(
                 tickers = "ES=F IWM",
@@ -92,6 +125,35 @@ class History:
             )
         data.to_csv('./SPY_IWM.csv')
         pass
+
+    pass
+
+class HistoryFutu(History):
+    def __init__(self):
+        super().__init__()
+        self.d_ = DataDownloadFutu()
+        pass
+
+    def getKLineFromCSV(self,code,ktype=None,filePath=None):
+        self.df_ = self.d_.readKLineFromCsv(code,ktype)
+        return df
+
+    def priceLineFutuCSV(self, filePath):
+        pass
+
+    def priceLineFutu(self, code = 'HK.01211'):
+        d  = self.d_
+        num = int(5.5 * 30 * 10)
+        df  = d.getKLine(code,KLType.K_1M,50).tail(num)
+        h   = df.high
+        l   = df.low
+        o   = df.open
+        c   = df.close
+        v   = df.volume
+        self.priceLineGeneral(h,l,o,c,v)
+        pass
+
+
     def atr(self):
         #self.ctx_ = OpenUSTradeContext(host='127.0.0.1', port=11111, is_encrypt=None, security_firm=SecurityFirm.FUTUSECURITIES)
         t =yf.Ticker("EDU")
@@ -120,13 +182,14 @@ class History:
     pass
 
 if __name__ == '__main__':
-    h = History()
+    h = HistoryYahoo()
+    r = h.getKLineOnline('ABNB',59,interval = '5m', prepost=True)[0]
+    display(r)
     #h.priceLineFutu()
     #h.priceLineYahoo('TSLA')
     #h.priceLineYahoo('ABNB')
-    h.priceLineYahoo('^VIX')
+    #h.priceLineYahoo('^VIX')
     #h.priceLineFutuCSV('b.data/HK.01211.K1M.csv')
-    plt.show()
+    #plt.show()
     #h.download()
     sys.exit(0)
-    h.priceLine()

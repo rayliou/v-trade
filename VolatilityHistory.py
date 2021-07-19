@@ -5,6 +5,7 @@
 - https://zhuanlan.zhihu.com/p/26869997
 '''
 
+
 import math,sys
 import matplotlib.pyplot as plt
 import pandas as pd
@@ -13,6 +14,7 @@ import seaborn as sns
 from scipy.stats import norm
 from scipy import stats
 from IPython.display import display, HTML
+import yfinance as yf
 
 
 def stdErr():
@@ -87,51 +89,66 @@ def hv_ewma(o2,c2,h2,l2):
 
 
 from futu import *
-from DataDownloadFutu import DataDownloadFutu
+from History import HistoryYahoo, HistoryFutu
 
-g_funcs = [
-        hv_Parksinson1980,
+g_hv_funcs = [
+        #hv_Parksinson1980,
         hv_GarmaanKlass,
-        hv_YangZhang2000,
+        #hv_YangZhang2000, #FIXME
         hv_ewma,
         ]
 
-def t_period(period):
-    global g_funcs
-    stock  ='HK.00700'
-    d  = DataDownloadFutu()
-    #5.5 hours per day
-    coeff = 5.5  * 252
-    if period == '1M':
-        df = d.readKLineFromCsv(stock,KLType.K_1M)
-        coeff*= 60
-        pass
-    elif period == '5M':
-        df = d.readKLineFromCsv(stock,KLType.K_5M)
-        coeff*= 12
-        pass
-    else:
-        assert False
-    coeff = math.sqrt(coeff)
-    o,c,h,l = df.open,df.close, df.high,df.low
-    return [f(o,c,h,l)*coeff for f in g_funcs]
 
-def t():
-    global g_funcs
-    df  = pd.DataFrame()
-    df['5M'] = t_period('5M')
-    df['1M'] = t_period('1M')
-    df['idx'] = [f.__name__ for f in g_funcs]
-    df.set_index('idx',inplace=True)
-    display(df)
-    pass
+
+def t_interval2(code, isHK=False):
+    hrsPerDay = 5.5 if isHK else 6.5
+    interval = '5m'
+    days = 59
+    coeff =  252 *hrsPerDay
+    coeffMap=  {
+            '1d' :1,
+            '1h' :hrsPerDay,
+            '30m' :hrsPerDay *2,
+            '15m' :hrsPerDay *4,
+            '5m' :hrsPerDay *12,
+            '3m' :hrsPerDay *20,
+            '1m' :hrsPerDay *60,
+            }
+    coeff *=  coeffMap[interval]
+    coeff  = math.sqrt(coeff)
+    history = HistoryFutu() if isHK else HistoryYahoo()
+    window_days = 3
+    window      =150
+    history.getKLineOnline(code,days,interval=interval)
+
+    df  = history.df_
+    N = df.index.size
+    dfAaux = pd.Series(np.arange(N))
+    dfAaux.index = df.index
+    #return [f(o,c,h,l)*coeff for f in g_hv_funcs]
+    dfOut  = pd.DataFrame()
+    for f in g_hv_funcs:
+        def auxWindowFunc(x):
+            b = int(x[0])
+            e = int(x[-1])
+            df2 =df[b:e]
+            o,h,l,c,v = history.ohlcv(df2)
+            return f(o,c,h,l)*coeff
+        z = dfAaux.rolling(window=window ,min_periods=window).apply(auxWindowFunc,raw=True)
+        dfOut[f.__name__] = z
+        pass
+    return dfOut
+
+
+
 
 if __name__ == '__main__':
-    t();sys.exit()
-    file = 'b.data/HK.00700.K1M.csv'
-    df = pd.read_csv(file,index_col=0,parse_dates=True)
-    df['h_shift'] = df.high.shift()
-    df['h_shift_-1'] = df.high.shift(-1)
+    df = t_interval2('ABNB')
+    fig = plt.figure(figsize = (12,8))
+    ax = fig.add_subplot(111)  # 创建子图1
+    df.plot(ax=ax)
+    plt.show()
+    sys.exit(0)
 
     #display(df); sys.exit(0)
     stdErr(); sys.exit(0)

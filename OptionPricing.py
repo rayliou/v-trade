@@ -188,41 +188,79 @@ from mpl_toolkits.mplot3d import Axes3D
 from matplotlib import cm
 from matplotlib.ticker import LinearLocator, FormatStrFormatter
 
+def AmericanC(fs, x, t, r, q, v):
+    ret = american('c', fs, x, t, r, q, v)
+    return ret[0],ret[1]
+def AmericanP(fs, x, t, r, q, v):
+    ret =  american('p', fs, x, t, r, q, v)
+    return ret[0],ret[1]
+
+AmericanC = np.frompyfunc(AmericanC,6,2)
+AmericanP = np.frompyfunc(AmericanP,6,2)
+
+def FsXToPremium2D():
+    v  = 0.286
+    end =  '20210830'
+    fs0 = 550
+    ratio = 0.3
+    low = fs0 *(1-ratio)
+    high = fs0*(1+ratio)
+    #fs,x = np.mgrid[low:high:20j, 550:630:17j]
+    fs = np.linspace(low,high,100)
+    #x  = np.arange(550,640,10)
+    #x  = np.arange(550,640,10)
+    r  = 0.01
+    q  = 0
+    t   = yearFractionDates(None,end)
+
+    #p,delta_p = AmericanPFix(x)
+    fig = plt.figure(figsize = (12,8))
+    ax = fig.add_subplot(111)
+   # ax = fig.add_subplot(211, projection='3d')
+    ax.set_xlabel('Current Price')
+    ax.set_ylabel('Premium')
+    df  = pd.DataFrame()
+    def sellCall(X):
+        c0,delta0 = AmericanC(fs0,X,t,r,q,v)
+        c,delta =   AmericanC(fs,X,t,r,q,v)
+        df[f'{X}*1'] =  fs - fs0 +(c0 -c)
+        df[f'{X}*2'] =  fs - fs0 +(c0 -c) *2
+        df[f'{X}*3'] =  fs - fs0 +(c0 -c) *3
+        pass
+
+    #sellCall(610)
+    sellCall(550)
+    #sellCall(540)
+    df.index = pd.Index(fs)
+    df.plot(ax=ax)
+    df['fs'] =fs
+    df[['fs']].plot(secondary_y=True,ax=ax)
+    plt.legend()
+    plt.show()
+    pass
+
 
 def FsXToPremium3D():
     '''
     https://matplotlib.org/2.0.2/mpl_toolkits/mplot3d/tutorial.html
     '''
-    fs0 = 289
+    v  = 0.286
+    end =  '20210929'
+    fs0 = 550
     ratio = 0.3
     low = fs0 *(1-ratio)
     high = fs0*(1+ratio)
     #fs,x = np.mgrid[low:high:20j, low:high:20j]
-    fs,x = np.mgrid[low:high:20j, 284:300:17j]
+    fs,x = np.mgrid[low:high:20j, 550:630:17j]
     r  = 0.01
     q  = 0
-    v  = 0.4
-    #v  = 0.43610
-    end =  '20210830'
     t   = yearFractionDates(None,end)
-    def AmericanC(fs,x):
-        ret = american('c', fs, x, t, r, q, v)
-        return ret[0],ret[1]
-    def AmericanP(fs,x):
-        ret =  american('p', fs, x, t, r, q, v)
-        return ret[0],ret[1]
-    def AmericanPFix(x):
-        ret =  american('p', fs0, x, t, r, q, v)
-        return ret[0],ret[1]
-    AmericanC = np.frompyfunc(AmericanC,2,2)
-    AmericanP = np.frompyfunc(AmericanP,2,2)
-    AmericanPFix = np.frompyfunc(AmericanPFix,1,2)
 
-    #c,delta_c = AmericanC(fs,x)
-    #p,delta_p = AmericanP(fs,x)
-    p,delta_p = AmericanPFix(x)
+    c,delta_c = AmericanCFix(x)
+    #p,delta_p = AmericanPFix(x)
     fig = plt.figure(figsize = (12,8))
-    ax = fig.add_subplot(211, projection='3d')
+    ax = fig.add_subplot(111, projection='3d')
+   # ax = fig.add_subplot(211, projection='3d')
     ax.set_xlabel('Current Price')
     ax.set_ylabel('Strike Price')
     ax.set_zlabel('Premium')
@@ -230,11 +268,9 @@ def FsXToPremium3D():
     #plt.ylabel('Strike Price')
     #plt.zlabel('Premium')
     #ax = fig.gca(projection='3d')
-    p = fs  -p
-    p = p.astype(np.float64)
-    #surf = ax.plot_surface(fs, x, p)
-
-    surf = ax.plot_surface(fs, x, p, cmap=cm.coolwarm,
+    c = fs  -c *3
+    c = c.astype(np.float64)
+    surf = ax.plot_surface(fs, x, c, cmap=cm.coolwarm,
            linewidth=0, antialiased=False)
 
     # Customize the z axis.
@@ -244,10 +280,16 @@ def FsXToPremium3D():
 
     # Add a color bar which maps values to colors.
     fig.colorbar(surf, shrink=0.5, aspect=5)
+
+    '''
     ax2 = fig.add_subplot(212)
     ax2.set_xlabel('Strike Price')
     ax2.set_ylabel('Current Price')
-    ax2.contourf(x,fs,p)
+    ax2.contourf(x,fs,c)
+
+    '''
+
+
 
     plt.show()
     pass
@@ -337,12 +379,13 @@ def t(option_type, fs, x, r, q, v,start=None,end=None):
 
 
 if __name__ == '__main__':
+    FsXToPremium2D();sys.exit(0)
+    FsXToPremium3D();sys.exit(0)
     #DIDI
     t('p', 11.9 ,12, 0.01, 0, 0.56762,end='20210717');sys.exit(0)
     #MOXC 魔线
     t('c', 27.843 ,25, 0.01, 0, 2.3195,end='20210820')
     t('p', 27.843 ,25, 0.01, 0, 2.3195,end='20210820');sys.exit(0)
-    FsXToPremium3D();sys.exit(0)
     strikePriceToPremium();sys.exit(0)
     volatilitytoPremium();sys.exit(0)
     t('c', 657.49 ,710, 0.01, 0, 0.48413,start=None,end='20210716')
