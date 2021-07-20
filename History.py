@@ -183,7 +183,8 @@ class HistoryFutu(History):
 
 if __name__ == '__main__':
     h = HistoryYahoo()
-    r = h.getKLineOnline('ABNB',59,interval = '5m', prepost=True)[0]
+    #r = h.getKLineOnline('ABNB',59,interval = '5m', prepost=True)[0]
+    r = h.getKLineOnline('SPY',729,interval = '1h')
     display(r)
     #h.priceLineFutu()
     #h.priceLineYahoo('TSLA')

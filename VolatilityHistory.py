@@ -57,7 +57,9 @@ def hv_GarmaanKlass(o2,c2,h2,l2):
     c1 = c2.shift()
     N = o2.size
     sigma_sqare = (np.log(h2/l2) ** 2 /2 ).sum() /N - (2*math.log(2) -1  )*(np.log(c2/c1)**2).sum()/N
-    sigma = math.sqrt(sigma_sqare)
+    sigma = math.sqrt(sigma_sqare) if sigma_sqare > 0 else 0
+    #except ValueError as e:
+    #    assert False , f'sigma_sqare={sigma_sqare}{e} '
     return sigma
 
 def hv_YangZhang2000(o2,c2,h2,l2):
@@ -100,6 +102,7 @@ g_hv_funcs = [
 
 
 
+
 def t_interval2(code, isHK=False):
     hrsPerDay = 5.5 if isHK else 6.5
     interval = '5m'
@@ -139,16 +142,93 @@ def t_interval2(code, isHK=False):
         pass
     return dfOut
 
+def intervalTimeCoeff(interval, isHK=False):
+    hrsPerDay = 5.5 if isHK else 6.5
+    coeff =  252
+    coeffMap=  {
+            '1d' :1,
+            '1h' :hrsPerDay,
+            '30m' :hrsPerDay *2,
+            '15m' :hrsPerDay *4,
+            '5m' :hrsPerDay *12,
+            '3m' :hrsPerDay *20,
+            '1m' :hrsPerDay *60,
+            }
+    coeff *=  coeffMap[interval]
+    coeff  = math.sqrt(coeff)
+    return coeff, hrsPerDay
 
+class VolatilityCone:
+    def __init__(self,code,isHK =False):
+        self.code_ = code
+        self.isHK_ = isHK
+        self.history_ = HistoryFutu() if isHK else HistoryYahoo()
+        self.df5m_ = None
+        self.df1h_ = None
+        self.dfOut_  = pd.DataFrame()
+        pass
+    def getHistory(self):
+        self.history_.getKLineOnline(self.code_,59,interval='5m')
+        self.df5m_ = self.history_.df_
+        self.history_.getKLineOnline(self.code_,729,interval='1h')
+        self.df1h_= self.history_.df_
+        pass
+
+    def rolling(self,windowDays,interval='5m', hvFunc=hv_GarmaanKlass):
+        coeff, hrsPerDay = intervalTimeCoeff(interval,self.isHK_)
+        window = hrsPerDay * windowDays
+        df  = None
+        if self.df5m_ is None or self.df1h_ is None:
+            self.getHistory()
+        if interval == '5m':
+            window *= 12
+            df  = self.df5m_
+        elif interval == '1h':
+            window  = int(window)
+            df  = self.df1h_
+        else:
+            assert False
+        window  = int(window)
+        N = df.index.size
+        dfAaux = pd.Series(np.arange(N))
+        dfAaux.index = df.index
+        #return [f(o,c,h,l)*coeff for f in g_hv_funcs]
+        def auxWindowFunc(x):
+            b = int(x[0])
+            e = int(x[-1])
+            df2 =df[b:e]
+            '''
+            if interval == '1h':
+                display(df2); sys.exit(0)
+            '''
+            o,h,l,c,v = self.history_.ohlcv(df2)
+            return hvFunc(o,c,h,l)*coeff
+        z = dfAaux.rolling(window=window ,min_periods=window).apply(auxWindowFunc,raw=True)
+        return z
+
+    def cone(self):
+        X     = ['1d','3d','1w','2w','1mon', '2mon','4mon','0.5y','1y']
+        Xdays = [1,3,5,10,20,40,80,120,250]
+        for i in range(0,len(X)):
+            self.dfOut_[X[i]] = z = vCone.rolling(Xdays[i],'1h').describe()
+        fig = plt.figure(figsize = (12,8))
+        ax = fig.add_subplot(111)  # 创建子图1
+        self.dfOut_ .T[ ['max', 'mean' , '25%' , '50%' , '75%' ,'min' ] ].  plot(ax=ax)
+        plt.show()
+        pass
+    pass
 
 
 if __name__ == '__main__':
-    df = t_interval2('ABNB')
-    fig = plt.figure(figsize = (12,8))
-    ax = fig.add_subplot(111)  # 创建子图1
-    df.plot(ax=ax)
-    plt.show()
+    #vCone = VolatilityCone('TSLA')
+    #vCone = VolatilityCone('ABNB')
+    vCone = VolatilityCone('SPY')
+    vCone.cone()
     sys.exit(0)
+    vCone.rolling(3,'5m')
+    vCone.rolling(3,'1h')
+
+    df = t_interval2('ABNB')
 
     #display(df); sys.exit(0)
     stdErr(); sys.exit(0)

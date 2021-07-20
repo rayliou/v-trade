@@ -198,6 +198,92 @@ def AmericanP(fs, x, t, r, q, v):
 AmericanC = np.frompyfunc(AmericanC,6,2)
 AmericanP = np.frompyfunc(AmericanP,6,2)
 
+def ironCondor():
+    fs0 = 547.5
+    v  = 0.29
+    end =  '20210730'
+    end =  '20210827'
+    end =  '20210830'
+    ratio = 0.2
+    low = fs0 *(1-ratio)
+    high = fs0*(1+ratio)
+    #fs,x = np.mgrid[low:high:20j, 550:630:17j]
+    fs = np.linspace(low,high,200)
+    #x  = np.arange(550,640,10)
+    #x  = np.arange(550,640,10)
+    r,q  = 0.01,0
+    T0   = yearFractionDates(None,end)
+
+    #p,delta_p = AmericanPFix(x)
+    dfs  = [
+        pd.DataFrame(index=fs),
+        pd.DataFrame(index=fs),
+        pd.DataFrame(index=fs),
+        pd.DataFrame(index=fs),
+    ]
+
+    def coveredCall(K3,t):
+        name  =  f'covered call +C{K3}:{fs0}'
+        c3_0,delta3_0 = AmericanC(fs0,K3,T0,r,q,v)
+        c3,delta3 = AmericanC(fs,K3,t,r,q,v)
+        df[name] =(fs -fs0 ) +(c3_0 -c3) + c3_0
+        pass
+
+    def IC(K1,K2,K3,K4=150):
+        name  =  f'+P{K1}-P{K2}+C{K3}:{fs0}'
+        #start
+        p1_0,delta1_0 = AmericanP(fs0,K1,T0,r,q,v)
+        p2_0,delta2_0 = AmericanP(fs0,K2,T0,r,q,v)
+        c3_0,delta3_0 = AmericanC(fs0,K3,T0,r,q,v)
+        for i in range(0,4):
+            #end
+            t  = T0 *(1-(float(i+1)/4.0))
+            if t < 0.01:
+                t  = 0.01
+            p1,delta1 = AmericanP(fs,K1,t,r,q,v)
+            p2,delta2 = AmericanP(fs,K2,t,r,q,v)
+            c3,delta3 = AmericanC(fs,K3,t,r,q,v)
+            dfs[i][name] =(fs -fs0 ) + (p1 -p1_0) + (p2_0 -p2 )+ (c3_0 -c3)
+        pass
+
+    #IC(500,540,550)
+    IC(500,540,580)
+
+    '''
+
+    IC(24,25,28)
+    IC(24,26,28)
+    IC(25,26,28)
+    IC(25,27,28)
+    IC(25,27,29)
+    '''
+
+    '''
+    coveredCall(135)
+    coveredCall(140)
+    coveredCall(145)
+    '''
+    fig = plt.figure(figsize = (12,8))
+    ax0 = fig.add_subplot(221)
+    ax1 = fig.add_subplot(222)
+    ax2 = fig.add_subplot(223)
+    ax3 = fig.add_subplot(224)
+    axs = [ax0,ax1,ax2,ax3]
+    for i in range(0,4):
+        ax  = axs[i]
+        # ax = fig.add_subplot(211, projection='3d')
+        ax.set_xlabel('Current Price')
+        ax.set_ylabel('Premium')
+        ax.set_title(f'IC after {i+1}/4 *T0')
+        ax.plot(fs,np.zeros(fs.size), 'b--')
+        ax.plot(fs,fs-fs0, 'y--')
+        dfs[i].plot(ax=ax)
+    #df['fs'] =fs
+    #df[['fs']].plot(secondary_y=True,ax=ax)
+    plt.legend()
+    plt.show()
+    pass
+
 def FsXToPremium2D():
     v  = 0.286
     end =  '20210830'
@@ -379,6 +465,7 @@ def t(option_type, fs, x, r, q, v,start=None,end=None):
 
 
 if __name__ == '__main__':
+    ironCondor();sys.exit(0)
     FsXToPremium2D();sys.exit(0)
     FsXToPremium3D();sys.exit(0)
     #DIDI
