@@ -115,8 +115,53 @@ def coveredCall():
     plt.legend()
     plt.show()
 
+from futu import *
+from DataDownloadFutu import DataDownloadFutu
+from UserSecurity import UserSecurity
+
+def downloadAllOptionHKSecurities():
+    us = UserSecurity()
+    d = DataDownloadFutu('0722.data')
+    df =us.getSecuritiesList('optionHK')[['code', 'name']]
+    dfRet = pd.DataFrame()
+
+    for r in df.iterrows():
+        num = r[0]
+        name = f'{r[1][1]}@{r[1][0]}'
+        code = r[1][0]
+        dfO = d.getKLine(code, ktype=KLType.K_60M ,days=2*365)[['open','high','low','close','volume']]
+        if dfRet.index.size ==0:
+            dfRet  = dfO
+        else:
+            dfRet = pd.merge_asof(dfRet, dfO, right_index=True, left_index=True, suffixes=('',f'_{name}'))
+        print(f'finish {num} {name} ')
+        if num == 3:
+            display(dfRet)
+        pass
+        #o,h,l,c,v = d.ohlcv(dfO)
+        #m = (o+h+l+c) /4
+        #dfRet[name] = m
+
+    dfRet.to_csv('./optionHK_securities_1h.csv')
+    pass
+downloadAllOptionHKSecurities();sys.exit(0)
+
+import matplotlib
+import matplotlib.pyplot as plt
+import seaborn as sns
+df = pd.read_csv('./optionHK_securities_1h.csv',index_col=0)
+#fig = plt.figure(figsize = (12,8))
+
+plt.rcParams['font.sans-serif'] = ['Arial Unicode MS']
+
+
+#ax = fig.add_subplot(111)
+ax = sns.heatmap(df.corr())
+plt.show
+
 if __name__ == '__main__':
-    coveredCall()
+    #coveredCall()
+    pass
     #ironCondor()
 
 '''

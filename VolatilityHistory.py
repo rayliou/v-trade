@@ -159,8 +159,9 @@ def intervalTimeCoeff(interval, isHK=False):
     return coeff, hrsPerDay
 
 class VolatilityCone:
-    def __init__(self,code,isHK =False):
+    def __init__(self,code,interval='5m',isHK =False):
         self.code_ = code
+        self.interval_ = interval
         self.isHK_ = isHK
         self.history_ = HistoryFutu() if isHK else HistoryYahoo()
         self.df5m_ = None
@@ -168,22 +169,28 @@ class VolatilityCone:
         self.dfOut_  = pd.DataFrame()
         pass
     def getHistory(self):
-        self.history_.getKLineOnline(self.code_,59,interval='5m')
+        maxDays5m = 59
+        maxDays1h = 729
+        if self.isHK_:
+            maxDays5m = 365 * 1
+            maxDays1h = 365 * 2
+
+        self.history_.getKLineOnline(self.code_,maxDays5m,interval='5m')
         self.df5m_ = self.history_.df_
-        self.history_.getKLineOnline(self.code_,729,interval='1h')
+        self.history_.getKLineOnline(self.code_,maxDays1h,interval='1h')
         self.df1h_= self.history_.df_
         pass
 
-    def rolling(self,windowDays,interval='5m', hvFunc=hv_GarmaanKlass):
-        coeff, hrsPerDay = intervalTimeCoeff(interval,self.isHK_)
+    def rolling(self,windowDays, hvFunc=hv_GarmaanKlass):
+        coeff, hrsPerDay = intervalTimeCoeff(self.interval_,self.isHK_)
         window = hrsPerDay * windowDays
         df  = None
         if self.df5m_ is None or self.df1h_ is None:
             self.getHistory()
-        if interval == '5m':
+        if self.interval_ == '5m':
             window *= 12
             df  = self.df5m_
-        elif interval == '1h':
+        elif self.interval_ == '1h':
             window  = int(window)
             df  = self.df1h_
         else:
@@ -198,31 +205,59 @@ class VolatilityCone:
             e = int(x[-1])
             df2 =df[b:e]
             '''
-            if interval == '1h':
+            if self.interval_ == '1h':
                 display(df2); sys.exit(0)
             '''
             o,h,l,c,v = self.history_.ohlcv(df2)
             return hvFunc(o,c,h,l)*coeff
         z = dfAaux.rolling(window=window ,min_periods=window).apply(auxWindowFunc,raw=True)
-        return z
+        return z,z[z.size-1]
 
-    def cone(self):
+    def cone_(self,hvFunc,ax):
         X     = ['1d','3d','1w','2w','1mon', '2mon','4mon','0.5y','1y']
         Xdays = [1,3,5,10,20,40,80,120,250]
+        sigma_1d = 0.0
+        sigma_3d = 0.0
         for i in range(0,len(X)):
-            self.dfOut_[X[i]] = z = vCone.rolling(Xdays[i],'1h').describe()
-        fig = plt.figure(figsize = (12,8))
-        ax = fig.add_subplot(111)  # 创建子图1
+            z,sigma = vCone.rolling(Xdays[i],hvFunc)
+            if i == 0:
+                sigma_1d = sigma
+            if i == 1:
+                sigma_3d = sigma
+            self.dfOut_[X[i]] = z.describe()
         self.dfOut_ .T[ ['max', 'mean' , '25%' , '50%' , '75%' ,'min' ] ].  plot(ax=ax)
-        plt.show()
+        ax.set_title(f'VC::{self.code_}:{hvFunc.__name__},HV (1d:{sigma_1d},3d:{sigma_3d}')
         pass
+
+    def cone(self):
+        fig = plt.figure(figsize = (12,8))
+
+        hvFunc  = hv_GarmaanKlass
+        ax = fig.add_subplot(221)  # 创建子图1
+        self.cone_(hvFunc,ax)
+
+        hvFunc  = hv_ewma
+        ax = fig.add_subplot(222)  # 创建子图1
+        self.cone_(hvFunc,ax)
+
+        hvFunc  = hv_YangZhang2000
+        ax = fig.add_subplot(223)  # 创建子图1
+        self.cone_(hvFunc,ax)
+
+        hvFunc  = hv_Parksinson1980
+        ax = fig.add_subplot(224)  # 创建子图1
+        self.cone_(hvFunc,ax)
+        plt.show()
+
     pass
 
 
 if __name__ == '__main__':
     #vCone = VolatilityCone('TSLA')
     #vCone = VolatilityCone('ABNB')
-    vCone = VolatilityCone('SPY')
+    code = sys.argv[1] if len(sys.argv)> 1 else 'SPY'
+    isHK = code.startswith('HK.')
+    vCone = VolatilityCone(code,'5m',isHK)
     vCone.cone()
     sys.exit(0)
     vCone.rolling(3,'5m')

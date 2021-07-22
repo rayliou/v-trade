@@ -60,8 +60,19 @@ class History:
             prepost = False     # Include Pre and Post market data in results? (Default is False)
             #actions: Download stock dividends and stock splits events? (Default is True)
             ):
-        assert False, 'You must implement it in subclass'
-        return None
+        self.intv2KType_  = {
+                '1m' :KLType.K_1M,
+                '5m' :KLType.K_5M,
+                '15m' :KLType.K_15M,
+                '30m' :KLType.K_30M,
+                '60m' :KLType.K_60M,
+                '1h' :KLType.K_60M,
+                '1d' :KLType.K_DAY,
+                '1wk' :KLType.K_WEEK,
+                }
+        s = ','.join(self.intv2KType_.values())
+        assert interval in self.intv2KType_, f'Interval:{interval} is not in {s}'
+        pass
 
     pass
 
@@ -78,6 +89,7 @@ class HistoryYahoo(History):
             prepost = False    # Include Pre and Post market data in results? (Default is False)
             #actions: Download stock dividends and stock splits events? (Default is True)
             ):
+        super().getKLineOnline(code,days,interval,start,end,auto_adjust,prepost)
         t =yf.Ticker(code)
         if start is None:
             start ,end = self.daysToStartEnd(days)
@@ -138,6 +150,22 @@ class HistoryFutu(History):
         self.df_ = self.d_.readKLineFromCsv(code,ktype)
         return df
 
+    def getKLineOnline(self,code,
+            days = 5,
+            interval = '1m',   #data interval (intraday data cannot extend last 60 days) Valid intervals are: 1m, 2m, 5m, 15m, 30m, 60m, 90m, 1h, 1d, 5d, 1wk, 1mo, 3mo
+            start = None,      # If not using days - Download start date string (YYYY-MM-DD) or datetime.
+            end   = None,       # If not using days - Download end date string (YYYY-MM-DD) or datetime.
+            auto_adjust = True,
+            prepost = False     # Include Pre and Post market data in results? (Default is False)
+            #actions: Download stock dividends and stock splits events? (Default is True)
+            ):
+        super().getKLineOnline(code,days,interval,start,end,auto_adjust,prepost)
+        self.df_ = self.d_. getKLine(code,ktype=self.intv2KType_[interval], days=days)
+        return self.ohlcv()
+    def ohlcv(self,df=None):
+        df  = self.df_ if df is None else df
+        return self.d_.ohlcv(df)
+
     def priceLineFutuCSV(self, filePath):
         pass
 
@@ -182,10 +210,14 @@ class HistoryFutu(History):
     pass
 
 if __name__ == '__main__':
+    h = HistoryFutu()
+    #r = h.getKLineOnline('ABNB',59,interval = '5m', prepost=True)[0]
+    r = h.getKLineOnline('HK.01211',729,interval = '1h')
+    display(r)
+    sys.exit(0)
     h = HistoryYahoo()
     #r = h.getKLineOnline('ABNB',59,interval = '5m', prepost=True)[0]
     r = h.getKLineOnline('SPY',729,interval = '1h')
-    display(r)
     #h.priceLineFutu()
     #h.priceLineYahoo('TSLA')
     #h.priceLineYahoo('ABNB')

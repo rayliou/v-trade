@@ -34,16 +34,24 @@ class UserSecurity:
         print(data)
         pass
 
-    def show(self):
-        ret, data = self.ctx_.get_user_security(self.g_)
+    def getSecuritiesList(self, groupName = None):
+        if groupName is None:
+            groupName = self.g_
+        ret, data = self.ctx_.get_user_security(groupName)
         if ret != RET_OK:
             self.log.critical(data); assert False, data
-            return
-        display(data)
+            return None
+        return data
+    def show(self, groupName = None):
+        data  = self.getSecuritiesList(groupName)
+        display(data[['code','name']])
         pass
 
     def close(self):
+        if self.ctx_ is  None:
+            return
         self.ctx_.close()
+        self.ctx_ = None
         pass
 
     pass
@@ -51,8 +59,8 @@ class UserSecurity:
 if __name__ == '__main__':
     logInit()
     u = UserSecurity()
-    u.update()
-    u.show()
+    #u.update()
+    u.show('optionHK')
     #u.show()
     u.close()
     sys.exit(0)

@@ -21,9 +21,10 @@ Use class Visualize to display the candle figures.
 
 class DataDownloadFutu:
     log = logging.getLogger("main.DataDownloadFutu")
-    def __init__(self):
+    def __init__(self, baseDir='b.data'):
         self.ctx_ = None
         self.df_ = None
+        self.baseDir_ = baseDir
         pass
 
     def open(self):
@@ -36,9 +37,10 @@ class DataDownloadFutu:
         if self.ctx_ is  None:
             return
         self.ctx_.close()
+        self.ctx_ = None
         pass
     def getFileName(self,code,dataType):
-        dataDir = f'{curDir}/b.data'
+        dataDir = f'{curDir}/{self.baseDir_}'
         if dataType == KLType.K_1M:
             t = 'K1M'
         elif dataType == KLType.K_5M:
@@ -104,8 +106,8 @@ class DataDownloadFutu:
         dataRet.time_key  = dataRet.time_key.astype(np.datetime64)
         dataRet.set_index('time_key', inplace=True)
         self.df_ = dataRet
+        self.close()
         return dataRet
-        pass
 
     def downloadRehab(self,code):
         '''
