@@ -15,6 +15,7 @@ from scipy.stats import norm
 from scipy import stats
 from IPython.display import display, HTML
 import yfinance as yf
+from Log import logInit
 
 
 def stdErr():
@@ -94,9 +95,9 @@ from futu import *
 from History import HistoryYahoo, HistoryFutu
 
 g_hv_funcs = [
-        #hv_Parksinson1980,
+        hv_Parksinson1980,
         hv_GarmaanKlass,
-        #hv_YangZhang2000, #FIXME
+        hv_YangZhang2000, #FIXME
         hv_ewma,
         ]
 
@@ -159,6 +160,7 @@ def intervalTimeCoeff(interval, isHK=False):
     return coeff, hrsPerDay
 
 class VolatilityCone:
+    log = logging.getLogger("main.VolatilityCone")
     def __init__(self,code,interval='5m',isHK =False):
         self.code_ = code
         self.interval_ = interval
@@ -213,7 +215,7 @@ class VolatilityCone:
         z = dfAaux.rolling(window=window ,min_periods=window).apply(auxWindowFunc,raw=True)
         return z,z[z.size-1]
 
-    def cone_(self,hvFunc,ax):
+    def cone_V1(self,hvFunc,ax):
         X     = ['1d','3d','1w','2w','1mon', '2mon','4mon','0.5y','1y']
         Xdays = [1,3,5,10,20,40,80,120,250]
         sigma_1d = 0.0
@@ -229,9 +231,43 @@ class VolatilityCone:
         ax.set_title(f'VC::{self.code_}:{hvFunc.__name__},HV (1d:{sigma_1d},3d:{sigma_3d}')
         pass
 
+    def cone_V2(self,hvFunc,ax):
+        '''
+        Only get quantile of current volatility
+        '''
+        def qNearest(input,data=None, q=None):
+            q = data.quantile(np.arange(0.05,1.05,0.05)) if data is not None else q
+            idxSorted = (q - input).abs().argsort().iloc[:1]
+            return q.iloc[idxSorted].index[0]
+
+        label = hvFunc.__name__
+        X     = ['1d','3d','1w','2w','1mon', '2mon','4mon','0.5y','1y']
+        Xdays = [1,3,5,10,20,40,80,120,250]
+        qList = []
+        sigma_1d = 0.0
+        sigma_3d = 0.0
+        for i in range(0,len(X)):
+            z,sigma = vCone.rolling(Xdays[i],hvFunc)
+            q = qNearest(sigma,z) if not np.isnan(sigma) else -1
+            qList.append(q)
+            if i == 0:
+                sigma_1d = sigma
+            if i == 1:
+                sigma_3d = sigma
+            self.log.debug(f'+{label}:sigma:{sigma},q:{q},X:{X[i]} ')
+        self.log.debug(f'+{label}:plot ')
+        plt.plot(X,qList,label=label)
+        #ax.set_title(f'VC::{self.code_}:{hvFunc.__name__},HV (1d:{sigma_1d},3d:{sigma_3d}')
+        pass
+
     def cone(self):
         fig = plt.figure(figsize = (12,8))
+        ax = fig.add_subplot(111)  # 创建子图1
+        for f in g_hv_funcs:
+            self.cone_V2(f,ax)
+        self.log.debug(f'plot show ')
 
+        '''
         hvFunc  = hv_GarmaanKlass
         ax = fig.add_subplot(221)  # 创建子图1
         self.cone_(hvFunc,ax)
@@ -247,12 +283,22 @@ class VolatilityCone:
         hvFunc  = hv_Parksinson1980
         ax = fig.add_subplot(224)  # 创建子图1
         self.cone_(hvFunc,ax)
+        '''
+
+
+        plt.ylim(-0.01,1)
+        plt.legend()
         plt.show()
 
     pass
 
 
 if __name__ == '__main__':
+    logInit()
+    '''
+        df.quantile(np.arange(0.1,1.1,0.1)).loc[0.1,].a
+        q = z.quantile(np.arange(0.05,1.05,0.05))
+    '''
     #vCone = VolatilityCone('TSLA')
     #vCone = VolatilityCone('ABNB')
     code = sys.argv[1] if len(sys.argv)> 1 else 'SPY'
