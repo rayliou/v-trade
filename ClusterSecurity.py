@@ -6,6 +6,7 @@
 
 '''
 
+from Log import logInit
 from IPython.display import display, HTML
 from sklearn.cluster import KMeans
 from sklearn.cluster import SpectralClustering
@@ -14,7 +15,7 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 from IPython.display import display, HTML
-import json,sys
+import logging,json,sys
 from datetime import datetime
 #from sklearn.metrics import calinski_harabaz_score
 '''
@@ -22,19 +23,22 @@ from datetime import datetime
 '''
 from sklearn.metrics import davies_bouldin_score,calinski_harabasz_score,silhouette_score
 
-def corrDataFrameToTopNItems(df,topN = 10,uncorrelatable=False):
+def corrDataFrameToTopNItems(dfCorr,topN = 10,uncorrelatable=False):
+    log = logging.getLogger("main.corrDataFrameToTopNItems")
     '''
     base on columns
     '''
     ret  = dict()
-    corrABS = df.corr().abs()  if   uncorrelatable else df.corr().abs() * -1
+    corrABS = dfCorr.abs()  if   uncorrelatable else dfCorr.abs() * -1
     for c in corrABS:
         indexes = corrABS[c].argsort().iloc[:topN]
-        ret[c] = [i for i in corrABS[c].iloc[indexes].index]
+        log.debug(f'indexes is {indexes}')
+        ret[c] = [f'{i2} {i1}' for i1,i2 in corrABS[c].iloc[indexes].index]
     ret  = json.dumps(ret)
     return ret
 
 class TopNShiftCorre:
+    log = logging.getLogger("main.TopNShiftCorre")
     def __init__(self,topN=10, csvFile='./optionHK_securities_1h.csv'):
         self.topN_ = topN
         self.csvFile_ = csvFile
@@ -52,6 +56,7 @@ class TopNShiftCorre:
             m = m.fillna(0)
             dfM[c1] = m
         df = None #release memory
+        dfCorrs = []
         for k in shifDayRange:
             shiftNums = k * numPerDay
             dfCorr = pd.DataFrame()
@@ -59,12 +64,19 @@ class TopNShiftCorre:
                 dfR = dfM.shift(-shiftNums)
                 cr = dfR.iloc[:-shiftNums].corrwith(dfM[c1].iloc[:-shiftNums])
                 dfCorr[c1] =cr
-            display(dfCorr)
-            fp  = open(f'./d.TopNShiftCorre/{k}.json', 'w+')
-            j = corrDataFrameToTopNItems(dfCorr,self.topN_)
-            fp.write(j)
-            fp.close()
+            dfCorr['k'] = k
+            dfCorr.set_index('k',append=True,inplace=True)
+            dfCorrs.append(dfCorr)
+            self.log.debug(f'finish {k} days shift.. ')
         dfM = None
+        dfCorrs = pd.concat(dfCorrs)
+        #dfCorrs.to_csv('./tmp.csv');sys.exit(0)
+        #display(dfCorrs)
+        #fp  = open(f'./d.TopNShiftCorre/{k}.json', 'w+')
+        j = corrDataFrameToTopNItems(dfCorrs,self.topN_)
+        print(j)
+        #fp.write(j)
+        #fp.close()
         pass
     pass
 
@@ -197,6 +209,7 @@ def bestClustNum():
 
 
 if __name__ == '__main__':
+    logInit()
     shiftCorr = TopNShiftCorre(10)
     shiftCorr.cal();sys.exit(0)
 
