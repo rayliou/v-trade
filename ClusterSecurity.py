@@ -22,7 +22,53 @@ from datetime import datetime
 '''
 from sklearn.metrics import davies_bouldin_score,calinski_harabasz_score,silhouette_score
 
-class CorrelationTopN:
+def corrDataFrameToTopNItems(df,topN = 10,uncorrelatable=False):
+    '''
+    base on columns
+    '''
+    ret  = dict()
+    corrABS = df.corr().abs()  if   uncorrelatable else df.corr().abs() * -1
+    for c in corrABS:
+        indexes = corrABS[c].argsort().iloc[:topN]
+        ret[c] = [i for i in corrABS[c].iloc[indexes].index]
+    ret  = json.dumps(ret)
+    return ret
+
+class TopNShiftCorre:
+    def __init__(self,topN=10, csvFile='./optionHK_securities_1h.csv'):
+        self.topN_ = topN
+        self.csvFile_ = csvFile
+        pass
+    def cal(self):
+        numPerDay = 6
+        shifDayRange = range(1,8)
+        df = pd.read_csv(self.csvFile_,index_col=0,parse_dates=True)
+        colLabeels = [c[len('open_'):] for c in df.columns.values if c.startswith('open_') ]
+        dfM = pd.DataFrame()
+        for c1 in colLabeels:
+            m = (df[f'open_{c1}'] + df[f'high_{c1}'] + df[f'low_{c1}']+ df[f'close_{c1}'])/4
+            m = np.log(m/m.shift()).iloc[1:] #ignore 1st line
+            m[np.isinf(m.abs())] = np.nan
+            m = m.fillna(0)
+            dfM[c1] = m
+        df = None #release memory
+        for k in shifDayRange:
+            shiftNums = k * numPerDay
+            dfCorr = pd.DataFrame()
+            for c1 in colLabeels:
+                dfR = dfM.shift(-shiftNums)
+                cr = dfR.iloc[:-shiftNums].corrwith(dfM[c1].iloc[:-shiftNums])
+                dfCorr[c1] =cr
+            display(dfCorr)
+            fp  = open(f'./d.TopNShiftCorre/{k}.json', 'w+')
+            j = corrDataFrameToTopNItems(dfCorr,self.topN_)
+            fp.write(j)
+            fp.close()
+        dfM = None
+        pass
+    pass
+
+class TopNCorrelation:
     '''
     uncorrelatable or not
     '''
@@ -151,7 +197,10 @@ def bestClustNum():
 
 
 if __name__ == '__main__':
-    corrTopN = CorrelationTopN()
+    shiftCorr = TopNShiftCorre(10)
+    shiftCorr.cal();sys.exit(0)
+
+    corrTopN = TopNCorrelation()
     corrTopN.corr();sys.exit(0)
     #bestClustNum()
     # 8, 15
