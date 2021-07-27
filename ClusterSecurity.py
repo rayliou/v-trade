@@ -4,20 +4,6 @@
 - https://docs.scipy.org/doc/scipy/reference/reference/generated/scipy.stats.johnsonsu.html#scipy.stats.johnsonsu
 - https://zhuanlan.zhihu.com/p/26869997
 
-
-
-7:5.444444444444445
-10:2.1578947368421053
-12:4.2727272727272725
-13:6.875
-14:4.357142857142857
-15:3.5454545454545454
-16:2.0
-
-17:2.0
-
-
-
 '''
 
 from IPython.display import display, HTML
@@ -35,6 +21,36 @@ from datetime import datetime
 - https://scikit-learn.org/stable/modules/clustering.html#clustering-evaluation
 '''
 from sklearn.metrics import davies_bouldin_score,calinski_harabasz_score,silhouette_score
+
+class CorrelationTopN:
+    '''
+    uncorrelatable or not
+    '''
+    def __init__(self,topN=10, csvFile='./optionHK_securities_1h.csv'):
+        self.topN_ = topN
+        df = pd.read_csv(csvFile,index_col=0,parse_dates=True)
+        df = df[ '2021-01-01 10:30:00':]
+        self.df_ = pd.DataFrame()
+        rowLabeels = [c[len('open_'):] for c in df.columns.values if c.startswith('open_') ]
+        self.rowLabeels_ = rowLabeels
+        for r in rowLabeels:
+            m = (df[f'open_{r}'] + df[f'high_{r}'] + df[f'low_{r}']+ df[f'close_{r}'])/4
+            m = np.log(m/m.shift())
+            m[np.isinf(m)] = np.nan
+            m = m.fillna(0)
+            if m.isnull().any() or np.isinf(m).any()  :
+                print(m.T)
+            self.df_[r] =m
+        pass
+    def corr(self,uncorrelatable=False):
+        ret  = dict()
+        corrABS = self.df_.corr().abs()  if   uncorrelatable else self.df_.corr().abs() * -1
+        for c in corrABS:
+            indexes = corrABS[c].argsort().iloc[:self.topN_]
+            ret[c] = [i for i in corrABS[c].iloc[indexes].index]
+        ret  = json.dumps(ret)
+        print(ret)
+    pass
 
 def cluster(n_clusters = 7,gamma=1.):
 
@@ -135,6 +151,8 @@ def bestClustNum():
 
 
 if __name__ == '__main__':
+    corrTopN = CorrelationTopN()
+    corrTopN.corr();sys.exit(0)
     #bestClustNum()
     # 8, 15
     num = 15 if len(sys.argv) <=1 else int(sys.argv[1])

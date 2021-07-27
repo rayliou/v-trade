@@ -25,7 +25,7 @@ class History:
     def __init__(self):
         self.df_ = pd.DataFrame()
         pass
-    def priceLineGeneral(self, h,l,o,c,v,code):
+    def priceLineHistogram_(self, h,l,o,c,v,code):
         p= (h+l+o+c)/4
         pLog = np.log(v)
         fig = plt.figure(figsize = (12,8))
@@ -33,8 +33,7 @@ class History:
         ax.set_xlabel(f'{code}:price or index '  )
         ax.set_ylabel('Frequency')
         p = p.round(3).hist(bins=100,ax=ax)
-        #p = p.round(3).hist(bins=100,figsize = (15,7))
-        display(p)
+        plt.show()
         pass
 
     def daysToStartEnd(self, days):
@@ -107,9 +106,9 @@ class HistoryYahoo(History):
         v   = df.Volume
         return o,h,l,c,v
 
-    def priceLineYahoo(self, code = 'ABNB'):
+    def priceLineHistogram(self, code = 'ABNB'):
         o,h,l,c,v = self.getKLineOnline(code)
-        self.priceLineGeneral(h,l,o,c,v,code)
+        self.priceLineHistogram_(h,l,o,c,v,code)
         pass
     def download(self):
         data = yf.download(
@@ -169,7 +168,7 @@ class HistoryFutu(History):
     def priceLineFutuCSV(self, filePath):
         pass
 
-    def priceLineFutu(self, code = 'HK.01211'):
+    def priceLineHistogram(self, code = 'HK.01211'):
         d  = self.d_
         num = int(5.5 * 30 * 10)
         df  = d.getKLine(code,KLType.K_1M,50).tail(num)
@@ -178,7 +177,7 @@ class HistoryFutu(History):
         o   = df.open
         c   = df.close
         v   = df.volume
-        self.priceLineGeneral(h,l,o,c,v)
+        self.priceLineHistogram_(h,l,o,c,v)
         pass
 
 
@@ -210,7 +209,10 @@ class HistoryFutu(History):
     pass
 
 if __name__ == '__main__':
-    h = HistoryFutu()
+    code = sys.argv[1] if len(sys.argv)> 1 else 'SPY'
+    isHK = code.startswith('HK.')
+    h = HistoryFutu() if isHK else HistoryYahoo()
+    h.priceLineHistogram(code);sys.exit(0)
     #r = h.getKLineOnline('ABNB',59,interval = '5m', prepost=True)[0]
     r = h.getKLineOnline('HK.01211',729,interval = '1h')
     display(r)

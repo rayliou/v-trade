@@ -121,7 +121,7 @@ from UserSecurity import UserSecurity
 
 def downloadAllOptionHKSecurities():
     us = UserSecurity()
-    d = DataDownloadFutu('0722.data')
+    d = DataDownloadFutu()
     df =us.getSecuritiesList('optionHK')[['code', 'name']]
     dfRet = pd.DataFrame()
 
@@ -138,26 +138,26 @@ def downloadAllOptionHKSecurities():
         if num == 3:
             display(dfRet)
         pass
-        #o,h,l,c,v = d.ohlcv(dfO)
-        #m = (o+h+l+c) /4
-        #dfRet[name] = m
-
+    print("to_csv('./optionHK_securities_1h.csv'")
+    d.close()
     dfRet.to_csv('./optionHK_securities_1h.csv')
+    print("Done:to_csv('./optionHK_securities_1h.csv'")
     pass
+
 downloadAllOptionHKSecurities();sys.exit(0)
 
 import matplotlib
 import matplotlib.pyplot as plt
 import seaborn as sns
 df = pd.read_csv('./optionHK_securities_1h.csv',index_col=0)
-#fig = plt.figure(figsize = (12,8))
+fig = plt.figure(figsize = (12,8))
 
 plt.rcParams['font.sans-serif'] = ['Arial Unicode MS']
 
 
-#ax = fig.add_subplot(111)
-ax = sns.heatmap(df.corr())
-plt.show
+ax = fig.add_subplot(111)
+ax = sns.heatmap(df.corr(),ax=ax)
+plt.show()
 
 if __name__ == '__main__':
     #coveredCall()

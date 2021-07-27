@@ -254,7 +254,11 @@ class VolatilityCone:
                 sigma_1d = sigma
             if i == 1:
                 sigma_3d = sigma
-            self.log.debug(f'+{label}:sigma:{sigma},q:{q},X:{X[i]} ')
+            dbgStr = f'+{label}:sigma:{sigma},q:{q},X:{X[i]} '
+            if X[i] == '1mon':
+                self.log.warning(dbgStr)
+            else:
+                self.log.debug(dbgStr)
         self.log.debug(f'+{label}:plot ')
         plt.plot(X,qList,label=label)
         #ax.set_title(f'VC::{self.code_}:{hvFunc.__name__},HV (1d:{sigma_1d},3d:{sigma_3d}')
@@ -263,6 +267,7 @@ class VolatilityCone:
     def cone(self):
         fig = plt.figure(figsize = (12,8))
         ax = fig.add_subplot(111)  # 创建子图1
+        ax.set_title(f'HVC::{self.code_}')
         for f in g_hv_funcs:
             self.cone_V2(f,ax)
         self.log.debug(f'plot show ')
@@ -295,15 +300,11 @@ class VolatilityCone:
 
 if __name__ == '__main__':
     logInit()
-    '''
-        df.quantile(np.arange(0.1,1.1,0.1)).loc[0.1,].a
-        q = z.quantile(np.arange(0.05,1.05,0.05))
-    '''
     #vCone = VolatilityCone('TSLA')
     #vCone = VolatilityCone('ABNB')
     code = sys.argv[1] if len(sys.argv)> 1 else 'SPY'
     isHK = code.startswith('HK.')
-    vCone = VolatilityCone(code,'5m',isHK)
+    vCone = VolatilityCone(code,'1h',isHK)
     vCone.cone()
     sys.exit(0)
     vCone.rolling(3,'5m')
