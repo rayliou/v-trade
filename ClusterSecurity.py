@@ -29,12 +29,16 @@ def corrDataFrameToTopNItems(dfCorr,topN = 10,uncorrelatable=False):
     base on columns
     '''
     ret  = dict()
+    threshold = 0.4
     corrABS = dfCorr.abs()  if   uncorrelatable else dfCorr.abs() * -1
     for c in corrABS:
         indexes = corrABS[c].argsort().iloc[:topN]
-        log.debug(f'indexes is {indexes}')
-        ret[c] = [f'{i2} {i1}' for i1,i2 in corrABS[c].iloc[indexes].index]
-    ret  = json.dumps(ret)
+        #log.debug(f'indexes is {indexes}')
+        #ret[c] = [f'{i2} {i1}' for i1,i2 in corrABS[c].iloc[indexes].index]
+        items = [f'{idx[0]} {idx[1]} {v}' for idx,v in dfCorr[c].iloc[indexes].items() if abs(v) >= threshold]
+        if len(items) >0:
+            ret[c] = items
+    ret  = json.dumps(ret, indent=4, sort_keys=True)
     return ret
 
 class TopNShiftCorre:
@@ -56,6 +60,7 @@ class TopNShiftCorre:
             m = m.fillna(0)
             dfM[c1] = m
         df = None #release memory
+        dfM = dfM[ '2021-05-28 09:30:00':]
         dfCorrs = []
         for k in shifDayRange:
             shiftNums = k * numPerDay

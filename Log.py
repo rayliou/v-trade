@@ -12,6 +12,7 @@ class ColorLogFormatter(logging.Formatter):
     yellow = "\x1b[33;21m"
     red = "\x1b[31;21m"
     bold_red = "\x1b[31;1m"
+    warning = "\x1b[48;5;88m"
     reset = "\x1b[0m"
 
     #format = "%(asctime)s - %(name)s - %(levelname)s - %(message)s (%(filename)s:%(lineno)d)"
@@ -22,7 +23,7 @@ class ColorLogFormatter(logging.Formatter):
     FORMATS = {
         logging.DEBUG: grey + format + reset,
         logging.INFO: grey + format + reset,
-        logging.WARNING: yellow + format + reset,
+        logging.WARNING: warning + format + reset,
         logging.ERROR: red + format + reset,
         logging.CRITICAL: bold_red + format + reset
     }
@@ -51,7 +52,23 @@ def logInit(level=logging.DEBUG):
     #log.debug('debug')
     pass
 
+def showColors():
+    '''
+        Build your own Command Line with ANSI escape codes
+        https://www.lihaoyi.com/post/BuildyourownCommandLinewithANSIescapecodes.html
+    '''
+    print('show background color')
+    for i in range(0, 16):
+        for j in range(0, 16):
+            code = str(i * 16 + j)
+            FCOLOR = u"\u001b[38;5;" + code + "m "
+            BCOLOR = u"\u001b[48;5;" + code + "m "
+            sys.stdout.write(BCOLOR+ code.ljust(4))
+        print (u"\u001b[0m")
+    pass
+
 if __name__ == '__main__':
+    showColors()
     logInit()
     sys.exit(0)
 

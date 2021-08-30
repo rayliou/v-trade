@@ -124,14 +124,13 @@ def downloadAllOptionHKSecurities():
     d = DataDownloadFutu()
     df =us.getSecuritiesList('optionHK')[['code', 'name']]
     dfRet = pd.DataFrame()
-
     for r in df.iterrows():
         num = r[0]
         name = f'{r[1][1]}@{r[1][0]}'
         code = r[1][0]
         dfO = d.getKLine(code, ktype=KLType.K_60M ,days=2*365)[['open','high','low','close','volume']]
         if dfRet.index.size ==0:
-            dfRet  = dfO
+            dfRet  = dfO.add_suffix(f'_{name}')
         else:
             dfRet = pd.merge_asof(dfRet, dfO, right_index=True, left_index=True, suffixes=('',f'_{name}'))
         print(f'finish {num} {name} ')

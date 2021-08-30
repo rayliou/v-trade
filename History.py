@@ -107,7 +107,7 @@ class HistoryYahoo(History):
         return o,h,l,c,v
 
     def priceLineHistogram(self, code = 'ABNB'):
-        o,h,l,c,v = self.getKLineOnline(code)
+        o,h,l,c,v = self.getKLineOnline(code,days=59,interval='5m')
         self.priceLineHistogram_(h,l,o,c,v,code)
         pass
     def download(self):

@@ -199,12 +199,13 @@ AmericanC = np.frompyfunc(AmericanC,6,2)
 AmericanP = np.frompyfunc(AmericanP,6,2)
 
 def ironCondor():
-    fs0 = 547.5
-    v  = 0.29
-    end =  '20210730'
+    fs0 = 119.9
+    v  = 0.49
     end =  '20210827'
-    end =  '20210830'
-    ratio = 0.2
+    end =  '20210906'
+    end =  '20210806'
+    end =  '20210813'
+    ratio = 0.1
     low = fs0 *(1-ratio)
     high = fs0*(1+ratio)
     #fs,x = np.mgrid[low:high:20j, 550:630:17j]
@@ -246,19 +247,42 @@ def ironCondor():
             dfs[i][name] =(fs -fs0 ) + (p1 -p1_0) + (p2_0 -p2 )+ (c3_0 -c3)
         pass
 
+    def bullPutSpread(K1,K2):
+        name  =  f'+P{K1}-P{K2}'
+        #start
+        p1_0,delta1_0 = AmericanP(fs0,K1,T0,r,q,v)
+        p2_0,delta2_0 = AmericanP(fs0,K2,T0,r,q,v)
+
+        for i in range(0,4):
+            #end
+            t  = T0 *(1-(float(i+1)/4.0))
+            if t < 0.01:
+                t  = 0.01
+            p1,delta1 = AmericanP(fs,K1,t,r,q,v)
+            p2,delta2 = AmericanP(fs,K2,t,r,q,v)
+            dfs[i][name] = (p1 -p1_0) + (p2_0 -p2 )
+        pass
+
+    bullPutSpread(116,118)
+    bullPutSpread(116,119)
+    '''
+
+    bullPutSpread(115,119)
+    bullPutSpread(117,118)
+    bullPutSpread(116,117)
+    bullPutSpread(115,117)
+
+
     #IC(500,540,550)
     IC(500,540,580)
 
-    '''
 
     IC(24,25,28)
     IC(24,26,28)
     IC(25,26,28)
     IC(25,27,28)
     IC(25,27,29)
-    '''
 
-    '''
     coveredCall(135)
     coveredCall(140)
     coveredCall(145)
@@ -274,7 +298,7 @@ def ironCondor():
         # ax = fig.add_subplot(211, projection='3d')
         ax.set_xlabel('Current Price')
         ax.set_ylabel('Premium')
-        ax.set_title(f'IC after {i+1}/4 *T0')
+        ax.set_title(f'after {i+1}/4 *T0')
         ax.plot(fs,np.zeros(fs.size), 'b--')
         ax.plot(fs,fs-fs0, 'y--')
         dfs[i].plot(ax=ax)
