@@ -110,31 +110,22 @@ class HistoryYahoo(History):
         o,h,l,c,v = self.getKLineOnline(code,days=59,interval='5m')
         self.priceLineHistogram_(h,l,o,c,v,code)
         pass
-    def download(self):
+    def mdownload(self,tickers,
+            days = 5,
+            interval = '1m',   #data interval (intraday data cannot extend last 60 days) Valid intervals are: 1m, 2m, 5m, 15m, 30m, 60m, 90m, 1h, 1d, 5d, 1wk, 1mo, 3mo
+            start = None,      # If not using days - Download start date string (YYYY-MM-DD) or datetime.
+            end   = None,       # If not using days - Download end date string (YYYY-MM-DD) or datetime.
+            auto_adjust = True,
+            prepost = False    # Include Pre and Post market data in results? (Default is False)
+            ):
+        if start is None:
+            start ,end = self.daysToStartEnd(days)
         data = yf.download(
-                tickers = "ES=F IWM",
-                # use "period" instead of start/end
-                # valid periods: 1d,5d,1mo,3mo,6mo,1y,2y,5y,10y,ytd,max
-                # (optional, default is '1mo')
-                period = "5y",
-                # fetch data by interval (including intraday if period < 60 days)
-                # valid intervals: 1m,2m,5m,15m,30m,60m,90m,1h,1d,5d,1wk,1mo,3mo
-                # (optional, default is '1d')
-                interval = "1d",
-                # group by ticker (to access via data['SPY'])
-                # (optional, default is 'column')
-                group_by = 'ticker',
-                # adjust all OHLC automatically
-                # (optional, default is False)
-                auto_adjust = True,
-                # download pre/post regular market hours data
-                # (optional, default is False)
-                prepost = True,
-                # use threads for mass downloading? (True/False/Integer)
-                # (optional, default is True)
-                threads = True,
-            )
-        data.to_csv('./SPY_IWM.csv')
+                tickers = tickers,
+                start = start, end = end, interval = interval,
+                group_by = 'ticker', auto_adjust = auto_adjust, prepost = prepost, threads = True)
+        #data.to_csv('./SPY_IWM.csv')
+        display(data)
         pass
 
     pass
@@ -177,7 +168,7 @@ class HistoryFutu(History):
         o   = df.open
         c   = df.close
         v   = df.volume
-        self.priceLineHistogram_(h,l,o,c,v)
+        self.priceLineHistogram_(h,l,o,c,v,code)
         pass
 
 
@@ -212,6 +203,7 @@ if __name__ == '__main__':
     code = sys.argv[1] if len(sys.argv)> 1 else 'SPY'
     isHK = code.startswith('HK.')
     h = HistoryFutu() if isHK else HistoryYahoo()
+    #h.mdownload(code, days=729, interval='1h');sys.exit(0)
     h.priceLineHistogram(code);sys.exit(0)
     #r = h.getKLineOnline('ABNB',59,interval = '5m', prepost=True)[0]
     r = h.getKLineOnline('HK.01211',729,interval = '1h')
