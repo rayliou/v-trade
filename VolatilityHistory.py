@@ -304,7 +304,8 @@ if __name__ == '__main__':
     #vCone = VolatilityCone('ABNB')
     code = sys.argv[1] if len(sys.argv)> 1 else 'SPY'
     isHK = code.startswith('HK.')
-    vCone = VolatilityCone(code,'1h',isHK)
+    #vCone = VolatilityCone(code,'1h',isHK)
+    vCone = VolatilityCone(code,'5m',isHK)
     vCone.cone()
     sys.exit(0)
     vCone.rolling(3,'5m')
