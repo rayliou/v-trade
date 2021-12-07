@@ -73,6 +73,8 @@ if __name__ == '__main__':
     logInit()
     u = UserSecurity()
     g  = 'Meta_semiCon_newEnergy'
+    g  = 'Real_Estate'
+    g  = sys.argv[1]
     u.updateGroupList(g,'us')
     #u.update()
     u.show(g)
