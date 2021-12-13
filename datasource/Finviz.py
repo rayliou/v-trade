@@ -94,7 +94,7 @@ class Finviz:
             }
             )
         filter = ((dt >= start) & (value >= minValue) & (cost > minCost) )
-        df = df[filter].sort_values(by=['dt_sec','value'], ascending=False)
+        df = df[filter].sort_values(by=['dt','value'], ascending=False)
         #df = df.sort_values(by=['dt_sec','value'], ascending=False)
         return df
 
@@ -175,7 +175,7 @@ class Finviz:
 if __name__ == '__main__':
     f = Finviz()
     df = f.getInsidersBuyLatest()
-    display(df); sys.exit(0)
+    #display(df); sys.exit(0)
     symList = ' '.join( df.ticker)
     ibkr = IBKR()
     dfR  = ibkr.reqMktData(symList)[['markPrice','close']]
