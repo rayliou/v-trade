@@ -93,6 +93,7 @@ class HistoryYahoo(History):
         if start is None:
             start ,end = self.daysToStartEnd(days)
 
+        print(f'Call history(start={start},end={end}, interval={interval},auto_adjust={auto_adjust},prepost={prepost})')
         df = t.history(start=start,end=end, interval=interval,auto_adjust=auto_adjust,prepost=prepost)
         self.df_ = df
         return self.ohlcv()
@@ -120,13 +121,22 @@ class HistoryYahoo(History):
             ):
         if start is None:
             start ,end = self.daysToStartEnd(days)
+            msg = f''' Call yf.download(
+                tickers = {tickers},
+                start = {start}, end = {end}, interval = {interval},
+                group_by = 'ticker', auto_adjust = {auto_adjust}, prepost = {prepost}, threads = True)
+                '''
+            print(msg)
+
         data = yf.download(
                 tickers = tickers,
                 start = start, end = end, interval = interval,
                 group_by = 'ticker', auto_adjust = auto_adjust, prepost = prepost, threads = True)
+
+
         #data.to_csv('./SPY_IWM.csv')
-        display(data)
-        pass
+        return data
+        #display(data)
 
     pass
 

@@ -183,6 +183,8 @@ if __name__ == '__main__':
     df['T']  = df.ticker
     df['% markPrice_cost']  = (df.markPrice - df.cost)/df.cost * 100
     df['% close_cost']  = (df.close - df.cost)/df.cost * 100
+    now  = datetime.now().strftime('%Y%m%d')
+    df.to_csv(f'{now}.csv', index=False)
     display(df)
     print( symList)
     sys.exit(0)

@@ -9,8 +9,9 @@ from datetime import datetime,timedelta,date
 import matplotlib.pyplot as plt
 import  datetime
 
-from ibapi import wrapper,client, contract
+from ibapi import wrapper,client, contract,scanner
 import threading,queue
+import socket
 
 
 '''
@@ -35,18 +36,68 @@ import threading,queue
 
 '''
 
+def getOpenedPort():
+    from contextlib import closing
+    def check_socket(host, port):
+        ret = False
+        with closing(socket.socket(socket.AF_INET, socket.SOCK_STREAM)) as sock:
+            ret = sock.connect_ex((host, port)) == 0
+        return ret
+
+    # TWS  7496     7497
+    # GW   4001     4002
+    for p in [7497,4002,4001,7496]:
+        isOpen = check_socket('127.0.0.1',p)
+        print(f'Port: {p} => {isOpen}')
+        if not isOpen:
+            continue
+        return p
+    return -1
+
+
+
 class IBWrapper(wrapper.EWrapper):
     def __init__(self):
+        self.d_ = dict()
         super().__init__()
     def error(self, reqId:'TickerId', errorCode:int, errorString:str):
         """This event is called when there is an error with the communication or when TWS wants to send a message to the client."""
         errMsg = f'IB ERR (id:{reqId}, code:{errorCode},str:{errorString})'
         self.errors_.put(errMsg)
 
+    def scannerParameters(self, xml: str):
+        super().scannerParameters(xml)
+        open('log/scanner.xml', 'w').write(xml)
+        print('scannerParameters done')
+
+
+    def contractDetails(self, reqId:int, contractDetails:'ContractDetails'):
+        msg = f' contractDetails( {reqId}:int, {contractDetails}:ContractDetails):'
+        print(msg)
+        self.d_['contract'] = contractDetails.contract
+        pass
+    def contractDetailsEnd(self, reqId:int):
+        #msg = f'contractDetailsEnd(self, {reqId}:int)'
+        #print(msg)
+        pass
+
+    def historicalNews(self, requestId:int, time:str, providerCode:str, articleId:str, headline:str):
+        """returns historical news headlines"""
+        print( f'{requestId}:int, {time}:str, {providerCode}:str, {articleId}:str, {headline}:str')
+
+    def historicalNewsEnd(self, requestId:int, hasMore:bool):
+        """signals end of historical news"""
+        print( f'{requestId}:int, {hasMore}:bool')
+
+    def newsProviders(self, newsProviders:'ListOfNewsProviders'):
+        print('newsProviders :')
+        for p in newsProviders:
+            print(p)
+        print('-'*10)
+
+
     def historicalData(self, reqId, bar):
         print(f'ReqId:{reqId} Time: {bar.date} Close: {bar.close}')
-
-
 
     def init_error(self):
         """ Place all of the error messages from IB into a Python queue, which can be accessed elsewhere.  """
@@ -101,8 +152,10 @@ class IBClient(client.EClient):
 
 class IBApp(IBWrapper, IBClient):
     def __init__(self, port=4002, clientId=1):
-        super(IBWrapper, self).__init__()
-        super(IBClient, self).__init__(wrapper= self)
+        # super(IBWrapper, self).__init__()
+        # super(IBClient, self).__init__(wrapper= self)
+        IBWrapper.__init__(self)
+        IBClient.__init__(self,wrapper=self)
         self.connect('127.0.0.1', port, clientId=clientId) #clientId =
         thread = threading.Thread(target=self.run)
         thread.start()
@@ -119,17 +172,56 @@ if __name__ == '__main__':
     #      Live     Demo
     # TWS  7496     7497
     # GW   4001     4002
-    ibApp = IBApp()
+    #port = 7497
+    port = 7496
+    #port = getOpenedPort()
+    ibApp = IBApp(port=port)
     print("Successfully launched IB API application...")
+    def genContractsFromSymsList(self, symList):
+        symList = symList.replace(',',' ').split()
+        cList   = []
+        for sym in symList:
+            c  = contract.Contract()
+            c.symbol = sym
+            c.sectype ='STK'
+            c.exchange ='SMART'
+            c.currency ='USD'
+            cList.append(c)
+            ibApp.reqContractDetails(3, c)
+        pass
+
+    '''
+    scSub = scanner.ScannerSubscription()
+    scSub.numberOfRows = 80
+    scSub.instrument = 'STK'
+    scSub.locationCode = 'STK.US.MAJOR'
+    scSub.scanCode = 'OPT_VOLUME_MOST_ACTIVE'
+    scSub.belowPrice = 5
+    ibApp.reqScannerSubscription(31,scSub,[], [])
+    '''
+    #ibApp.reqScannerParameters()
+    #time.sleep(10); ibApp.disconnect(); sys.exit(0)
 
     c  = contract.Contract()
-    c.symbol ='AAPL'
+    c.symbol ='SPY' if len(sys.argv) ==1 else sys.argv[1]
     c.secType ='STK'
     c.exchange ='SMART'
+    c.exchange ='CBOE'
     c.currency ='USD'
+
+    ibApp.reqContractDetails(3, c)
+    time.sleep(3)
+    while 'contract' not in ibApp.d_:
+        time.sleep(1)
+    conId = ibApp.d_['contract'].conId
+    #ibApp.reqHistoricalNews(10003, conId, "BRFG", "2020-05-21 00:00:00.0", "", 10, [])
+    #ibApp.reqHistoricalNews(10003, conId, "BRFG+BRFUPDN+DJNL", "", "", 10, [])
+    ibApp.reqHistoricalNews(10003, conId, "BZ+BRFG+BRFUPDN+DJNL", "2020-05-21 00:00:00.0", "", 130, [])
+    ibApp.reqNewsProviders()
+    time.sleep(5); ibApp.disconnect(); sys.exit(0)
+
     ibApp.reqHistoricalData(12, c, '', '2 D', '1 hour', 'TRADES',useRTH=0,formatDate=1,keepUpToDate=False, chartOptions=[])
     time.sleep(3)
-
     # Obtain the server time via the IB API app
     server_time = ibApp.obtain_server_time()
     server_time_readable = datetime.datetime.utcfromtimestamp(

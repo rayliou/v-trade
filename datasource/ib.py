@@ -41,6 +41,7 @@ class IBKR:
         self.ib_ = IB()
         port = 7497
         port = 4002
+        port = 7496
         self.ib_.connect(readonly=True,port=port)
         pass
 
@@ -70,7 +71,7 @@ class IBKR:
         #df.to_csv('./abc.csv')
         return df
 
-    def get_M_HistoryData(self, symList,
+    def plot_M_HistoryData(self, symList,
             durationStr='6 M', barSizeSetting='30 mins', years=2,useRTH=True ):
         dictWhatToShow = { 'HISTORICAL_VOLATILITY': 'hv',
                 'OPTION_IMPLIED_VOLATILITY': 'iv',
@@ -176,16 +177,15 @@ class IBKR:
 
 
 if __name__ == '__main__':
-    import  doctest
-    doctest.testmod();sys.exit(0)
+    #import  doctest; doctest.testmod();sys.exit(0)
 
     ibkr = IBKR()
     symList = 'UBER BBY TSLA AMD NVDA'
     symList = sys.argv[1]
     #df  = ibkr.reqMktData(symList); display(df); sys.exit(0)
     #ibkr.getHistoryData('NVDA,TSLA',durationStr='6 M', barSizeSetting='30 mins')
-    #ibkr.get_M_HistoryData('BBY,TSLA',durationStr='1 M', barSizeSetting='30 mins',years=1)
-    df = ibkr.get_M_HistoryData(symList,durationStr='1 Y', barSizeSetting='1 day',years=3)
+    #ibkr.plot_M_HistoryData('BBY,TSLA',durationStr='1 M', barSizeSetting='30 mins',years=1)
+    df = ibkr.plot_M_HistoryData(symList,durationStr='1 Y', barSizeSetting='1 day',years=3)
     #ibkr.t(sys.argv[1],durationStr='1 Y', barSizeSetting='1 day',years=3)
     display(df); sys.exit(0)
 
