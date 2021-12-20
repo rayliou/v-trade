@@ -1,17 +1,29 @@
 #!/usr/bin/env python3
 # coding=utf-8
 #from ib_insync import *
-import sys,time
+import sys,time,inspect,os
 import pandas as pd
 import numpy as np
 from IPython.display import display, HTML
 from datetime import datetime,timedelta,date
 import matplotlib.pyplot as plt
 import  datetime
+import logging
 
 from ibapi import wrapper,client, contract,scanner
 import threading,queue
 import socket
+
+from pyhocon import ConfigFactory
+import BaseGateway
+
+currentdir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
+parentdir = os.path.dirname(currentdir)
+sys.path.insert(0, parentdir)
+from Log import logInit
+
+
+
 
 
 '''
@@ -57,13 +69,13 @@ def getOpenedPort():
 
 
 class IBWrapper(wrapper.EWrapper):
+    log = logging.getLogger("main.IBWrapper")
     def __init__(self):
         self.d_ = dict()
         super().__init__()
-    def error(self, reqId:'TickerId', errorCode:int, errorString:str):
-        """This event is called when there is an error with the communication or when TWS wants to send a message to the client."""
-        errMsg = f'IB ERR (id:{reqId}, code:{errorCode},str:{errorString})'
-        self.errors_.put(errMsg)
+    def nextValidId(self,orderId):
+        self.log.notice(f'IB connect 127.0.0.1: is established')
+        pass
 
     def symbolSamples(self, reqId:int, contractDescriptions:'ListOfContractDescription'):
         super().symbolSamples(reqId,contractDescriptions)
@@ -159,24 +171,67 @@ class IBClient(client.EClient):
         pass
     pass
 
-class IBApp(IBWrapper, IBClient):
-    def __init__(self, port=4002, clientId=1):
-        # super(IBWrapper, self).__init__()
-        # super(IBClient, self).__init__(wrapper= self)
+class GwIB(IBWrapper, IBClient, BaseGateway.BaseGateway):
+    log = logging.getLogger("main.GwIB")
+    def __init__(self, config):
+        '''
+        >>> confPath = '../conf/v-trade.utest.conf'
+        >>> c = ConfigFactory.parse_file(confPath)
+        >>> gw = GwIB(c)
+        >>> gw.disconnect()
+        >>> time.sleep(8)
+        >>> gw
+        '''
+        BaseGateway.BaseGateway.__init__(self,config)
+        self.port_ = self.c_.ib.port
+        self.clientId_ = self.c_.ib.client_id
         IBWrapper.__init__(self)
         IBClient.__init__(self,wrapper=self)
-        self.connect('127.0.0.1', port, clientId=clientId) #clientId =
+
         thread = threading.Thread(target=self.run)
         thread.start()
         setattr(self, "_thread", thread)
+        self.log.debug(f'New Thread {thread} with GwIB has been created ')
         # Listen for the IB responses
         self.init_error()
+        self.connected_ = False
+        self.log.debug(f'Make connect 127.0.0.1:{self.port_} clientId:{self.clientId_}')
+        self.connect('127.0.0.1', self.port_, clientId=self.clientId_)
+        self.connected_ = True
         pass
+    def nextValidId(self,orderId):
+        if not self.connected_ :
+            self.connected_ = True
+            self.log.notice(f'IB connect 127.0.0.1:{self.port_} clientId:{self.clientId_} is established')
+        pass
+    def reconnect(self):
+        if not self.c_.ib.auto_connect:
+            return
+        self.log.debug(f'reconnect the ib gw after {self.c_.ib.auto_connect_timer} seconds')
+        time.sleep(self.c_.ib.auto_connect_timer)
+        self.log.debug(f'Make connect 127.0.0.1:{self.port_} clientId:{self.clientId_}')
+        self.connect('127.0.0.1', self.port_, clientId=self.clientId_)
+        self.connected_ = True
+        pass
+    def error(self, reqId:'TickerId', errorCode:int, errorString:str):
+        """This event is called when there is an error with the communication or when TWS wants to send a message to the client."""
+        errMsg = f'IB ERR (id:{reqId}, code:{errorCode},str:{errorString})'
+        self.errors_.put(errMsg)
+        self.log.error(errMsg)
+        if errorCode == 502:
+            self.connected_ = False
+            self.reconnect()
+
 
     pass
 
 
 if __name__ == '__main__':
+    logInit()
+    if len(sys.argv) > 1 and sys.argv[1] == 'test':
+        import doctest; doctest.testmod(); sys.exit(0)
+
+    sys.exit(0)
     # ports
     #      Live     Demo
     # TWS  7496     7497
@@ -184,7 +239,7 @@ if __name__ == '__main__':
     #port = 7497
     port = 7496
     #port = getOpenedPort()
-    ibApp = IBApp(port=port)
+    ibApp = GwIB(port=port)
     print("Successfully launched IB API application...")
     ibApp.reqMatchingSymbols(1,'*');
     time.sleep(100); ibApp.disconnect(); sys.exit(0)
