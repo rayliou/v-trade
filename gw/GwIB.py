@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 # coding=utf-8
 #from ib_insync import *
-import sys,time,inspect,os
 import pandas as pd
 import numpy as np
 from IPython.display import display, HTML
@@ -15,8 +14,10 @@ import threading,queue
 import socket
 
 from pyhocon import ConfigFactory
-import BaseGateway
+from BaseGateway import BaseGateway
+from HistoricalDataLimitations import HistoricalDataLimitations
 
+import sys,time,inspect,os
 currentdir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
 parentdir = os.path.dirname(currentdir)
 sys.path.insert(0, parentdir)
@@ -47,24 +48,6 @@ from Log import logInit
 
 
 '''
-
-def getOpenedPort():
-    from contextlib import closing
-    def check_socket(host, port):
-        ret = False
-        with closing(socket.socket(socket.AF_INET, socket.SOCK_STREAM)) as sock:
-            ret = sock.connect_ex((host, port)) == 0
-        return ret
-
-    # TWS  7496     7497
-    # GW   4001     4002
-    for p in [7497,4002,4001,7496]:
-        isOpen = check_socket('127.0.0.1',p)
-        print(f'Port: {p} => {isOpen}')
-        if not isOpen:
-            continue
-        return p
-    return -1
 
 
 
@@ -171,34 +154,183 @@ class IBClient(client.EClient):
         pass
     pass
 
-class GwIB(IBWrapper, IBClient, BaseGateway.BaseGateway):
+class GwIB(IBWrapper, IBClient, BaseGateway):
     log = logging.getLogger("main.GwIB")
     def __init__(self, config):
         '''
         >>> confPath = '../conf/v-trade.utest.conf'
         >>> c = ConfigFactory.parse_file(confPath)
-        >>> gw = GwIB(c)
-        >>> gw.disconnect()
-        >>> time.sleep(8)
-        >>> gw
+        >>> #gw = GwIB(c)
+        >>> #gw.disconnect()
         '''
-        BaseGateway.BaseGateway.__init__(self,config)
+        BaseGateway.__init__(self,config)
         self.port_ = self.c_.ib.port
         self.clientId_ = self.c_.ib.client_id
         IBWrapper.__init__(self)
         IBClient.__init__(self,wrapper=self)
 
-        thread = threading.Thread(target=self.run)
-        thread.start()
-        setattr(self, "_thread", thread)
-        self.log.debug(f'New Thread {thread} with GwIB has been created ')
+
+        self.conditionVar_ =  threading.Condition()
+        self.dataMsg_      = None
+
         # Listen for the IB responses
         self.init_error()
         self.connected_ = False
         self.log.debug(f'Make connect 127.0.0.1:{self.port_} clientId:{self.clientId_}')
         self.connect('127.0.0.1', self.port_, clientId=self.clientId_)
         self.connected_ = True
+
+        thread = threading.Thread(target=self.run)
+        thread.start()
+        setattr(self, "_thread", thread)
+        self.log.debug(f'New Thread {thread} with GwIB has been created ')
+        self.histLimits_ = HistoricalDataLimitations(self.c_,source='ib')
+        self.reqIdToSymbol_ = dict()
+
+        #time.sleep(2)
         pass
+
+    def getHistoricalData(self,symbols, secType = 'STK',
+        endDateTime='',
+        durationString='3 M', barSizeSetting='5 mins',
+        whatToShow = 'TRADES', useRTH=1,formatDate=1,
+        timeout=36000
+    ):
+        '''
+        https://interactivebrokers.github.io/tws-api/contract_details.html
+        >>> confPath = '../conf/v-trade.utest.conf'
+        >>> c = ConfigFactory.parse_file(confPath)
+        >>> gw = GwIB(c)
+        >>> symbols = c.ticker.stock.us.cn
+        >>> symbols = ','.join(symbols)
+        >>> symbols = 'WB,NIO'
+        >>> ret = gw.getHistoricalData(symbols)
+        >>> gw.disconnect()
+        >>> ret
+        123
+        '''
+        #reqHistoricalData(12, c, '', '2 D', '1 hour', 'TRADES',useRTH=0,formatDate=1,keepUpToDate=False, chartOptions=[])
+        contractDict = self.batchReqContractDetails(symbols, secType)
+        assert contractDict is not None
+        reqId = 100
+        self.dataMsg_ = dict()
+        for s,c in contractDict.items():
+            self.histLimits_ .wait('reqHistoricalData', s)
+            self.reqHistoricalData(reqId, c, endDateTime, durationString, barSizeSetting ,whatToShow=whatToShow,
+                useRTH=useRTH,formatDate=formatDate,keepUpToDate=False, chartOptions=[])
+            self.histLimits_ .logCall('reqHistoricalData', s)
+            self.reqIdToSymbol_[reqId] =s
+            reqId += 1
+            pass
+        ret = self.waitAllReqDoneOrTimeout(contractDict.keys(), timeout=timeout)
+        if ret is None:
+            return ret
+        self.log.debug(f'Finish All')
+        for r,s in self.reqIdToSymbol_.items():
+            df = self.dataMsg_[r]
+            print(s)
+            display(df)
+
+        ret = self.dataMsg_
+        self.dataMsg_ = None
+        return ret
+
+    def historicalData(self, reqId, bar):
+        o = {'date':bar.date, 'open': bar.open, 'high':bar.high, 'low': bar.low, 'close':bar.close, 'volume':bar.volume, 'wap':bar.average}
+        if reqId not in self.dataMsg_:
+            self.dataMsg_[reqId] = []
+        self.dataMsg_[reqId].append(o)
+        pass
+
+    def historicalDataEnd(self, reqId:int, start:str, end:str):
+        symbol = self.reqIdToSymbol_[reqId]
+        s = start.split()[0]
+        e = end.split()[0]
+        filePath = f'../data/{symbol}-{s}-{e}.csv'
+        df = pd.DataFrame( self.dataMsg_[reqId] ).sort_values(by='date')
+        df.to_csv(filePath, index=False)
+        self.dataMsg_[reqId] = df
+        self.log.warning(f'Write file {filePath}')
+        with self.conditionVar_:
+            self.conditionVar_.notify()
+        pass
+
+
+
+    def batchReqContractDetails(self,symbols, secType = 'STK'):
+        '''
+        https://interactivebrokers.github.io/tws-api/contract_details.html
+        >>> confPath = '../conf/v-trade.utest.conf'
+        >>> c = ConfigFactory.parse_file(confPath)
+        >>> gw = GwIB(c)
+        >>> symbols = c.ticker.stock.us.cn
+        >>> symbols = ','.join(symbols)
+        >>> gw.batchReqContractDetails(symbols)
+        >>> gw.disconnect()
+        '''
+        symList = symbols.replace(',',' ').split()
+        cList   = []
+        reqId = 100
+        self.dataMsg_     = dict()
+        self.reqIdToSymbol_ = dict()
+        for sym in symList:
+            c  = contract.Contract()
+            c.symbol = sym
+            c.secType = secType
+            c.exchange ='SMART'
+            c.currency ='USD'
+            cList.append(c)
+            self.log.debug(f'Call reqContractDetails({reqId}, {c.symbol}, {c.exchange},{c.currency}, )')
+            self.reqContractDetails(reqId, c)
+            self.reqIdToSymbol_[reqId] = sym
+            reqId += 1
+        ret = self.waitAllReqDoneOrTimeout(cList, timeout=120)
+        if ret is None:
+            return ret
+
+        self.log.debug(f'Finish All')
+        ret = self.dataMsg_
+        self.dataMsg_ = None
+        return ret
+
+    def contractDetails(self, reqId:int, contractDetails:'ContractDetails'):
+        with self.conditionVar_:
+            c  = contractDetails.contract
+            self.dataMsg_ [c.symbol] =c
+            self.conditionVar_.notify()
+            self.log.debug(f'Received contract({reqId}, {c.symbol})')
+        pass
+    def waitAllReqDoneOrTimeout(self, originalSet, timeout=300):
+        start = time.time()
+        cnt = 0
+        totalNum = len(originalSet)
+        while time.time() - start < timeout and cnt < totalNum:
+            with self.conditionVar_:
+                self.log.debug('wait a condition')
+                self.conditionVar_.wait(timeout=timeout)
+                cnt = len(self.dataMsg_.keys())
+                self.log.debug('After wait the condition')
+            self.log.debug(f'Finish {cnt}/{totalNum}')
+        if cnt != totalNum:
+            setTotal = set(originalSet)
+            setDone  = set(self.dataMsg_.keys)
+            setRemain = ','.join( setTotal - setDone)
+            msg = f'Some contract details got failed {setRemain}'
+            self.log.critical(msg)
+            return None
+        return cnt
+
+
+    def symbolSamples(self, reqId:int, contractDescriptions:'ListOfContractDescription'):
+        super().symbolSamples(reqId,contractDescriptions)
+        cnt = 0
+        for c in contractDescriptions:
+            s = c.contract.symbol
+            print(f'{cnt}\t{s}')
+            cnt += 1
+        pass
+
+
     def nextValidId(self,orderId):
         if not self.connected_ :
             self.connected_ = True
@@ -230,6 +362,15 @@ if __name__ == '__main__':
     logInit()
     if len(sys.argv) > 1 and sys.argv[1] == 'test':
         import doctest; doctest.testmod(); sys.exit(0)
+
+    confPath = '../conf/v-trade.utest.conf'
+    c = ConfigFactory.parse_file(confPath)
+    gw = GwIB(c)
+    symbols = c.ticker.stock.us.cn
+    symbols = ','.join(symbols)
+    #symbols = 'WB,NIO'
+    ret = gw.getHistoricalData(symbols)
+    gw.disconnect()
 
     sys.exit(0)
     # ports

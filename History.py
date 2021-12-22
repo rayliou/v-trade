@@ -40,7 +40,7 @@ class History:
         now = datetime.now()
         start = now - timedelta(days=days)
         start = start.strftime('%Y-%m-%d')
-        end = now.strftime('%Y-%m-%d')
+        end = (now +timedelta(days=1)) .strftime('%Y-%m-%d')
         return start,end
 
     def ohlcv(self,df=None):

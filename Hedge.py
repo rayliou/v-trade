@@ -8,7 +8,7 @@ statsmodels包含更多的“经典”频率学派统计方法，而贝叶斯方
 '''
 
 
-import math,sys
+import math,sys,os
 import matplotlib.pyplot as plt
 import seaborn as sns
 from scipy.stats import pearsonr, spearmanr
@@ -24,6 +24,8 @@ from IPython.display import display, HTML
 import yfinance as yf
 from datetime import datetime
 from Log import logInit
+from pyhocon import ConfigFactory
+import hashlib
 
 from History import HistoryYahoo, HistoryFutu
 
@@ -44,7 +46,7 @@ def getRatios( var1, var2,df, plotOrNot=False):
 
 
 class Hedge:
-    def __init__(self,days=58, interval='5m', isHK = False):
+    def __init__(self,days=58, interval='5m',prepost =False, isHK = False):
         self.isHK_ = isHK
         self.maxDays5m = 59
         self.maxDays1h = 729
@@ -53,6 +55,7 @@ class Hedge:
             self.maxDays1h = 365 * 2
         self.days_ = days
         self.interval_ = interval
+        self.prepost_ = prepost
         if self.interval_ == '5m':
             self.days_ = days if days < self.maxDays5m else self.maxDays5m
         if self.interval_ == '1h':
@@ -62,7 +65,18 @@ class Hedge:
 
     def mDownload(self,symbols):
         symList = symbols.replace(',',' ').split()
-        df  = self.h_.mdownload(symbols,days=self.days_, interval=self.interval_ )
+        dfFilePath  = hashlib.sha1(symbols.encode("utf-8")).hexdigest()
+        dfFilePath  = 'xxxxxxx'
+        now  = datetime.now().strftime('%Y%m%d')
+        dfFilePath  = f'./{dfFilePath}-{now}.csv'
+        if not os.path.isfile(dfFilePath):
+            df  = self.h_.mdownload(symbols,days=self.days_, interval=self.interval_ ,prepost=self.prepost_)
+            #df.to_csv(dfFilePath,index=True)
+        else:
+            df = pd.read_csv(dfFilePath,index_col=0)
+            display(df)
+        #sys.exit(0)
+
         dfO  = dict()
         for s in symList:
             dfO[s] = df[s].Close
@@ -72,6 +86,7 @@ class Hedge:
 
     def mCointegration(self,symbols, showTopPairs = True, showTopSymsForEach = False, doPlot=False):
         dfO  = self.mDownload(symbols)
+        display(dfO.tail(1))
         symList = symbols.replace(',',' ').split()
         N = len(symList)
         P = np.zeros((N,N))
@@ -86,6 +101,7 @@ class Hedge:
                     break
                 X1 = dfO[k1]
                 X2 = dfO[k2]
+                print(f'Test coin in {k1} {k2}')
                 _, pCoin, _ = coint(X1, X2)
                 P[k1][k2] = P[k2][k1] = pCoin
                 v = {'n1': k1, 'n2':k2, 'p': pCoin}
@@ -112,7 +128,7 @@ class Hedge:
             ax1 = fig.add_subplot(111)
             sns.heatmap(P,ax=ax1)
             plt.show()
-        return P
+        return P, dfO
 
     def testCointegration(self,x,y,data):
         X1 = data[x]
@@ -144,14 +160,44 @@ class Hedge:
         C = dsAux.rolling(window=window ,min_periods=window).apply(auxWindowFunc,raw=True)
         return C
 
-    def testLinregress(self,symbols ='AMZN,JPM', ax = None):
+    def mTestLinregress(self, df= None):
+        now  = datetime.now().strftime('%Y%m%d')
+        dfPairs= pd.read_csv(f'Top-paris-{now}.csv')
+        if df is None:
+            symList  = set()
+            for s in dfPairs.n1:
+                symList.add(s)
+            for s in dfPairs.n2:
+                symList.add(s)
+            symListStr = ' '.join(symList)
+            df = h.mDownload(symListStr)
+        zList = []
+        sList = []
+        cnt = 1
+        totalN = dfPairs.shape[0]
+        for index,row in dfPairs.iterrows():
+            x = row.n1
+            y = row.n2
+            print(f'{cnt}/{totalN}t:\t', end='')
+            z,slope = self.testLinregress(f'{x},{y}',df)
+            zList.append(z)
+            sList.append(slope)
+            cnt  += 1
+        dfPairs['z'] = pd.Series(zList)
+        dfPairs['slope'] = pd.Series(sList)
+        df = dfPairs[(dfPairs.z > 1.9) | (dfPairs.z < -1.9)].sort_values(by='z')
+        df.to_csv(f'Top-paris-zscore-{now}.csv', index=False)
+        display(df)
+        pass
+
+    def testLinregress(self,symbols ='AMZN,JPM',df = None, doPlot = False):
         '''
         TODO 解决未来函数问题
 
         '''
         symList = symbols.replace(',',' ').split()
         x,y = symList[0], symList[1]
-        df  = self.mDownload(symbols)
+        df  = self.mDownload(symbols) if df is None else df
         totalN = df.shape[0]
         outList = self.rollingLinregress(x,y,df)
         lineRegN = len(outList)
@@ -162,12 +208,25 @@ class Hedge:
         dfLR.index = df.index
         df['intercept'] = dfLR.intercept
         df['slope'] = dfLR.slope
-        display(df)
 
         diff  = df.intercept + df.slope* df[x] - df[y]
-        display(diff)
+        #display(diff)
+        mean = diff.mean()
+        std = diff.std()
+        d = diff[-1]
+        zScore  = (d - mean)/std
+        slope = df.slope[-1]
+        intercept = df.intercept[-1]
+        #x is too high
+        if d >  mean + 2*std:
+            print(f'-{x} +{y},\tmean:{mean:.3f}, std:{std:.4f}, slope:{slope:.4f}, intercept:{intercept:.4f} ')
+        elif d <  mean - 2*std:
+            print(f'+{x} -{y},\tmean:{mean:.3f}, std:{std:.4f} , slope:{slope:.4f}, intercept:{intercept:.4f} ')
+        else:
+            print(f'*{x} *{y},\tmean:{mean:.3f}, std:{std:.4f} , slope:{slope:.4f}, intercept:{intercept:.4f} ')
+
         df['diff'] = diff
-        if ax is  None:
+        if doPlot :
             fig = plt.figure(figsize = (12,8))
             plt.rcParams['font.sans-serif'] = ['Arial Unicode MS']
             ax = fig.add_subplot(211)
@@ -177,17 +236,15 @@ class Hedge:
             df[[y]].plot(ax=ax2,secondary_y=True)
 
             df[['diff']].plot(ax=ax)
-            mean = df['diff'].mean()
-            std = df['diff'].std()
-            ax.axhline(mean-std*2, color='r', linestyle='--', label= f'Buy {x}/Sell {y}')
             ax.axhline(mean+std*2, color='g', linestyle='--', label= f'Sell {x}/Buy {y}')
+            ax.axhline(mean-std*2, color='r', linestyle='--', label= f'Buy {x}/Sell {y}')
             ax.axhline(mean-std, color='y', linestyle='--')
             ax.axhline(mean+std, color='y', linestyle='--')
             ax.axhline(mean,  linestyle='--')
             ax.set_title(f'+:{x} short {x}+ long {y};-:short {y}+ long {x};')
             plt.legend()
             plt.show()
-        pass
+        return zScore,slope
 
     def linregress(self,X,Y,out):
         '''
@@ -200,7 +257,7 @@ class Hedge:
         out['slope'] = res.slope
         return 1
 
-    def rollingLinregress(self,x,y,data, window=780):
+    def rollingLinregress(self,x,y,data, window=450):
         outList = []
         self.rollingAuxFunc(x,y,data,outList,window, self.linregress)
         return  outList
@@ -228,10 +285,15 @@ class Hedge:
 
 
     def corrAnalysis(self,symbols):
-        symListStr = 'LLY,DHR,ADBE,AVGO,COST,TMO,ACN,LOW,INTU,CVX,WFC,PFE,AMZN,AMD,ABNB,XOM,JPM,BAC,UNH,HD,TSLA,NVDA,AAPL,GOOGL,MSFT,QQQ,SPY'
-        self. mCointegration(symListStr)
-        plt.show()
-        pass
+        symListStr = 'LLY, AAPL, ABCL, ABMD, ABNB, ABT, ACN, ADBE, AKAM, AMD, AMWD, AMZN, APPS, ASML, AVGO, AYX, BA, BABA, BAC, BBY, BIDU, BILI,  BNTX, BSX, BZ, CBOE, CHGG, CONE, COO, COST, COUR, CRCT, CRY, CVX, DHR, DIDI, DNUT, DRE, DWAC, ETSY, EVER, EVRG, EXPE, F, FB, FUTU, GH, GM, GOEV, GOOG, GOOGL, GS, GSHD, GSK, GTLB, HD, HOV, HUBG, HUYA, IBM, INTC, INTU, ISRG, IWM, JD, JKS, JNJ, JPM, KIM, KSS, LCID, LI, LOW, MGNI, MRNA, MSFT, MTCH, NEO, NIO, NKE, NTES, NTLA, NVAX, NVDA, O, ODFL, OPEN, PDD, PFE, PFSI, PG, PGEN, PINS, PLD, PLTR, PRLB, QCOM, QQQ, QS, RBLX, RCL, RIVN, ROKU, ROST, RVNC, SAFE, SAP, SGHT, SHOP, SIX, SLVM, SO, SOXL, SPCE, SPG, SPY, SQ, TAN, TDG, TDOC, THG, TLT, TM, TME, TMO, TNA, TQQQ, TSLA, TSM, TTD, TWLO, U, UBER, UDOW, UNH, UPRO, VOD, WFC, WRBY, XLC, XLF, XLK, XOM, XPEV, XRAY, ZH, ZM,'
+        #semiCon
+        symListStr = 'NVDA AMD MU AVGO INTC QCOM LRCX AMAT ASML TSM KLAC MRVL XLNX TXN ON ADI MCHP NXPI TER ENTG SWKS GFS AMBA STM QRVO WOLF AEHR SIMO KLIC MKSI MPWR SYNA UMC SITM AZTA CCMP POWI PI LSCC SLAB CAN MXL HIMX SMTC MTSI DIOD ASX IPGP SGH CRUS'
+        #CN
+        symListStr = 'BABA NIO JD BIDU XPEV PDD NTES TCEHY LI BILI BEKE TCOM YUMC DIDI TME ZTO EDU VIPS BZ DQ BGNE TAL JKS GDS RLX HTHT ZLAB IQ LU WB TIGR CAN FAMI QFIN PETZ YMM ATHM MOMO METX HUDI GTEC IMAB KC HUYA GOTU BZUN JOBS API TUYA CD'
+        #symListStr = 'BABA NIO JD BIDU XPEV PDD NTES  LI BILI BEKE TCOM YUMC DIDI TME ZTO EDU VIPS BZ DQ BGNE TAL JKS GDS RLX HTHT ZLAB IQ LU WB TIGR CAN FAMI QFIN PETZ YMM ATHM MOMO METX HUDI GTEC IMAB KC HUYA GOTU BZUN JOBS API TUYA CD'
+        p,df = self. mCointegration(symListStr)
+        #plt.show()
+        return p,df
 
     pass
 
@@ -242,8 +304,9 @@ if __name__ == '__main__':
     syms = sys.argv[1] if len(sys.argv) >1 else  'AMZN,JPM'
     days,interval = 58,'5m'
     h = Hedge(days=days, interval=interval)
-    h.testLinregress(syms); sys.exit(0)
-    h.corrAnalysis(syms); sys.exit(0)
+    #h.mTestLinregress(); sys.exit(0)
+    p,df = h.corrAnalysis(syms)
+    h.mTestLinregress(df); sys.exit(0)
 
 
     sys.exit(0)
