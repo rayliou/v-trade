@@ -8,7 +8,7 @@ statsmodels包含更多的“经典”频率学派统计方法，而贝叶斯方
 '''
 
 
-import math,sys,os
+import math,sys,os.path
 import matplotlib.pyplot as plt
 import seaborn as sns
 from scipy.stats import pearsonr, spearmanr
@@ -22,7 +22,7 @@ from scipy.stats import norm
 from scipy import stats
 from IPython.display import display, HTML
 import yfinance as yf
-from datetime import datetime
+from datetime import datetime, timedelta
 from Log import logInit
 from pyhocon import ConfigFactory
 import hashlib
@@ -30,105 +30,67 @@ import hashlib
 from History import HistoryYahoo, HistoryFutu
 
 
-def getRatios( var1, var2,df, plotOrNot=False):
-    df1 = df[[var1, var2]].dropna()
-    S1 = df1[var1]
-    S2 = df1[var2]
-    ratios = S1 / S2
-    if plotOrNot:
-        plt.figure(figsize=(10,5))
-        ratios.hist(bins = 200)
-        plt.title("Ratios histogram")
-        plt.ylabel('Frequency')
-        plt.xlabel('Intervals')
-        plt.show()
-    return S1, S2, ratios
-
+def load_merged_data(file = 'data.cn/20211222.csvx'):
+    msg  = f'pd.read_csv({file}, index_col=0, header=[0,1], parse_dates=True )'
+    print(msg)
+    df  = pd.read_csv(file, index_col=0, header=[0,1], parse_dates=True )
+    df = df[ ~ df.isna().any(axis=1)]
+    symbols = ','.join(set([c[0] for c in df.columns]))
+    return df,symbols
 
 class Hedge:
-    def __init__(self,days=58, interval='5m',prepost =False, isHK = False):
-        self.isHK_ = isHK
-        self.maxDays5m = 59
-        self.maxDays1h = 729
-        if self.isHK_:
-            self.maxDays5m = 365 * 1
-            self.maxDays1h = 365 * 2
-        self.days_ = days
-        self.interval_ = interval
-        self.prepost_ = prepost
-        if self.interval_ == '5m':
-            self.days_ = days if days < self.maxDays5m else self.maxDays5m
-        if self.interval_ == '1h':
-            self.days_ = days if days < self.maxDays1h else self.maxDays1h
-        self.h_ = HistoryYahoo()
+    def __init__(self, bigTableFile, maxDays =60, lRegWindow = 500 ):
+        self.bigTableFile_ = bigTableFile
+        self.maxDays_ = maxDays
+        self.lRegWindow_ = lRegWindow
+        self.bigTableDir_ = os.path.dirname(self.bigTableFile_)
+        self.df_ ,self.symbols_ = load_merged_data(self.bigTableFile_)
+        start = datetime.now() - timedelta(days=maxDays)
+        self.df_ = self.df_ [self.df_.index >start]
+
+        display(self.df_.head(2))
+        display(self.df_.tail(2))
+        today  = datetime.now().strftime('%Y%m%d')
+        self.TopConinPairsFile_ =  f'{self.bigTableDir_}/top-pairs-{today}.csv'
+        self.TopZScoreFile_ =  f'{self.bigTableDir_}/top-pairs-z-{today}.csv'
+
         pass
 
-    def mDownload(self,symbols):
-        symList = symbols.replace(',',' ').split()
-        dfFilePath  = hashlib.sha1(symbols.encode("utf-8")).hexdigest()
-        dfFilePath  = 'xxxxxxx'
-        now  = datetime.now().strftime('%Y%m%d')
-        dfFilePath  = f'./{dfFilePath}-{now}.csv'
-        if not os.path.isfile(dfFilePath):
-            df  = self.h_.mdownload(symbols,days=self.days_, interval=self.interval_ ,prepost=self.prepost_)
-            #df.to_csv(dfFilePath,index=True)
-        else:
-            df = pd.read_csv(dfFilePath,index_col=0)
-            display(df)
-        #sys.exit(0)
 
-        dfO  = dict()
-        for s in symList:
-            dfO[s] = df[s].Close
-        dfO  = pd.DataFrame(dfO)
-        dfO.fillna(method='bfill', inplace=True)
-        return dfO
-
-    def mCointegration(self,symbols, showTopPairs = True, showTopSymsForEach = False, doPlot=False):
-        dfO  = self.mDownload(symbols)
-        display(dfO.tail(1))
-        symList = symbols.replace(',',' ').split()
+    def mCointegration(self):
+        symList = self.symbols_.replace(',',' ').split()
         N = len(symList)
         P = np.zeros((N,N))
         P  = pd.DataFrame(P)
         P.index = P.columns = symList
         #loop
         pPairs = []
+        cnt  = 0
+        totalCnt =  int(N *(N-1) /2)
         for k1 in symList:
             for k2 in symList:
+                cnt += 1
                 if k2 == k1:
                     P[k1][k1] =0.0
                     break
-                X1 = dfO[k1]
-                X2 = dfO[k2]
-                print(f'Test coin in {k1} {k2}')
+                X1 = self.df_[k1].close
+                X2 = self.df_[k2].close
                 _, pCoin, _ = coint(X1, X2)
+                print(f'[{cnt}/{totalCnt}]:\t{k1} {k2}\t{pCoin}')
                 P[k1][k2] = P[k2][k1] = pCoin
                 v = {'n1': k1, 'n2':k2, 'p': pCoin}
                 pPairs.append(v)
         #display(P.SPY.sort_values())
         pPairs = pd.DataFrame(pPairs)
-        pPairs = pPairs[pPairs.p <= 0.1].sort_values(by='p')
-        now  = datetime.now().strftime('%Y%m%d')
-        if showTopPairs:
-            pPairs.to_csv(f'Top-paris-{now}.csv', index=False)
-            display( pPairs)
-        if showTopSymsForEach:
-            for c in P:
-                p =  P[c]
-                sOut = ','.join(
-                    [f'{k}:{v},' for k,v in p[p < 0.1].sort_values().items()]
-                )
-                print(f'{c}:{sOut}')
-                pass
-
-        if doPlot:
-            fig = plt.figure(figsize = (12,8))
-            plt.rcParams['font.sans-serif'] = ['Arial Unicode MS']
-            ax1 = fig.add_subplot(111)
-            sns.heatmap(P,ax=ax1)
-            plt.show()
-        return P, dfO
+        pPairs = pPairs[pPairs.p <= 0.05].sort_values(by='p')
+        pPairs.to_csv(self.TopConinPairsFile_, index=False)
+        display( pPairs)
+        # fig = plt.figure(figsize = (12,8))
+        # plt.rcParams['font.sans-serif'] = ['Arial Unicode MS']
+        # ax1 = fig.add_subplot(111)
+        # sns.heatmap(P,ax=ax1)
+        # plt.show()
+        return P
 
     def testCointegration(self,x,y,data):
         X1 = data[x]
@@ -141,9 +103,9 @@ class Hedge:
         print(f'pStationarityX1:{pStationarityX1:.4f};pStationarityX2:{pStationarityX2:.4f};pCoin:{pCoin:.8f},corr:{corr:.4f},pCorr:{pCorr:.4f} ')
         pass
 
-    def rollingCorr(self,x,y,data,ax, window=15):
-        X = data[x]
-        Y = data[y]
+    def rollingCorr(self,x,y,data,ax):
+        X = data[x].close
+        Y = data[y].close
         N = X.index.size
         dsAux = pd.Series(np.arange(N)) #value
         dsAux.index  = X.index
@@ -157,47 +119,39 @@ class Hedge:
             return Xwin.corr(Ywin)
 
         #print(f'dsAux={dsAux}')
-        C = dsAux.rolling(window=window ,min_periods=window).apply(auxWindowFunc,raw=True)
+        C = dsAux.rolling(window=self.lRegWindow_ ,min_periods=self.lRegWindow_).apply(auxWindowFunc,raw=True)
         return C
 
-    def mTestLinregress(self, df= None):
-        now  = datetime.now().strftime('%Y%m%d')
-        dfPairs= pd.read_csv(f'Top-paris-{now}.csv')
-        if df is None:
-            symList  = set()
-            for s in dfPairs.n1:
-                symList.add(s)
-            for s in dfPairs.n2:
-                symList.add(s)
-            symListStr = ' '.join(symList)
-            df = h.mDownload(symListStr)
-        zList = []
-        sList = []
+    def mTestLinregress(self):
+        dfPairs= pd.read_csv(self.TopConinPairsFile_)
+        oList = []
         cnt = 1
         totalN = dfPairs.shape[0]
         for index,row in dfPairs.iterrows():
             x = row.n1
             y = row.n2
             print(f'{cnt}/{totalN}t:\t', end='')
-            z,slope = self.testLinregress(f'{x},{y}',df)
-            zList.append(z)
-            sList.append(slope)
+            o = self.testLinregress(f'{x},{y}')
+            oList.append(o)
             cnt  += 1
-        dfPairs['z'] = pd.Series(zList)
-        dfPairs['slope'] = pd.Series(sList)
+        dfZ = pd.DataFrame(oList)
+        dfPairs = pd.concat([dfPairs,dfZ],axis=1)
+        r = dfPairs['std']/dfPairs['y']
+        dfPairs['std/Y(%)'] = r * 100
+        display(dfPairs)
         df = dfPairs[(dfPairs.z > 1.9) | (dfPairs.z < -1.9)].sort_values(by='z')
-        df.to_csv(f'Top-paris-zscore-{now}.csv', index=False)
+        df.to_csv(self.TopZScoreFile_, index=False)
         display(df)
         pass
 
-    def testLinregress(self,symbols ='AMZN,JPM',df = None, doPlot = False):
+    def testLinregress(self,symbols ='AMZN,JPM', doPlot = False):
         '''
         TODO 解决未来函数问题
 
         '''
+        df = self.df_
         symList = symbols.replace(',',' ').split()
         x,y = symList[0], symList[1]
-        df  = self.mDownload(symbols) if df is None else df
         totalN = df.shape[0]
         outList = self.rollingLinregress(x,y,df)
         lineRegN = len(outList)
@@ -209,7 +163,7 @@ class Hedge:
         df['intercept'] = dfLR.intercept
         df['slope'] = dfLR.slope
 
-        diff  = df.intercept + df.slope* df[x] - df[y]
+        diff  = df.intercept + df.slope* df[x].close - df[y].close
         #display(diff)
         mean = diff.mean()
         std = diff.std()
@@ -223,7 +177,9 @@ class Hedge:
         elif d <  mean - 2*std:
             print(f'+{x} -{y},\tmean:{mean:.3f}, std:{std:.4f} , slope:{slope:.4f}, intercept:{intercept:.4f} ')
         else:
-            print(f'*{x} *{y},\tmean:{mean:.3f}, std:{std:.4f} , slope:{slope:.4f}, intercept:{intercept:.4f} ')
+            #print(f'*{x} *{y},\tmean:{mean:.3f}, std:{std:.4f} , slope:{slope:.4f}, intercept:{intercept:.4f} ')
+            print('')
+            pass
 
         df['diff'] = diff
         if doPlot :
@@ -244,7 +200,9 @@ class Hedge:
             ax.set_title(f'+:{x} short {x}+ long {y};-:short {y}+ long {x};')
             plt.legend()
             plt.show()
-        return zScore,slope
+        return {'z':zScore, 'slope' :slope, 'm' :mean, 'std': std, 
+        'x' : df[x].close[-1],'y' : df[y].close[-1]
+        }
 
     def linregress(self,X,Y,out):
         '''
@@ -257,14 +215,14 @@ class Hedge:
         out['slope'] = res.slope
         return 1
 
-    def rollingLinregress(self,x,y,data, window=450):
+    def rollingLinregress(self,x,y,data, window=780):
         outList = []
         self.rollingAuxFunc(x,y,data,outList,window, self.linregress)
         return  outList
 
     def rollingAuxFunc(self,x,y,data,outList, window,  rollFunc):
-        X = data[x]
-        Y = data[y]
+        X = data[x].close
+        Y = data[y].close
         N = X.index.size
         dsAux = pd.Series(np.arange(N)) #value
         dsAux.index  = X.index
@@ -284,29 +242,16 @@ class Hedge:
         pass
 
 
-    def corrAnalysis(self,symbols):
-        symListStr = 'LLY, AAPL, ABCL, ABMD, ABNB, ABT, ACN, ADBE, AKAM, AMD, AMWD, AMZN, APPS, ASML, AVGO, AYX, BA, BABA, BAC, BBY, BIDU, BILI,  BNTX, BSX, BZ, CBOE, CHGG, CONE, COO, COST, COUR, CRCT, CRY, CVX, DHR, DIDI, DNUT, DRE, DWAC, ETSY, EVER, EVRG, EXPE, F, FB, FUTU, GH, GM, GOEV, GOOG, GOOGL, GS, GSHD, GSK, GTLB, HD, HOV, HUBG, HUYA, IBM, INTC, INTU, ISRG, IWM, JD, JKS, JNJ, JPM, KIM, KSS, LCID, LI, LOW, MGNI, MRNA, MSFT, MTCH, NEO, NIO, NKE, NTES, NTLA, NVAX, NVDA, O, ODFL, OPEN, PDD, PFE, PFSI, PG, PGEN, PINS, PLD, PLTR, PRLB, QCOM, QQQ, QS, RBLX, RCL, RIVN, ROKU, ROST, RVNC, SAFE, SAP, SGHT, SHOP, SIX, SLVM, SO, SOXL, SPCE, SPG, SPY, SQ, TAN, TDG, TDOC, THG, TLT, TM, TME, TMO, TNA, TQQQ, TSLA, TSM, TTD, TWLO, U, UBER, UDOW, UNH, UPRO, VOD, WFC, WRBY, XLC, XLF, XLK, XOM, XPEV, XRAY, ZH, ZM,'
-        #semiCon
-        symListStr = 'NVDA AMD MU AVGO INTC QCOM LRCX AMAT ASML TSM KLAC MRVL XLNX TXN ON ADI MCHP NXPI TER ENTG SWKS GFS AMBA STM QRVO WOLF AEHR SIMO KLIC MKSI MPWR SYNA UMC SITM AZTA CCMP POWI PI LSCC SLAB CAN MXL HIMX SMTC MTSI DIOD ASX IPGP SGH CRUS'
-        #CN
-        symListStr = 'BABA NIO JD BIDU XPEV PDD NTES TCEHY LI BILI BEKE TCOM YUMC DIDI TME ZTO EDU VIPS BZ DQ BGNE TAL JKS GDS RLX HTHT ZLAB IQ LU WB TIGR CAN FAMI QFIN PETZ YMM ATHM MOMO METX HUDI GTEC IMAB KC HUYA GOTU BZUN JOBS API TUYA CD'
-        #symListStr = 'BABA NIO JD BIDU XPEV PDD NTES  LI BILI BEKE TCOM YUMC DIDI TME ZTO EDU VIPS BZ DQ BGNE TAL JKS GDS RLX HTHT ZLAB IQ LU WB TIGR CAN FAMI QFIN PETZ YMM ATHM MOMO METX HUDI GTEC IMAB KC HUYA GOTU BZUN JOBS API TUYA CD'
-        p,df = self. mCointegration(symListStr)
-        #plt.show()
-        return p,df
-
     pass
-
 
 
 if __name__ == '__main__':
     logInit()
-    syms = sys.argv[1] if len(sys.argv) >1 else  'AMZN,JPM'
-    days,interval = 58,'5m'
-    h = Hedge(days=days, interval=interval)
-    #h.mTestLinregress(); sys.exit(0)
-    p,df = h.corrAnalysis(syms)
-    h.mTestLinregress(df); sys.exit(0)
+    bigTablePath  = sys.argv[1]
+    h = Hedge(bigTablePath, maxDays=90, lRegWindow=780)
+    if len(sys.argv) <= 2:
+        h.mCointegration()
+    h.mTestLinregress(); sys.exit(0)
 
 
     sys.exit(0)

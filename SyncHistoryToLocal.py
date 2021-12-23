@@ -10,14 +10,16 @@ import yfinance as yf
 #from datetime import datetime
 #from datetime import timedelta
 from pyhocon import ConfigFactory
+from datetime import datetime
 import os.path,os,sys,time
 import glob,re
 import hashlib
 import logging,json
 from Log import logInit
+import pandas as pd
 
 from DataDownloadFutu import DataDownloadFutu
-from gw import GwIB
+from gw.GwIB import GwIB
 from gw.HistoricalDataLimitations import HistoricalDataLimitations
 
 
@@ -139,12 +141,51 @@ class SyncHistoryToLocal:
         sharded = int(hashlib.sha1(symbol.encode("utf-8")).hexdigest(), 16) % self.SHARDED_NUM
         sharded = abs(sharded)
         return f'{parent}/{sharded}'
+
+    def mergeMSymbolsData(self, parentDir = './data.cn'):
+        import glob
+        ds  = glob.glob(f'{parentDir}/*.csv')
+        symFiles  = dict()
+        for d in ds:
+            s = d.split('/')[-1].split('-')[0]
+            if s not in symFiles:
+                symFiles[s] = []
+            symFiles[s].append(d)
+        dfDict  = dict()
+        for k,v in symFiles.items():
+            v  = [ pd.read_csv(d,index_col=0,parse_dates=True) for d in v]
+            df = pd.concat(v).sort_values(by='date')
+            df.columns = pd.MultiIndex.from_product([[k],df.columns, ])
+            dfDict[k]= df
+        #merge close
+        dfOut  = None
+        for k,v in dfDict.items():
+            if dfOut is None:
+                dfOut = v
+            else:
+                #FIXME TODO use pandas.merge_ordered instead
+                dfOut = pd.merge_asof(dfOut , v, right_index=True, left_index=True, suffixes=('','_x'))
+        now  = datetime.now().strftime('%Y%m%d')
+        hdPath  = f'{parentDir}/{now}.csvx'
+        dfOut.to_csv(hdPath)
+        self.log.debug(f'Write file {hdPath}')
+        return dfOut
+
+    def concatDataFiles(self, srcFileList ,dstFile):
+        v  = [ pd.read_csv(f,index_col=0, header=[0,1], parse_dates=True) for f in srcFileList]
+        df = pd.concat(v).sort_values(by='date').drop_duplicates()
+        df.to_csv(dstFile)
+        return df
     pass
 
 
 if __name__ == '__main__':
     logInit()
-    import doctest; doctest.testmod(); sys.exit(0)
+    #import doctest; doctest.testmod(); sys.exit(0)
     s  = SyncHistoryToLocal()
-    s.run()
+    df = s.concatDataFiles(['data/20211223.csvx', './data.cn.20211222/20211222.csvx'], './xxx.csv') ; display(df); sys.exit(0)
+    #df  = s.mergeMSymbolsData('./data.topus')
+    df  = s.mergeMSymbolsData('./data')
+    display(df)
+    #s.run()
     sys.exit(0)

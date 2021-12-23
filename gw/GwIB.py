@@ -14,14 +14,14 @@ import threading,queue
 import socket
 
 from pyhocon import ConfigFactory
-from BaseGateway import BaseGateway
-from HistoricalDataLimitations import HistoricalDataLimitations
 
 import sys,time,inspect,os
 currentdir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
 parentdir = os.path.dirname(currentdir)
 sys.path.insert(0, parentdir)
 from Log import logInit
+from gw.BaseGateway import BaseGateway
+from gw.HistoricalDataLimitations import HistoricalDataLimitations
 
 
 
@@ -216,6 +216,8 @@ class GwIB(IBWrapper, IBClient, BaseGateway):
         self.dataMsg_ = dict()
         for s,c in contractDict.items():
             self.histLimits_ .wait('reqHistoricalData', s)
+
+            self.log.debug(f'self.reqHistoricalData({reqId}, s, {endDateTime}, {durationString}, {barSizeSetting} ,whatToShow={whatToShow},...')
             self.reqHistoricalData(reqId, c, endDateTime, durationString, barSizeSetting ,whatToShow=whatToShow,
                 useRTH=useRTH,formatDate=formatDate,keepUpToDate=False, chartOptions=[])
             self.histLimits_ .logCall('reqHistoricalData', s)
@@ -284,7 +286,7 @@ class GwIB(IBWrapper, IBClient, BaseGateway):
             self.reqContractDetails(reqId, c)
             self.reqIdToSymbol_[reqId] = sym
             reqId += 1
-        ret = self.waitAllReqDoneOrTimeout(cList, timeout=120)
+        ret = self.waitAllReqDoneOrTimeout(symList, timeout=120)
         if ret is None:
             return ret
 
@@ -304,17 +306,26 @@ class GwIB(IBWrapper, IBClient, BaseGateway):
         start = time.time()
         cnt = 0
         totalNum = len(originalSet)
+
+        def getRemainSet():
+            setTotal = set(originalSet)
+            setDone  = set(self.dataMsg_.keys())
+            setRemain = ','.join( setTotal - setDone)
+            return setRemain
+
         while time.time() - start < timeout and cnt < totalNum:
             with self.conditionVar_:
                 self.log.debug('wait a condition')
                 self.conditionVar_.wait(timeout=timeout)
                 cnt = len(self.dataMsg_.keys())
                 self.log.debug('After wait the condition')
+                if  (totalNum - cnt) < 5:
+                    setRemain = getRemainSet()
+                    self.log.debug(f'Remained symbols or reqIds {setRemain}')
             self.log.debug(f'Finish {cnt}/{totalNum}')
         if cnt != totalNum:
             setTotal = set(originalSet)
-            setDone  = set(self.dataMsg_.keys)
-            setRemain = ','.join( setTotal - setDone)
+            setRemain = getRemainSet()
             msg = f'Some contract details got failed {setRemain}'
             self.log.critical(msg)
             return None
@@ -366,77 +377,12 @@ if __name__ == '__main__':
     confPath = '../conf/v-trade.utest.conf'
     c = ConfigFactory.parse_file(confPath)
     gw = GwIB(c)
+    symbols = c.ticker.stock.us.top_150V
     symbols = c.ticker.stock.us.cn
     symbols = ','.join(symbols)
     #symbols = 'WB,NIO'
-    ret = gw.getHistoricalData(symbols)
+    #ret = gw.getHistoricalData(symbols, endDateTime='20210924  09:30:00')
+    ret = gw.getHistoricalData(symbols,durationString='3 D', endDateTime='')
     gw.disconnect()
 
     sys.exit(0)
-    # ports
-    #      Live     Demo
-    # TWS  7496     7497
-    # GW   4001     4002
-    #port = 7497
-    port = 7496
-    #port = getOpenedPort()
-    ibApp = GwIB(port=port)
-    print("Successfully launched IB API application...")
-    ibApp.reqMatchingSymbols(1,'*');
-    time.sleep(100); ibApp.disconnect(); sys.exit(0)
-
-    def genContractsFromSymsList(self, symList):
-        symList = symList.replace(',',' ').split()
-        cList   = []
-        for sym in symList:
-            c  = contract.Contract()
-            c.symbol = sym
-            c.sectype ='STK'
-            c.exchange ='SMART'
-            c.currency ='USD'
-            cList.append(c)
-            ibApp.reqContractDetails(3, c)
-        pass
-
-    '''
-    scSub = scanner.ScannerSubscription()
-    scSub.numberOfRows = 80
-    scSub.instrument = 'STK'
-    scSub.locationCode = 'STK.US.MAJOR'
-    scSub.scanCode = 'OPT_VOLUME_MOST_ACTIVE'
-    scSub.belowPrice = 5
-    ibApp.reqScannerSubscription(31,scSub,[], [])
-    '''
-    #ibApp.reqScannerParameters()
-    #time.sleep(10); ibApp.disconnect(); sys.exit(0)
-
-    c  = contract.Contract()
-    c.symbol ='SPY' if len(sys.argv) ==1 else sys.argv[1]
-    c.secType ='STK'
-    c.exchange ='SMART'
-    c.exchange ='CBOE'
-    c.currency ='USD'
-
-    ibApp.reqContractDetails(3, c)
-    time.sleep(3)
-    while 'contract' not in ibApp.d_:
-        time.sleep(1)
-    conId = ibApp.d_['contract'].conId
-    #ibApp.reqHistoricalNews(10003, conId, "BRFG", "2020-05-21 00:00:00.0", "", 10, [])
-    #ibApp.reqHistoricalNews(10003, conId, "BRFG+BRFUPDN+DJNL", "", "", 10, [])
-    ibApp.reqHistoricalNews(10003, conId, "BZ+BRFG+BRFUPDN+DJNL", "2020-05-21 00:00:00.0", "", 130, [])
-    ibApp.reqNewsProviders()
-    time.sleep(5); ibApp.disconnect(); sys.exit(0)
-
-    ibApp.reqHistoricalData(12, c, '', '2 D', '1 hour', 'TRADES',useRTH=0,formatDate=1,keepUpToDate=False, chartOptions=[])
-    time.sleep(3)
-    # Obtain the server time via the IB API app
-    server_time = ibApp.obtain_server_time()
-    server_time_readable = datetime.datetime.utcfromtimestamp(
-        server_time
-    ).strftime('%Y-%m-%d %H:%M:%S')
-    print("Current IB server time: %s" % server_time_readable)
-    ibApp.disconnect()
-    sys.exit(0)
-    import  doctest
-    doctest.testmod();
