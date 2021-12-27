@@ -186,6 +186,7 @@ class GwIB(IBWrapper, IBClient, BaseGateway):
         self.log.debug(f'New Thread {thread} with GwIB has been created ')
         self.histLimits_ = HistoricalDataLimitations(self.c_,source='ib')
         self.reqIdToSymbol_ = dict()
+        self.initialize_signal_handlers()
 
         #time.sleep(2)
         pass
@@ -366,6 +367,25 @@ class GwIB(IBWrapper, IBClient, BaseGateway):
             self.reconnect()
 
 
+    def initialize_signal_handlers(self):
+        import signal
+        def handle_sighup(signum, frame):
+            self.log.info("received SIGHUP")
+            self.sighup_received = True
+
+        def handle_sigterm(signal, frame):
+            self.log.info("received SIGTERM")
+            self.sigterm_received = True
+
+        def handle_sigint(signal, frame):
+            self.log.info("received SIGINT")
+            self.sigint_received = True
+
+        #signal.signal(signal.SIGTERM, handle_sigterm)
+        signal.signal(signal.SIGHUP, handle_sighup)
+        signal.signal(signal.SIGINT, handle_sigint)
+
+
     pass
 
 
@@ -380,9 +400,10 @@ if __name__ == '__main__':
     symbols = c.ticker.stock.us.top_150V
     symbols = c.ticker.stock.us.cn
     symbols = ','.join(symbols)
-    #symbols = 'WB,NIO'
+    symbols = 'WB,NIO'
     #ret = gw.getHistoricalData(symbols, endDateTime='20210924  09:30:00')
-    ret = gw.getHistoricalData(symbols,durationString='3 D', endDateTime='')
+    ret = gw.getHistoricalData(symbols,durationString='5 D',barSizeSetting='1 min', endDateTime='')
+    #ret = gw.getHistoricalData(symbols,durationString='3 D', endDateTime='')
     gw.disconnect()
 
     sys.exit(0)
