@@ -26,7 +26,9 @@ from datetime import datetime, timedelta
 from Log import logInit
 from pyhocon import ConfigFactory
 import hashlib
+import argparse
 
+import logging,json
 from History import HistoryYahoo, HistoryFutu
 
 
@@ -39,22 +41,43 @@ def load_merged_data(file = 'data.cn/20211222.csvx'):
     return df,symbols
 
 class Hedge:
-    def __init__(self, bigTableFile, maxDays =60, lRegWindow = 500 ):
-        self.bigTableFile_ = bigTableFile
-        self.maxDays_ = maxDays
-        self.lRegWindow_ = lRegWindow
-        self.bigTableDir_ = os.path.dirname(self.bigTableFile_)
-        self.df_ ,self.symbols_ = load_merged_data(self.bigTableFile_)
-        start = datetime.now() - timedelta(days=maxDays)
+    log = logging.getLogger("main.Hedge")
+    def setupArgParse(self):
+        self.parser_ = argparse.ArgumentParser()
+        self.parser_.add_argument("action", help="coin|lr", type=str)
+        self.parser_.add_argument("s", help="src data path", type=str)
+        self.parser_.add_argument('-c',"--coin_days", help="max cointegration days", type=int, default=60)
+        self.parser_.add_argument('-w',"--lr_window", help="max line regress window", type=int, default=500)
+        self.parser_.add_argument('-p',"--coin_path", help="coin file path", type=str)
+        self.parser_.add_argument('-l',"--lr_path", help="lr file path", type=str)
+        pass
+
+    def __init__(self):
+        self.setupArgParse()
+        args = self.parser_.parse_args()
+        self.srcPath_ = args.s
+        self.coinPath_ = args.coin_path
+        self.lrPath_ = args.lr_path
+        self.maxDays_ = args.coin_days
+        self.lRegWindow_ = args.lr_window
+        self.action_ = args.action
+        self.df_ ,self.symbols_ = load_merged_data(self.srcPath_)
+        start = datetime.now() - timedelta(days=self.maxDays_)
+        display(self.df_)
         self.df_ = self.df_ [self.df_.index >start]
 
         display(self.df_.head(2))
         display(self.df_.tail(2))
-        today  = datetime.now().strftime('%Y%m%d')
-        self.TopConinPairsFile_ =  f'{self.bigTableDir_}/top-pairs-{today}.csv'
-        self.TopZScoreFile_ =  f'{self.bigTableDir_}/top-pairs-z-{today}.csv'
-
         pass
+
+    def run(self):
+        assert self.action_ in ['lr', 'coin']
+        if self.action_ == 'coin':
+            self.mCointegration()
+        else:
+            self.mTestLinregress()
+        pass
+
 
 
     def mCointegration(self):
@@ -83,13 +106,8 @@ class Hedge:
         #display(P.SPY.sort_values())
         pPairs = pd.DataFrame(pPairs)
         pPairs = pPairs[pPairs.p <= 0.05].sort_values(by='p')
-        pPairs.to_csv(self.TopConinPairsFile_, index=False)
+        pPairs.to_csv(self.coinPath_, index=False)
         display( pPairs)
-        # fig = plt.figure(figsize = (12,8))
-        # plt.rcParams['font.sans-serif'] = ['Arial Unicode MS']
-        # ax1 = fig.add_subplot(111)
-        # sns.heatmap(P,ax=ax1)
-        # plt.show()
         return P
 
     def testCointegration(self,x,y,data):
@@ -123,7 +141,7 @@ class Hedge:
         return C
 
     def mTestLinregress(self):
-        dfPairs= pd.read_csv(self.TopConinPairsFile_)
+        dfPairs= pd.read_csv(self.coinPath_)
         oList = []
         cnt = 1
         totalN = dfPairs.shape[0]
@@ -139,8 +157,10 @@ class Hedge:
         r = dfPairs['std']/dfPairs['y']
         dfPairs['std/Y(%)'] = r * 100
         display(dfPairs)
-        df = dfPairs[(dfPairs.z > 1.9) | (dfPairs.z < -1.9)].sort_values(by='z')
-        df.to_csv(self.TopZScoreFile_, index=False)
+        #df = dfPairs[(dfPairs.z > 1.9) | (dfPairs.z < -1.9)].sort_values(by='z')
+        df = dfPairs[(dfPairs.x > 5) & (dfPairs.y > 5)]
+        df.drop(['x','y','z'], axis=1,inplace=True)
+        df.to_csv(self.lrPath_, index=False)
         display(df)
         pass
 
@@ -200,7 +220,7 @@ class Hedge:
             ax.set_title(f'+:{x} short {x}+ long {y};-:short {y}+ long {x};')
             plt.legend()
             plt.show()
-        return {'z':zScore, 'slope' :slope, 'm' :mean, 'std': std, 
+        return {'z':zScore, 'slope' :slope, 'm' :mean, 'std': std, 'i': intercept,
         'x' : df[x].close[-1],'y' : df[y].close[-1]
         }
 
@@ -247,11 +267,6 @@ class Hedge:
 
 if __name__ == '__main__':
     logInit()
-    bigTablePath  = sys.argv[1]
-    h = Hedge(bigTablePath, maxDays=90, lRegWindow=780)
-    if len(sys.argv) <= 2:
-        h.mCointegration()
-    h.mTestLinregress(); sys.exit(0)
-
-
+    h = Hedge()
+    h.run()
     sys.exit(0)

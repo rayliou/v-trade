@@ -99,9 +99,22 @@ class HistoricalDataLimitations:
         tm = time.time()
         self.msgCalled_.append((callName, symbol,tm))
         pass
+
+    def test(self):
+        symbols = self.c_.ticker.stock.us.topV100_MC200
+        #symbols = ','.join(symbols)
+        cnt = 0
+        for s in symbols:
+            self.wait('call', s)
+            self.logCall('call', s)
+        pass
     pass
 
 if __name__ == '__main__':
     logInit()
-    import doctest; doctest.testmod(); sys.exit(0)
+    confPath = './conf/v-trade.utest.conf'
+    c = ConfigFactory.parse_file(confPath)
+    h = HistoricalDataLimitations(c,source='ib')
+    h.test()
+    #import doctest; doctest.testmod(); sys.exit(0)
     sys.exit(0)

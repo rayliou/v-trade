@@ -6,7 +6,6 @@ import numpy as np
 from IPython.display import display, HTML
 from datetime import datetime,timedelta,date
 import matplotlib.pyplot as plt
-import  datetime
 import logging
 
 from ibapi import wrapper,client, contract,scanner
@@ -23,6 +22,7 @@ from Log import logInit
 from gw.BaseGateway import BaseGateway
 from gw.HistoricalDataLimitations import HistoricalDataLimitations
 
+import click,glob
 
 
 
@@ -166,6 +166,7 @@ class GwIB(IBWrapper, IBClient, BaseGateway):
         BaseGateway.__init__(self,config)
         self.port_ = self.c_.ib.port
         self.clientId_ = self.c_.ib.client_id
+        self.source_ = 'ib'
         IBWrapper.__init__(self)
         IBClient.__init__(self,wrapper=self)
 
@@ -184,9 +185,12 @@ class GwIB(IBWrapper, IBClient, BaseGateway):
         thread.start()
         setattr(self, "_thread", thread)
         self.log.debug(f'New Thread {thread} with GwIB has been created ')
-        self.histLimits_ = HistoricalDataLimitations(self.c_,source='ib')
+        #self.histLimits_ = HistoricalDataLimitations(self.c_,source='ib')
+
+        self.semHistCall_ = threading.Semaphore(50)
         self.reqIdToSymbol_ = dict()
         self.initialize_signal_handlers()
+        self.cntCallHistoricalData_ = 0
 
         #time.sleep(2)
         pass
@@ -216,12 +220,13 @@ class GwIB(IBWrapper, IBClient, BaseGateway):
         reqId = 100
         self.dataMsg_ = dict()
         for s,c in contractDict.items():
-            self.histLimits_ .wait('reqHistoricalData', s)
-
+            #self.histLimits_ .wait('reqHistoricalData', s)
+            self.log.debug('semHistCall_ .acquire()')
+            self.semHistCall_ .acquire()
             self.log.debug(f'self.reqHistoricalData({reqId}, s, {endDateTime}, {durationString}, {barSizeSetting} ,whatToShow={whatToShow},...')
             self.reqHistoricalData(reqId, c, endDateTime, durationString, barSizeSetting ,whatToShow=whatToShow,
                 useRTH=useRTH,formatDate=formatDate,keepUpToDate=False, chartOptions=[])
-            self.histLimits_ .logCall('reqHistoricalData', s)
+            #self.histLimits_ .logCall('reqHistoricalData', s)
             self.reqIdToSymbol_[reqId] =s
             reqId += 1
             pass
@@ -229,10 +234,9 @@ class GwIB(IBWrapper, IBClient, BaseGateway):
         if ret is None:
             return ret
         self.log.debug(f'Finish All')
-        for r,s in self.reqIdToSymbol_.items():
-            df = self.dataMsg_[r]
-            print(s)
-            display(df)
+        df = self.dfBigTableHist_
+        display(df)
+        self.writeHistoricalBigTableToFile()
 
         ret = self.dataMsg_
         self.dataMsg_ = None
@@ -243,21 +247,151 @@ class GwIB(IBWrapper, IBClient, BaseGateway):
         if reqId not in self.dataMsg_:
             self.dataMsg_[reqId] = []
         self.dataMsg_[reqId].append(o)
+        self.cntCallHistoricalData_  += 1
+        if self.cntCallHistoricalData_ % 100 == 0:
+            self.log.debug( f'reqId:{reqId}; date:{bar.date}' )
         pass
 
     def historicalDataEnd(self, reqId:int, start:str, end:str):
+        thread = threading.Thread(target=self.threadHistoricalDataEnd, args=(reqId, start, end))
+        thread.start()
+        self.semHistCall_ .release()
+        self.log.debug('semHistCall_ .release()')
+        pass
+
+    def threadHistoricalDataEnd(self, reqId:int, start:str, end:str):
         symbol = self.reqIdToSymbol_[reqId]
         s = start.split()[0]
         e = end.split()[0]
-        filePath = f'../data/{symbol}-{s}-{e}.csv'
         df = pd.DataFrame( self.dataMsg_[reqId] ).sort_values(by='date')
-        df.to_csv(filePath, index=False)
+        df.date = pd.to_datetime(df.date)
+        df.set_index('date', drop=True, inplace=True)
         self.dataMsg_[reqId] = df
-        self.log.warning(f'Write file {filePath}')
+        df.columns = pd.MultiIndex.from_product([[symbol],df.columns, ])
+        with self.conditionVar_:
+            if self.dfBigTableHist_ is None:
+                self.dfBigTableHist_  = df
+            else: #merge
+                assert symbol not in self.dfBigTableHist_.columns
+                self.dfBigTableHist_  =  pd.merge_asof(self.dfBigTableHist_ , df, right_index=True, left_index=True, suffixes=('',''))
+            self.conditionVar_.notify()
+
+        setDone = set(self.dfBigTableHist_.columns.get_level_values(0))
+        setAll = set(self.reqIdToSymbol_.values())
+        #msg = f'[{len(setAll)-len(setDone)}/{len(setAll)}]:\t Waiting:[{",".join(setAll -setDone)} ], 1st line[{self.dfBigTableHist_.iloc[0]}]'
+        msg = f'[{len(setAll)-len(setDone)}/{len(setAll)}]:\t Waiting:[{",".join(setAll -setDone)} ]'
+        self.log.warning(msg)
+        self.log.warning(f'Merged:{symbol}-{start}-{end}[{df.index[0]}:{df.index[-1]}], reqId:{reqId}')
+        del self.dataMsg_[reqId]
+        df = None
+        pass
+
+    def watchPosition(self,dfPairs):
+        thread = threading.Thread(target=self.trdWatchPosition, args=(dfPairs,))
+        thread.start()
+        self.log.debug('Create thread trdWatchPosition and wait')
+        thread.join()
+        pass
+    def trdWatchPosition(self,dfPairs):
+        while True:
+            time.sleep(2)
+            self.dataPosition_ = None
+            maxTimeout = 60
+            start  = time.time()
+            symbToreqIds = dict()
+            with self.conditionVar_:
+                self.reqPositions()
+                self.log.debug('wait a condition for reqPositions')
+                self.conditionVar_.wait(timeout=60)
+                if self.dataPosition_ is None:
+                    continue
+                self.rcvDatabyreqIds_ = dict(); reqId = 100
+                for s,v in self.dataPosition_.items():
+                    v['c'].exchange ='SMART'
+                    #self.reqMktData(reqId,v['c'], '221', snapshot=True,regulatorySnapshot=False,mktDataOptions=[])
+                    self.log.debug(f'Call self.reqMktData({reqId},{v["c"].symbol}, "", True, False, [])')
+                    self.reqMktData(reqId,v['c'], "", True, True, [])
+                    symbToreqIds[s] = reqId
+                    reqId += 1
+                while maxTimeout > (time.time() -start) and len(self.rcvDatabyreqIds_) < len(self.dataPosition_):
+                    self.log.debug('wait a condition for reqMktData')
+                    self.conditionVar_.wait(timeout=60)
+            for k,v in self.dataPosition_.items():
+                reqId = symbToreqIds[k]
+                v['price'] = self.rcvDatabyreqIds_[reqId]['price']
+            dfPosition = pd.DataFrame(self.dataPosition_).T
+            dfPosition.drop(['c'], axis=1,inplace=True)
+            oList  = []
+            for index, row in dfPairs.iterrows():
+                n1 = row['n1']
+                n2 = row['n2']
+                if n1 not in symbToreqIds or n2 not in symbToreqIds:
+                    continue
+                s = row['slope']
+                m = row['m']
+                std = row['std']
+                i = row['i']
+                o = {
+                        'n1':  n1,
+                        'n2':  n2,
+                        'st':  std,
+                        'x_price':  self.dataPosition_[n1]['price'],
+                        'x_price':  self.dataPosition_[n1]['price'],
+                        'x_pos':  self.dataPosition_[n1]['position'],
+                        'y_price':  self.dataPosition_[n2]['price'],
+                        'y_pos':  self.dataPosition_[n2]['position'],
+                        }
+                o['z_diff'] = (o['x_price'] * s +i - o['y_price'] -m)/std
+                if abs(o['x_pos']) <1 or abs(o['y_pos']) < 1:
+                    continue
+                oList.append(o)
+            dfO = pd.DataFrame(oList)
+            display(dfO)
+        pass
+
+    def position(self, account:str, contract:'Contract', position:float, avgCost:float):
+        """This event returns real-time positions for all accounts in
+        response to the reqPositions() method."""
+        if self.dataPosition_ is None:
+            self.dataPosition_ = dict()
+        self.dataPosition_ [contract.symbol] = {'c': contract, 'position': position, 'avgCost': avgCost, 'account': account }
+        pass
+
+    def positionEnd(self):
+        """This is called once all position data for a given request are
+        received and functions as an end marker for the position() data. """
         with self.conditionVar_:
             self.conditionVar_.notify()
         pass
 
+    def tickPrice(self, reqId:'TickerId' , tickType:'TickType', price:float, attrib:'TickAttrib'):
+        """Market data tick price callback. Handles all price related ticks."""
+        if reqId not in self.rcvDatabyreqIds_ :
+            self.rcvDatabyreqIds_[reqId] = dict()
+        self.rcvDatabyreqIds_[reqId]['tickType'] = tickType
+        self.rcvDatabyreqIds_[reqId]['price'] = price
+        self.rcvDatabyreqIds_[reqId]['attrib'] = attrib
+        pass
+
+
+    def tickSize(self, reqId:'TickerId', tickType:'TickType', size:int):
+        """Market data tick size callback. Handles all size-related ticks."""
+        if reqId not in self.rcvDatabyreqIds_ :
+            self.rcvDatabyreqIds_[reqId] = dict()
+        self.rcvDatabyreqIds_[reqId]['tickType'] = tickType
+        self.rcvDatabyreqIds_[reqId]['size'] = size
+        pass
+
+    def tickSnapshotEnd(self, reqId:int):
+        """When requesting market data snapshots, this market will indicate the
+        snapshot reception is finished. """
+        with self.conditionVar_:
+            self.conditionVar_.notify()
+        pass
+
+    def writeHistoricalBigTableToFile(self):
+        BaseGateway.writeHistoricalBigTableToFile(self,self.conditionVar_)
+        pass
 
 
     def batchReqContractDetails(self,symbols, secType = 'STK'):
@@ -372,6 +506,7 @@ class GwIB(IBWrapper, IBClient, BaseGateway):
         def handle_sighup(signum, frame):
             self.log.info("received SIGHUP")
             self.sighup_received = True
+            self.writeHistoricalBigTableToFile()
 
         def handle_sigterm(signal, frame):
             self.log.info("received SIGTERM")
@@ -383,14 +518,54 @@ class GwIB(IBWrapper, IBClient, BaseGateway):
 
         #signal.signal(signal.SIGTERM, handle_sigterm)
         signal.signal(signal.SIGHUP, handle_sighup)
-        signal.signal(signal.SIGINT, handle_sigint)
+        #signal.signal(signal.SIGINT, handle_sigint)
 
 
+    pass
+
+@click.command()
+#@click.option('--src',  help='src')
+#@click.option('--dst',  help='dst')
+def watchPosition():
+    confPath = '../conf/v-trade.utest.conf'
+    c = ConfigFactory.parse_file(confPath)
+    gw = GwIB(c)
+    # def fillMktPrice(df, symCols:list):
+    #     slist = pd.concat([df[s] for s in symCols ])
+    #     symList = ' '.join(set(slist))
+    #     ibkr = IBKR()
+    #     dfR  = ibkr.reqMktData(symList)[['markPrice','close']]
+    #     for s in symCols:
+    #         df  = df.join(dfR, on=s)
+    #         df['x_'+s] = df.markPrice
+    #         df.drop(['markPrice', 'close'], axis=1,inplace=True)
+    #     d = df.x_n1 * df.slope + df.i - df.x_n2 - df.m
+    #     df['d'] = d
+    #     df['z']    = d/df['std']
+    #     df = df[df.slope > 0]
+    #     df = df[(df.z > 1.9) | (df.z <-1.9)].sort_values(by='z')
+    #     return df
+    #     pass
+
+    files = glob.glob('../202*/lineregress*.csv')
+    dfs = [ pd.read_csv(f) for f in files]
+    df  = pd.concat(dfs)
+    #df = fillMktPrice(df,['n1', 'n2'])
+
+    display(df)
+    gw.watchPosition(df)
+    pass
+
+
+@click.group()
+def cli():
     pass
 
 
 if __name__ == '__main__':
     logInit()
+    cli.add_command(watchPosition)
+    cli(); sys.exit(0)
     if len(sys.argv) > 1 and sys.argv[1] == 'test':
         import doctest; doctest.testmod(); sys.exit(0)
 
@@ -399,10 +574,11 @@ if __name__ == '__main__':
     gw = GwIB(c)
     symbols = c.ticker.stock.us.top_150V
     symbols = c.ticker.stock.us.cn
+    symbols = c.ticker.stock.us.topV100_MC200
     symbols = ','.join(symbols)
-    symbols = 'WB,NIO'
+    symbols = 'SNOW,MRVL,MDT,PG,KO,BMY,BNTX,NKE,JD,WFC,LRCX,LLY,INTU,GM,GS'
     #ret = gw.getHistoricalData(symbols, endDateTime='20210924  09:30:00')
-    ret = gw.getHistoricalData(symbols,durationString='5 D',barSizeSetting='1 min', endDateTime='')
+    ret = gw.getHistoricalData(symbols,durationString='60 D',barSizeSetting='1 min', endDateTime='')
     #ret = gw.getHistoricalData(symbols,durationString='3 D', endDateTime='')
     gw.disconnect()
 

@@ -171,6 +171,23 @@ class SyncHistoryToLocal:
         self.log.debug(f'Write file {hdPath}')
         return dfOut
 
+
+    def merge_asof(self, s1,s2 ,dstFile, rmTZ):
+        def parseFile(s, rmTZ=False):
+            if rmTZ:
+                s = pd.read_csv(s,index_col=0, header=[0,1], parse_dates=False)
+                s.index = pd.to_datetime(s.index.str.replace('-[^-]+$','',regex=True))
+            else:
+                s = pd.read_csv(s,index_col=0, header=[0,1], parse_dates=True)
+            return s
+        s1 = parseFile(s1,rmTZ)
+        s2 = parseFile(s2,rmTZ)
+       # display(s1)
+       #display(s2)
+        df = pd.merge_asof(s1, s2, right_index=True, left_index=True, suffixes=('',''))
+        df.to_csv(dstFile)
+        return df
+
     def concatDataFiles(self, srcFileList ,dstFile):
         v  = [ pd.read_csv(f,index_col=0, header=[0,1], parse_dates=True) for f in srcFileList]
         df = pd.concat(v).sort_values(by='date').drop_duplicates()
@@ -183,7 +200,16 @@ if __name__ == '__main__':
     logInit()
     #import doctest; doctest.testmod(); sys.exit(0)
     s  = SyncHistoryToLocal()
-    df = s.concatDataFiles(['data/20211223.csvx', './data.cn.20211222/20211222.csvx'], './xxx.csv') ; display(df); sys.exit(0)
+    #df = s.concatDataFiles(['data/20211223.csvx', './data.cn.20211222/20211222.csvx'], './xxx.csv') ; display(df); sys.exit(0)
+
+    df = s.merge_asof('data_test/bigtable-20211227-1933.csv',
+        'data_test/bigtable-20211227-2056.csv',
+        'data_test/bigtable-ib-20211227.csv',False)
+    sys.exit(0)
+    df = s.merge_asof('data_test/bigtable-Yahoo-20211227-2029.csv',
+        'data_test/bigtable-Yahoo-20211227-2058.csv',
+        'data_test/bigtable-Yahoo_v2.csv', True)
+    sys.exit(0)
     #df  = s.mergeMSymbolsData('./data.topus')
     df  = s.mergeMSymbolsData('./data')
     display(df)
