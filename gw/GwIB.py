@@ -188,6 +188,7 @@ class GwIB(IBWrapper, IBClient, BaseGateway):
         #self.histLimits_ = HistoricalDataLimitations(self.c_,source='ib')
 
         self.semHistCall_ = threading.Semaphore(50)
+        self.semMktDataCall_ = threading.Semaphore(80)
         self.reqIdToSymbol_ = dict()
         self.initialize_signal_handlers()
         self.cntCallHistoricalData_ = 0
@@ -305,10 +306,13 @@ class GwIB(IBWrapper, IBClient, BaseGateway):
                 self.conditionVar_.wait(timeout=60)
                 if self.dataPosition_ is None:
                     continue
+                del self.dataPosition_['700']
                 self.rcvDatabyreqIds_ = dict(); reqId = 100
                 for s,v in self.dataPosition_.items():
                     v['c'].exchange ='SMART'
                     #self.reqMktData(reqId,v['c'], '221', snapshot=True,regulatorySnapshot=False,mktDataOptions=[])
+                    self.log.debug('semMktDataCall_ .acquire()')
+                    self.semMktDataCall_ .acquire()
                     self.log.debug(f'Call self.reqMktData({reqId},{v["c"].symbol}, "", True, False, [])')
                     self.reqMktData(reqId,v['c'], "", True, True, [])
                     symbToreqIds[s] = reqId
@@ -364,6 +368,41 @@ class GwIB(IBWrapper, IBClient, BaseGateway):
             self.conditionVar_.notify()
         pass
 
+    def getSnapshot(self, symbolsList,contractDict=None ):
+        symbols = ','.join(symbolsList)
+        if contractDict is None:
+            contractDict = self. batchReqContractDetails(symbols, secType='STK')
+        assert contractDict is not None
+        self.dataMsg_ = dict()
+        self.reqIdToSymbol_ = dict()
+        symbToreqIds = dict(); self.rcvDatabyreqIds_ = dict(); reqId = 100
+        cnt  = 1
+        for s,c in contractDict.items():
+            c.exchange ='SMART'
+            self.log.debug('semMktDataCall_ .acquire()')
+            self.semMktDataCall_ .acquire()
+            self.log.debug(f'Call self.reqMktData({reqId},{c.symbol}, "", True, False, [])')
+            self.reqMktData(reqId,c, "", True, True, [])
+            symbToreqIds[s] = reqId
+            if cnt % 90 == 0:
+                time.sleep(1)
+            cnt += 1; reqId += 1
+
+        maxTimeout = 60
+        start  = time.time()
+        while maxTimeout > (time.time() -start) and len(self.rcvDatabyreqIds_) < len(contractDict):
+            self.log.debug('wait a condition for reqMktData')
+            with self.conditionVar_:
+                self.conditionVar_.wait(timeout=60)
+        oList  = []
+        snapDict  = dict()
+        for s in contractDict.keys():
+            reqId = symbToreqIds[s]
+            #v['price'] = self.rcvDatabyreqIds_[reqId]['price']
+            snapDict[s] =  self.rcvDatabyreqIds_[reqId]
+        df  = pd.DataFrame(snapDict).T[['price']]
+        return df, contractDict
+
     def tickPrice(self, reqId:'TickerId' , tickType:'TickType', price:float, attrib:'TickAttrib'):
         """Market data tick price callback. Handles all price related ticks."""
         if reqId not in self.rcvDatabyreqIds_ :
@@ -385,6 +424,7 @@ class GwIB(IBWrapper, IBClient, BaseGateway):
     def tickSnapshotEnd(self, reqId:int):
         """When requesting market data snapshots, this market will indicate the
         snapshot reception is finished. """
+        self.semMktDataCall_ .release()
         with self.conditionVar_:
             self.conditionVar_.notify()
         pass
