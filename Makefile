@@ -13,7 +13,9 @@ ROOT=./$(UNI_NAME)
 #BIG_TABLE_FILE=data/20211228.cn.Yahoo.test_bigtable_v1.csv
 #BIG_TABLE_FILE=data_test/bigtable-ib-20211227.csv
 TMP_DATA=$(ROOT)/`basename $(BIG_TABLE_FILE)`
-all: hedge
+all:
+	GROUP=cn make -e hedge -f Makefile
+	GROUP=topV100_MC200 make -e hedge
 	#echo $(ROOT)
 	#echo $(HOME) `pwd`
 	#echo $(DATE)
@@ -22,15 +24,15 @@ hedge: $(ROOT)/lineregress.done
 	echo aaa
 
 lineregress $(ROOT)/lineregress.done:$(ROOT)/cointegration.done
-	./Hedge.py lr  $(BIG_TABLE_FILE) -l $(ROOT)/lineregress.2mon.500bar.csv -w 500 -p $(ROOT)/cointegration.2mon.csv
-	./Hedge.py lr  $(BIG_TABLE_FILE) -l $(ROOT)/lineregress.2mon.800bar.csv -w 800 -p $(ROOT)/cointegration.2mon.csv
+	#./Hedge.py lr  $(BIG_TABLE_FILE) -l $(ROOT)/lineregress.2mon.500bar.csv -w 500 -p $(ROOT)/cointegration.2mon.csv
+	#./Hedge.py lr  $(BIG_TABLE_FILE) -l $(ROOT)/lineregress.2mon.800bar.csv -w 800 -p $(ROOT)/cointegration.2mon.csv
 	./Hedge.py lr  $(BIG_TABLE_FILE) -l $(ROOT)/lineregress.1mon.500bar.csv -w 500 -p $(ROOT)/cointegration.1mon.csv
 	./Hedge.py lr  $(BIG_TABLE_FILE) -l $(ROOT)/lineregress.1mon.800bar.csv -w 800 -p $(ROOT)/cointegration.1mon.csv
 	touch $(ROOT)/lineregress.done
 
 cointegration $(ROOT)/cointegration.done: $(ROOT)/start.done $(BIG_TABLE_FILE)
 	./Hedge.py coin  $(BIG_TABLE_FILE) -p $(ROOT)/cointegration.1mon.csv -c 30
-	./Hedge.py coin  $(BIG_TABLE_FILE) -p  $(ROOT)/cointegration.2mon.csv -c 60
+	#./Hedge.py coin  $(BIG_TABLE_FILE) -p  $(ROOT)/cointegration.2mon.csv -c 60
 	touch $(ROOT)/cointegration.done
 
 

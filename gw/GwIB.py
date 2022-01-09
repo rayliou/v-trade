@@ -9,6 +9,8 @@ import matplotlib.pyplot as plt
 import logging
 
 from ibapi import wrapper,client, contract,scanner
+from ibapi.ticktype import TickTypeEnum,TickType
+
 import threading,queue
 import socket
 
@@ -23,6 +25,8 @@ from gw.BaseGateway import BaseGateway
 from gw.HistoricalDataLimitations import HistoricalDataLimitations
 
 import click,glob
+
+from functools import wraps
 
 
 
@@ -156,6 +160,29 @@ class IBClient(client.EClient):
 
 class GwIB(IBWrapper, IBClient, BaseGateway):
     log = logging.getLogger("main.GwIB")
+    callsCurSec = []
+    @classmethod
+    def speedControl(cls, function, callsList, maxCalls =3, seconds=1):
+        def refreshAndWait():
+            total = len(callsList)
+            while total >= maxCalls:
+                tm = time.time()
+                while total > 0 and  (tm - callsList[0]) >= seconds:
+                    del callsList[0]
+                    total = len(callsList)
+                time.sleep(0.1)
+            return total
+        @wraps(function)
+        def wrapper(*args, **kwargs):
+            cls.log.debug(f'before call {function.__name__}, totalSecondCalls= {len(callsList)}')
+            refreshAndWait()
+            tm = time.time()
+            ret =  function(*args, **kwargs)
+            callsList.append(tm)
+            cls.log.debug(f'After call {function.__name__}, totalSecondCalls= {len(callsList)}')
+            return ret
+
+        return wrapper
     def __init__(self, config):
         '''
         >>> confPath = '../conf/v-trade.utest.conf'
@@ -192,6 +219,8 @@ class GwIB(IBWrapper, IBClient, BaseGateway):
         self.reqIdToSymbol_ = dict()
         self.initialize_signal_handlers()
         self.cntCallHistoricalData_ = 0
+
+        self.reqContractDetails = GwIB.speedControl(self.reqContractDetails,GwIB.callsCurSec, 49,1)
 
         #time.sleep(2)
         pass
@@ -374,8 +403,7 @@ class GwIB(IBWrapper, IBClient, BaseGateway):
             contractDict = self. batchReqContractDetails(symbols, secType='STK')
         assert contractDict is not None
         self.dataMsg_ = dict()
-        self.reqIdToSymbol_ = dict()
-        symbToreqIds = dict(); self.rcvDatabyreqIds_ = dict(); reqId = 100
+        reqIdToSymbols = dict(); self.rcvDatabyreqIds_ = dict(); reqId = 100
         cnt  = 1
         for s,c in contractDict.items():
             c.exchange ='SMART'
@@ -383,33 +411,37 @@ class GwIB(IBWrapper, IBClient, BaseGateway):
             self.semMktDataCall_ .acquire()
             self.log.debug(f'Call self.reqMktData({reqId},{c.symbol}, "", True, False, [])')
             self.reqMktData(reqId,c, "", True, True, [])
-            symbToreqIds[s] = reqId
+            reqIdToSymbols[reqId] = s
             if cnt % 90 == 0:
                 time.sleep(1)
             cnt += 1; reqId += 1
 
-        maxTimeout = 60
+        maxTimeout = 10
         start  = time.time()
         while maxTimeout > (time.time() -start) and len(self.rcvDatabyreqIds_) < len(contractDict):
             self.log.debug('wait a condition for reqMktData')
             with self.conditionVar_:
-                self.conditionVar_.wait(timeout=60)
+                self.conditionVar_.wait(timeout=maxTimeout)
         oList  = []
         snapDict  = dict()
-        for s in contractDict.keys():
-            reqId = symbToreqIds[s]
+        #for s in contractDict.keys():
+        for reqId in self.rcvDatabyreqIds_.keys():
+            s = reqIdToSymbols[reqId]
             #v['price'] = self.rcvDatabyreqIds_[reqId]['price']
             snapDict[s] =  self.rcvDatabyreqIds_[reqId]
-        df  = pd.DataFrame(snapDict).T[['price']]
+        df  = pd.DataFrame(snapDict).T[['BID','ASK','LAST','CLOSE']]
+        #display(df); sys.exit(0)
         return df, contractDict
 
-    def tickPrice(self, reqId:'TickerId' , tickType:'TickType', price:float, attrib:'TickAttrib'):
+    def tickPrice(self, reqId:'TickerId' , tickType:TickType, price:float, attrib:'TickAttrib'):
         """Market data tick price callback. Handles all price related ticks."""
         if reqId not in self.rcvDatabyreqIds_ :
             self.rcvDatabyreqIds_[reqId] = dict()
-        self.rcvDatabyreqIds_[reqId]['tickType'] = tickType
-        self.rcvDatabyreqIds_[reqId]['price'] = price
-        self.rcvDatabyreqIds_[reqId]['attrib'] = attrib
+        tickType = TickTypeEnum.to_str(tickType)
+        self.rcvDatabyreqIds_[reqId][tickType] = price
+        #self.rcvDatabyreqIds_[reqId]['tickType'] = tickType
+        #self.rcvDatabyreqIds_[reqId]['price'] = price
+        #self.rcvDatabyreqIds_[reqId]['attrib'] = attrib
         pass
 
 
@@ -417,8 +449,8 @@ class GwIB(IBWrapper, IBClient, BaseGateway):
         """Market data tick size callback. Handles all size-related ticks."""
         if reqId not in self.rcvDatabyreqIds_ :
             self.rcvDatabyreqIds_[reqId] = dict()
-        self.rcvDatabyreqIds_[reqId]['tickType'] = tickType
-        self.rcvDatabyreqIds_[reqId]['size'] = size
+        #self.rcvDatabyreqIds_[reqId]['tickType'] = tickType
+        #self.rcvDatabyreqIds_[reqId]['size'] = size
         pass
 
     def tickSnapshotEnd(self, reqId:int):
@@ -445,7 +477,8 @@ class GwIB(IBWrapper, IBClient, BaseGateway):
         >>> gw.batchReqContractDetails(symbols)
         >>> gw.disconnect()
         '''
-        symList = symbols.replace(',',' ').split()
+        #symList = symbols.replace(',',' ').split()
+        symList = symbols
         cList   = []
         reqId = 100
         self.dataMsg_     = dict()
@@ -596,6 +629,22 @@ def watchPosition():
     gw.watchPosition(df)
     pass
 
+@click.command()
+#@click.option('--src',  help='src')
+#@click.option('--dst',  help='dst')
+def fillContracts():
+    confPath = '../conf/v-trade.utest.conf'
+    c = ConfigFactory.parse_file(confPath)
+    symbols = c.ticker.stock.us.topV5000
+    symbols = [s.replace('/',' ') for s in symbols]
+    gw = GwIB(c)
+    gw.batchReqContractDetails(symbols, 'STK')
+
+    gw.disconnect()
+    #display(df)
+    pass
+
+
 
 @click.group()
 def cli():
@@ -604,6 +653,7 @@ def cli():
 
 if __name__ == '__main__':
     logInit()
+    cli.add_command(fillContracts)
     cli.add_command(watchPosition)
     cli(); sys.exit(0)
     if len(sys.argv) > 1 and sys.argv[1] == 'test':

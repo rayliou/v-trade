@@ -7,6 +7,10 @@ import os.path,os,sys,time
 #import talib
 import yfinance as yf
 import logging,json
+import inspect
+currentdir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
+parentdir = os.path.dirname(currentdir)
+sys.path.insert(0, parentdir)
 from Log import logInit
 import pandas as pd
 
@@ -18,18 +22,19 @@ import pandas as pd
 
 class TickerScreener:
     log = logging.getLogger("main.TickerScreener")
-    def __init__(self, confPath='./conf/v-trade.utest.conf'):
+    def __init__(self, confPath='../conf/v-trade.utest.conf'):
         #self.confPath_ = 'conf/v-trade.conf'
         self.confPath_ = confPath
         self.c_ = ConfigFactory.parse_file(self.confPath_)
         self.dataRoot_ =  self.c_ .data.rootDir
         assert self.dataRoot_ is not None and self.dataRoot_ != ''
-        print( self.c_.ticker.stock.us.topV100_MC200)
+        #print( self.c_.ticker.stock.us.topV100_MC200)
 
         pass
     def topNasdaq(self):
-        file = '~/Downloads/nasdaq_screener_1640629449840.csv'
+        file = '~/Downloads/nasdaq_screener_1641678047202.csv'
         df = pd.read_csv(file)
+        df.Symbol = df.Symbol.str.strip()
         # https://pandas.pydata.org/docs/reference/api/pandas.Series.str.replace.html
         df['Last Sale'] = df['Last Sale'].str.replace('$', '' ,regex=False).astype('float')
         df = df[df['Last Sale'] >5]
@@ -40,12 +45,15 @@ class TickerScreener:
 
         nTopMktCap = 200
         nTopVlm   = 100
+
+        nTopMktCap = 7000
+        nTopVlm   = 5000
         setTopMktCap = set(df_sorted_by_mc.head(nTopMktCap).Symbol )
         setTopMktCap
         #display(df_sorted_by_v)
         df_sorted_by_v = df_sorted_by_v.head(nTopVlm)
         df_sorted_by_v = df_sorted_by_v.loc[lambda df: [s in setTopMktCap  for s in df.Symbol] ,:]
-        #df_sorted_by_v.shape
+        #print(df_sorted_by_v.shape); sys.exit(0)
         symbList= ','.join(df_sorted_by_v.Symbol)
         return symbList
     pass

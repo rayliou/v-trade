@@ -6,7 +6,11 @@ FEED_SOURCE=Yahoo
 DATA_ROOT=../data_test
 UNI_NAME=$(DATE).$(GROUP).$(FEED_SOURCE).test
 BIG_TABLE_FILE=$(DATA_ROOT)/bigtable-$(UNI_NAME)_v1.csv
-all: $(BIG_TABLE_FILE)
+
+all:
+	GROUP=cn            make -e download -f yh.mk
+	GROUP=topV100_MC200 make -e download -f yh.mk
+download: $(BIG_TABLE_FILE)
 	echo $(GROUP)
 $(BIG_TABLE_FILE): $(DATA_ROOT)/start.done
 	./GwYahoo.py mdownload  $(GROUP) $@ --interval 5m
@@ -20,3 +24,5 @@ clean:
 	rm -fr $(BIG_TABLE_FILE)
 
 .PHONY : start clean
+show:
+	echo $(GROUP)

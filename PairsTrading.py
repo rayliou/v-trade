@@ -20,26 +20,6 @@ from Log import logInit
 from pyhocon import ConfigFactory
 
 
-def fillMktPrice(df, symCols:list):
-    slist = pd.concat([df[s] for s in symCols ])
-    symList = ' '.join(set(slist))
-    ibkr = IBKR()
-    dfR  = ibkr.reqMktData(symList)[['markPrice','close']]
-    for s in symCols:
-        df  = df.join(dfR, on=s)
-        df['x_'+s] = df.markPrice
-        df.drop(['markPrice', 'close'], axis=1,inplace=True)
-    d = df.x_n1 * df.slope + df.i - df.x_n2 - df.m
-    df['d'] = d
-    df['y/x']    = 1/df.slope
-    df['z']    = d/df['std']
-    #df.drop(['x', 'y'], axis=1,inplace=True)
-    df = df[df.slope > 0]
-    THRESHOLD =1.8
-    df = df[(df.z > THRESHOLD) | (df.z <-THRESHOLD)].sort_values(by='std/Y(%)')
-    return df
-    pass
-
 #df = fillMktPrice(df,['n1', 'n2'])
 
 #display(df)
@@ -69,17 +49,24 @@ def updatePairsSnapshot(lrfiles,market):
         else:
             dfPrice,contractDict  = gw.getSnapshot(symbList, contractDict)
         for s in ['n1','n2']:
-            df  = df.join(dfPrice, on=s)
-            df['x_'+s] = df.price
-            df.drop(['price',], axis=1,inplace=True)
-        d = df.x_n1 * df.slope + df.i - df.x_n2 - df.m
-        df['d'] = d
+            df  = df.join(dfPrice, on=s, how='inner')
+            df['BID_'+s] = df.BID
+            df['ASK_'+s] = df.ASK
+            df['LAST_'+s] = df.LAST
+            df['CLOSE_'+s] = df.CLOSE
+            df.drop(['BID','ASK','CLOSE','LAST' ], axis=1,inplace=True)
+        #n1 > n2
+        d1 = df.BID_n1 * df.slope + df.i - df.ASK_n2 - df.m
+        #n1 < n2
+        d2 = df.ASK_n1 * df.slope + df.i - df.BID_n2 - df.m
+        df['z1(-n1+n2)']    = d1/df['std']
+        df['n1_n2']    = df.n1 +'_' + df.n2
+        df['z2(+n1-n2)']    = d2/df['std']
         df['y/x']    = 1/df.slope
-        df['z']    = d/df['std']
         #df.drop(['x', 'y'], axis=1,inplace=True)
         df = df[df.slope > 0]
         THRESHOLD =1.8
-        df = df[(df.z > THRESHOLD) | (df.z <-THRESHOLD)].sort_values(by='std/Y(%)')
+        df = df[(df['z1(-n1+n2)'] > THRESHOLD) | (df['z2(+n1-n2)'] <-THRESHOLD)].sort_values(by='std/Y(%)')
         display(df)
         print(datetime.datetime.now().strftime('%H:%M:%S'))
 
@@ -98,6 +85,7 @@ def cli():
     pass
 
 if __name__ == '__main__':
+    #logInit()
     logInit(logging.ERROR)
 
     cli.add_command(updatePairsSnapshot)
