@@ -46,6 +46,7 @@ class GwYahoo(BaseGateway):
         pass
     def adjustColumns(self):
         df = self.dfBigTableHist_
+        df.index.rename('date', inplace=True)
         level0 = df.columns.get_level_values(0)
         N = int(len(level0)/5)
         level1 = ['open', 'high','low','close' , 'volume'] * N

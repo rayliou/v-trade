@@ -199,7 +199,7 @@ class GwIB(IBWrapper, IBClient, BaseGateway):
 
 
         self.conditionVar_ =  threading.Condition()
-        self.dataMsg_      = None
+        self.rcvDatabyreqIds_      = None
 
         # Listen for the IB responses
         self.init_error()
@@ -221,6 +221,7 @@ class GwIB(IBWrapper, IBClient, BaseGateway):
         self.cntCallHistoricalData_ = 0
 
         self.reqContractDetails = GwIB.speedControl(self.reqContractDetails,GwIB.callsCurSec, 49,1)
+        self.reqHistoricalData = GwIB.speedControl(self.reqHistoricalData,GwIB.callsCurSec, 49,1)
 
         #time.sleep(2)
         pass
@@ -229,28 +230,23 @@ class GwIB(IBWrapper, IBClient, BaseGateway):
         endDateTime='',
         durationString='3 M', barSizeSetting='5 mins',
         whatToShow = 'TRADES', useRTH=1,formatDate=1,
-        timeout=36000
+        timeout=60
     ):
         '''
         https://interactivebrokers.github.io/tws-api/contract_details.html
-        >>> confPath = '../conf/v-trade.utest.conf'
-        >>> c = ConfigFactory.parse_file(confPath)
-        >>> gw = GwIB(c)
-        >>> symbols = c.ticker.stock.us.cn
-        >>> symbols = ','.join(symbols)
-        >>> symbols = 'WB,NIO'
-        >>> ret = gw.getHistoricalData(symbols)
-        >>> gw.disconnect()
-        >>> ret
-        123
         '''
         #reqHistoricalData(12, c, '', '2 D', '1 hour', 'TRADES',useRTH=0,formatDate=1,keepUpToDate=False, chartOptions=[])
-        contractDict = self.batchReqContractDetails(symbols, secType)
-        assert contractDict is not None
+        cdsList = self.getContractDetails(symbols, secType)
+        assert cdsList is not None
         reqId = 100
-        self.dataMsg_ = dict()
-        for s,c in contractDict.items():
+        self.rcvDatabyreqIds_ = dict(); reqId = 100
+        self.reqIdToSymbol_ = dict()
+        self.rcvDfBigTableHist_ = None
+        cnt  = 1
+        for cds in cdsList:
             #self.histLimits_ .wait('reqHistoricalData', s)
+            c = cds.contract
+            s = c.symbol
             self.log.debug('semHistCall_ .acquire()')
             self.semHistCall_ .acquire()
             self.log.debug(f'self.reqHistoricalData({reqId}, s, {endDateTime}, {durationString}, {barSizeSetting} ,whatToShow={whatToShow},...')
@@ -260,23 +256,23 @@ class GwIB(IBWrapper, IBClient, BaseGateway):
             self.reqIdToSymbol_[reqId] =s
             reqId += 1
             pass
-        ret = self.waitAllReqDoneOrTimeout(contractDict.keys(), timeout=timeout)
-        if ret is None:
-            return ret
-        self.log.debug(f'Finish All')
-        df = self.dfBigTableHist_
-        display(df)
-        self.writeHistoricalBigTableToFile()
+        start = time.time()
+        total = len(self.reqIdToSymbol_)
+        numDone = 0 if self.rcvDfBigTableHist_  is None else len(set(self.rcvDfBigTableHist_.columns.get_level_values(0)))
+        while (time.time() - start < timeout) and numDone < total:
+            time.sleep(1)
+            with self.conditionVar_:
+                numDone = 0 if self.rcvDfBigTableHist_  is None else len(set(self.rcvDfBigTableHist_.columns.get_level_values(0)))
 
-        ret = self.dataMsg_
-        self.dataMsg_ = None
-        return ret
+        df =  self.rcvDfBigTableHist_
+        self.rcvDfBigTableHist_ = None
+        return df
 
     def historicalData(self, reqId, bar):
         o = {'date':bar.date, 'open': bar.open, 'high':bar.high, 'low': bar.low, 'close':bar.close, 'volume':bar.volume, 'wap':bar.average}
-        if reqId not in self.dataMsg_:
-            self.dataMsg_[reqId] = []
-        self.dataMsg_[reqId].append(o)
+        if reqId not in self.rcvDatabyreqIds_:
+            self.rcvDatabyreqIds_[reqId] = []
+        self.rcvDatabyreqIds_[reqId].append(o)
         self.cntCallHistoricalData_  += 1
         if self.cntCallHistoricalData_ % 100 == 0:
             self.log.debug( f'reqId:{reqId}; date:{bar.date}' )
@@ -293,26 +289,26 @@ class GwIB(IBWrapper, IBClient, BaseGateway):
         symbol = self.reqIdToSymbol_[reqId]
         s = start.split()[0]
         e = end.split()[0]
-        df = pd.DataFrame( self.dataMsg_[reqId] ).sort_values(by='date')
+        df = pd.DataFrame( self.rcvDatabyreqIds_[reqId] ).sort_values(by='date')
         df.date = pd.to_datetime(df.date)
         df.set_index('date', drop=True, inplace=True)
-        self.dataMsg_[reqId] = df
+        self.rcvDatabyreqIds_[reqId] = df
         df.columns = pd.MultiIndex.from_product([[symbol],df.columns, ])
         with self.conditionVar_:
-            if self.dfBigTableHist_ is None:
-                self.dfBigTableHist_  = df
+            if self.rcvDfBigTableHist_ is None:
+                self.rcvDfBigTableHist_  = df
             else: #merge
-                assert symbol not in self.dfBigTableHist_.columns
-                self.dfBigTableHist_  =  pd.merge_asof(self.dfBigTableHist_ , df, right_index=True, left_index=True, suffixes=('',''))
+                assert symbol not in self.rcvDfBigTableHist_.columns
+                self.rcvDfBigTableHist_  =  pd.merge_asof(self.rcvDfBigTableHist_ , df, right_index=True, left_index=True, suffixes=('',''))
             self.conditionVar_.notify()
 
-        setDone = set(self.dfBigTableHist_.columns.get_level_values(0))
+        setDone = set(self.rcvDfBigTableHist_.columns.get_level_values(0))
         setAll = set(self.reqIdToSymbol_.values())
         #msg = f'[{len(setAll)-len(setDone)}/{len(setAll)}]:\t Waiting:[{",".join(setAll -setDone)} ], 1st line[{self.dfBigTableHist_.iloc[0]}]'
         msg = f'[{len(setAll)-len(setDone)}/{len(setAll)}]:\t Waiting:[{",".join(setAll -setDone)} ]'
         self.log.warning(msg)
         self.log.warning(f'Merged:{symbol}-{start}-{end}[{df.index[0]}:{df.index[-1]}], reqId:{reqId}')
-        del self.dataMsg_[reqId]
+        del self.rcvDatabyreqIds_[reqId]
         df = None
         pass
 
@@ -400,9 +396,9 @@ class GwIB(IBWrapper, IBClient, BaseGateway):
     def getSnapshot(self, symbolsList,contractDict=None ):
         symbols = ','.join(symbolsList)
         if contractDict is None:
-            contractDict = self. batchReqContractDetails(symbols, secType='STK')
+            contractDict = self. getContractDetails(symbols, secType='STK')
         assert contractDict is not None
-        self.dataMsg_ = dict()
+        self.rcvDatabyreqIds_ = dict()
         reqIdToSymbols = dict(); self.rcvDatabyreqIds_ = dict(); reqId = 100
         cnt  = 1
         for s,c in contractDict.items():
@@ -466,23 +462,13 @@ class GwIB(IBWrapper, IBClient, BaseGateway):
         pass
 
 
-    def batchReqContractDetails(self,symbols, secType = 'STK'):
-        '''
-        https://interactivebrokers.github.io/tws-api/contract_details.html
-        >>> confPath = '../conf/v-trade.utest.conf'
-        >>> c = ConfigFactory.parse_file(confPath)
-        >>> gw = GwIB(c)
-        >>> symbols = c.ticker.stock.us.cn
-        >>> symbols = ','.join(symbols)
-        >>> gw.batchReqContractDetails(symbols)
-        >>> gw.disconnect()
-        '''
+    def getContractDetails(self,symbols, secType = 'STK', timeout=20) -> list:
         #symList = symbols.replace(',',' ').split()
         symList = symbols
         cList   = []
-        reqId = 100
-        self.dataMsg_     = dict()
-        self.reqIdToSymbol_ = dict()
+        self.rcvDatabyreqIds_     = dict()
+        reqIdToSymbols = dict(); self.rcvDatabyreqIds_ = dict(); reqId = 100
+        cnt  = 1
         for sym in symList:
             c  = contract.Contract()
             c.symbol = sym
@@ -492,52 +478,50 @@ class GwIB(IBWrapper, IBClient, BaseGateway):
             cList.append(c)
             self.log.debug(f'Call reqContractDetails({reqId}, {c.symbol}, {c.exchange},{c.currency}, )')
             self.reqContractDetails(reqId, c)
-            self.reqIdToSymbol_[reqId] = sym
+            reqIdToSymbols[reqId] = sym
             reqId += 1
-        ret = self.waitAllReqDoneOrTimeout(symList, timeout=120)
-        if ret is None:
-            return ret
-
-        self.log.debug(f'Finish All')
-        ret = self.dataMsg_
-        self.dataMsg_ = None
-        return ret
+        start = time.time()
+        total = len(reqIdToSymbols)
+        while (time.time() - start < timeout) and len(self.rcvDatabyreqIds_) < total:
+            time.sleep(0.1)
+        return [cds for cds in self.rcvDatabyreqIds_.values()]
 
     def contractDetails(self, reqId:int, contractDetails:'ContractDetails'):
-        with self.conditionVar_:
-            c  = contractDetails.contract
-            self.dataMsg_ [c.symbol] =c
-            self.conditionVar_.notify()
-            self.log.debug(f'Received contract({reqId}, {c.symbol})')
+        c  = contractDetails.contract
+        if reqId not in self.rcvDatabyreqIds_ :
+            self.rcvDatabyreqIds_[reqId] = dict()
+        self.rcvDatabyreqIds_[reqId] = contractDetails
+        self.log.debug(f'Received contract({reqId}, {c.symbol})')
+
         pass
-    def waitAllReqDoneOrTimeout(self, originalSet, timeout=300):
-        start = time.time()
-        cnt = 0
-        totalNum = len(originalSet)
+    # def waitAllReqDoneOrTimeout(self, originalSet, timeout=300):
+    #     start = time.time()
+    #     cnt = 0
+    #     totalNum = len(originalSet)
 
-        def getRemainSet():
-            setTotal = set(originalSet)
-            setDone  = set(self.dataMsg_.keys())
-            setRemain = ','.join( setTotal - setDone)
-            return setRemain
+    #     def getRemainSet():
+    #         setTotal = set(originalSet)
+    #         setDone  = set(self.dataMsg_.keys())
+    #         setRemain = ','.join( setTotal - setDone)
+    #         return setRemain
 
-        while time.time() - start < timeout and cnt < totalNum:
-            with self.conditionVar_:
-                self.log.debug('wait a condition')
-                self.conditionVar_.wait(timeout=timeout)
-                cnt = len(self.dataMsg_.keys())
-                self.log.debug('After wait the condition')
-                if  (totalNum - cnt) < 5:
-                    setRemain = getRemainSet()
-                    self.log.debug(f'Remained symbols or reqIds {setRemain}')
-            self.log.debug(f'Finish {cnt}/{totalNum}')
-        if cnt != totalNum:
-            setTotal = set(originalSet)
-            setRemain = getRemainSet()
-            msg = f'Some contract details got failed {setRemain}'
-            self.log.critical(msg)
-            return None
-        return cnt
+    #     while time.time() - start < timeout and cnt < totalNum:
+    #         with self.conditionVar_:
+    #             self.log.debug('wait a condition')
+    #             self.conditionVar_.wait(timeout=timeout)
+    #             cnt = len(self.dataMsg_.keys())
+    #             self.log.debug('After wait the condition')
+    #             if  (totalNum - cnt) < 5:
+    #                 setRemain = getRemainSet()
+    #                 self.log.debug(f'Remained symbols or reqIds {setRemain}')
+    #         self.log.debug(f'Finish {cnt}/{totalNum}')
+    #     if cnt != totalNum:
+    #         setTotal = set(originalSet)
+    #         setRemain = getRemainSet()
+    #         msg = f'Some contract details got failed {setRemain}'
+    #         self.log.critical(msg)
+    #         return None
+    #     return cnt
 
 
     def symbolSamples(self, reqId:int, contractDescriptions:'ListOfContractDescription'):
@@ -632,18 +616,47 @@ def watchPosition():
 @click.command()
 #@click.option('--src',  help='src')
 #@click.option('--dst',  help='dst')
-def fillContracts():
+def getContractDetails():
     confPath = '../conf/v-trade.utest.conf'
     c = ConfigFactory.parse_file(confPath)
     symbols = c.ticker.stock.us.topV5000
     symbols = [s.replace('/',' ') for s in symbols]
+    symbols = symbols[0:300]
     gw = GwIB(c)
-    gw.batchReqContractDetails(symbols, 'STK')
+    cdsList = gw.getContractDetails(symbols, 'STK')
+    print(cdsList)
 
     gw.disconnect()
     #display(df)
     pass
 
+@click.command()
+@click.argument('group')
+@click.argument('dst')
+@click.option('--duration',  help='3 D etc...', default='3 D')
+@click.option('--interval',  help='5 mins|1 min etc...', default='5 mins')
+@click.option('--timeout',  help='default:60 by seconds', default=60)
+def downloadHistory(group, dst, duration, interval, timeout):
+    confPath = '../conf/v-trade.utest.conf'
+    c = ConfigFactory.parse_file(confPath)
+    symbols = c.ticker.stock.us[group]
+    symbols = [s.replace('/',' ') for s in symbols]
+    gw = GwIB(c)
+    df = gw.getHistoricalData(symbols, 'STK', durationString=duration, barSizeSetting=interval, timeout=timeout)
+    df.to_csv(dst)
+    display(df.head(1))
+    display(df.tail(1))
+    gw.disconnect()
+    #display(df)
+    pass
+
+@click.command()
+@click.argument('src', nargs=-1)
+@click.argument('dst')
+def merge_df(src, dst):
+    v  = [ pd.read_csv(f,index_col=0, header=[0,1], parse_dates=True) for f in src]
+    df = pd.concat(v).sort_values(by='date').drop_duplicates()
+    df.to_csv(dst)
 
 
 @click.group()
@@ -653,8 +666,10 @@ def cli():
 
 if __name__ == '__main__':
     logInit()
-    cli.add_command(fillContracts)
+    cli.add_command(getContractDetails)
     cli.add_command(watchPosition)
+    cli.add_command(downloadHistory)
+    cli.add_command(merge_df)
     cli(); sys.exit(0)
     if len(sys.argv) > 1 and sys.argv[1] == 'test':
         import doctest; doctest.testmod(); sys.exit(0)
