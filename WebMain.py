@@ -58,15 +58,28 @@ def debugToConsole(sig, frame):
     i.interact(message)
     pass
 
-from flask import Flask
+
+from flask import Flask, render_template
+from flask_socketio import SocketIO
+
 app = Flask(__name__)
+app.config['SECRET_KEY'] = 'secret!'
+socketio = SocketIO(app)
 
 @app.route('/')
 def hello():
     return '<H1>Hello World </H1>'
 
+@app.route('/pair')
+def pair():
+    return '<H1>Hello World </H1>'
+
+
+
+
 
 if __name__ == '__main__':
+    socketio.run(app)
     os.umask(0o0022)
     versionCheck()
     signal.signal(signal.SIGUSR1, debugToConsole)

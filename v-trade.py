@@ -69,5 +69,7 @@ if __name__ == '__main__':
     #cli.add_command(WordList.merge, 'wordlist_merge')
     #cli.add_command(WordList.word_roots_proc)
     #cli.add_command(WordList.reading_to_words)
+    from  pairs_trading.Cointegrate import cointegrate
+    cli.add_command(cointegrate)
     cli()
     sys.exit(0)

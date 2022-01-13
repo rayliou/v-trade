@@ -3,6 +3,7 @@
 # coding=utf-8
 #from futu import *
 from IPython.display import display, HTML
+from numpy import disp
 #import talib
 
 
@@ -29,6 +30,7 @@ from pyhocon import ConfigFactory
 @click.option('--market',  help='us|hk', default='hk')
 #def updatePairsSnapshot(pairsLregFiles, marker):
 def updatePairsSnapshot(lrfiles,market):
+    pd.options.display.max_colwidth = 200
     print(lrfiles)
 
     confPath = './conf/v-trade.utest.conf'
@@ -38,16 +40,16 @@ def updatePairsSnapshot(lrfiles,market):
     dfs = [ pd.read_csv(f) for f in lrfiles]
     df  = pd.concat(dfs)
     symbList  = list(set(df.n1).union(set(df.n2)))
-    contractDict = None
+    cdsList = None
     gw = GwFutu(c) if market == 'hk' else GwIB(c)
     while True:
-        time.sleep(2)
+        time.sleep(1)
         if market == 'hk':
             dfPrice  = gw.getSnapshot(symbList)[['code','last_price']]
             dfPrice.set_index('code', inplace=True)
             dfPrice.rename('last_price', 'price',inplace=True)
         else:
-            dfPrice,contractDict  = gw.getSnapshot(symbList, contractDict)
+            dfPrice,cdsList  = gw.getSnapshot(symbList, cdsList)
         for s in ['n1','n2']:
             df  = df.join(dfPrice, on=s, how='inner')
             df['BID_'+s] = df.BID
@@ -59,15 +61,18 @@ def updatePairsSnapshot(lrfiles,market):
         d1 = df.BID_n1 * df.slope + df.i - df.ASK_n2 - df.m
         #n1 < n2
         d2 = df.ASK_n1 * df.slope + df.i - df.BID_n2 - df.m
+        #display(df)
         df['z1(-n1+n2)']    = d1/df['std']
         df['n1_n2']    = df.n1 +'_' + df.n2
         df['z2(+n1-n2)']    = d2/df['std']
         df['y/x']    = 1/df.slope
         #df.drop(['x', 'y'], axis=1,inplace=True)
         df = df[df.slope > 0]
-        THRESHOLD =1.8
-        df = df[(df['z1(-n1+n2)'] > THRESHOLD) | (df['z2(+n1-n2)'] <-THRESHOLD)].sort_values(by='std/Y(%)')
-        display(df)
+        THRESHOLD =1.9
+        df = df[(df['z1(-n1+n2)'] > THRESHOLD) | (df['z2(+n1-n2)'] <-THRESHOLD)].sort_values(by='std/Y(%)').tail(50)
+        df['arg']  = df.n1 + ' ' +  df.n2 + ' -s ' + df.slope.map(str) + ' -m ' + df.m.map(str) + ' --std ' + df['std'].map(str) + ' -i ' + df.i.map(str)
+
+        display(df[['std/Y(%)', 'BID_n1', 'ASK_n1', 'LAST_n1', 'CLOSE_n1', 'BID_n2', 'ASK_n2', 'LAST_n2', 'CLOSE_n2', 'z1(-n1+n2)', 'n1_n2', 'z2(+n1-n2)', 'y/x', 'arg', ]  ],raw=True)
         print(datetime.datetime.now().strftime('%H:%M:%S'))
 
     sys.exit(0)

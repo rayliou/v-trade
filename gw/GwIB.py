@@ -30,23 +30,23 @@ from functools import wraps
 
 
 
-
-'''
+HistoricalDataLimitations = '''
     https://interactivebrokers.github.io/tws-api/client_wrapper.html#The
+    https://interactivebrokers.github.io/tws-api/historical_limitations.html#non-available_hd
 
 
     Duration	        Allowed Bar Sizes
-    60 S    	        1 sec - 1 mins
-    120 S   	        1 sec - 2 mins
-    1800 S (30 mins)	1 sec - 30 mins
-    3600 S (1 hr)	    5 secs - 1 hr
-    14400 S (4hr)	    10 secs - 3 hrs
-    28800 S (8 hrs)	    30 secs - 8 hrs
-    1 D	                1 min - 1 day
-    2 D	                2 mins - 1 day
-    1 W	                3 mins - 1 week
-    1 M	                30 mins - 1 month
-    1 Y	                1 day - 1 month
+    \b 60 S    	        1 sec - 1 mins
+    \b 120 S   	        1 sec - 2 mins
+    \b 1800 S (30 mins)	1 sec - 30 mins
+    \b 3600 S (1 hr)	    5 secs - 1 hr
+    \b 14400 S (4hr)	    10 secs - 3 hrs
+    \b 28800 S (8 hrs)	    30 secs - 8 hrs
+    \b 1 D	                1 min - 1 day
+    \b 2 D	                2 mins - 1 day
+    \b 1 W	                3 mins - 1 week
+    \b 1 M	                30 mins - 1 month
+    \b 1 Y	                1 day - 1 month
 
 
 
@@ -222,6 +222,7 @@ class GwIB(IBWrapper, IBClient, BaseGateway):
 
         self.reqContractDetails = GwIB.speedControl(self.reqContractDetails,GwIB.callsCurSec, 49,1)
         self.reqHistoricalData = GwIB.speedControl(self.reqHistoricalData,GwIB.callsCurSec, 49,1)
+        self.liveHookFunc_ = None
 
         #time.sleep(2)
         pass
@@ -230,10 +231,10 @@ class GwIB(IBWrapper, IBClient, BaseGateway):
         endDateTime='',
         durationString='3 M', barSizeSetting='5 mins',
         whatToShow = 'TRADES', useRTH=1,formatDate=1,
-        timeout=60
+        timeout=60,keepUpToDate=False
     ):
         '''
-        https://interactivebrokers.github.io/tws-api/contract_details.html
+        https://interactivebrokers.github.io/tws-api/historical_limitations.html#hd_step_sizes
         '''
         #reqHistoricalData(12, c, '', '2 D', '1 hour', 'TRADES',useRTH=0,formatDate=1,keepUpToDate=False, chartOptions=[])
         cdsList = self.getContractDetails(symbols, secType)
@@ -242,6 +243,7 @@ class GwIB(IBWrapper, IBClient, BaseGateway):
         self.rcvDatabyreqIds_ = dict(); reqId = 100
         self.reqIdToSymbol_ = dict()
         self.rcvDfBigTableHist_ = None
+        self.keepUpToDate_ = keepUpToDate
         cnt  = 1
         for cds in cdsList:
             #self.histLimits_ .wait('reqHistoricalData', s)
@@ -249,9 +251,9 @@ class GwIB(IBWrapper, IBClient, BaseGateway):
             s = c.symbol
             self.log.debug('semHistCall_ .acquire()')
             self.semHistCall_ .acquire()
-            self.log.debug(f'self.reqHistoricalData({reqId}, s, {endDateTime}, {durationString}, {barSizeSetting} ,whatToShow={whatToShow},...')
+            self.log.debug(f'self.reqHistoricalData({reqId}, s, {endDateTime}, {durationString}, {barSizeSetting} ,whatToShow={whatToShow}, keepUpToDate={keepUpToDate}...')
             self.reqHistoricalData(reqId, c, endDateTime, durationString, barSizeSetting ,whatToShow=whatToShow,
-                useRTH=useRTH,formatDate=formatDate,keepUpToDate=False, chartOptions=[])
+                useRTH=useRTH,formatDate=formatDate,keepUpToDate=keepUpToDate, chartOptions=[])
             #self.histLimits_ .logCall('reqHistoricalData', s)
             self.reqIdToSymbol_[reqId] =s
             reqId += 1
@@ -268,8 +270,25 @@ class GwIB(IBWrapper, IBClient, BaseGateway):
         self.rcvDfBigTableHist_ = None
         return df
 
+    def setLiveHookFunc(self, func, *lArgs, **dArgs):
+        self.liveHookFunc_ = func
+        self.liveHookFuncArgs_ = (lArgs, dArgs)
+        self.log.debug(f'setLiveHookFunc:{self.liveHookFunc_} {self.liveHookFuncArgs_}')
+        pass
+    def historicalDataUpdate(self, reqId, bar):
+        o = {'date':bar.date, 'open': bar.open, 'high':bar.high, 'low': bar.low, 'close':bar.close, 'volume':bar.volume, 'wap':bar.average}
+        if self.liveHookFunc_ is not None:
+            symbol = self.reqIdToSymbol_[reqId]
+            self.log.debug( f'reqId:{reqId}; symbol:{symbol} date:{bar.date}' )
+            self.liveHookFunc_(symbol,bar,self.liveHookFuncArgs_[0],self.liveHookFuncArgs_[1])
+        pass
+
     def historicalData(self, reqId, bar):
         o = {'date':bar.date, 'open': bar.open, 'high':bar.high, 'low': bar.low, 'close':bar.close, 'volume':bar.volume, 'wap':bar.average}
+        if self.liveHookFunc_ is not None:
+            symbol = self.reqIdToSymbol_[reqId]
+            self.log.debug( f'reqId:{reqId}; symbol:{symbol} date:{bar.date}' )
+            self.liveHookFunc_(symbol,bar,self.liveHookFuncArgs_[0],self.liveHookFuncArgs_[1])
         if reqId not in self.rcvDatabyreqIds_:
             self.rcvDatabyreqIds_[reqId] = []
         self.rcvDatabyreqIds_[reqId].append(o)
@@ -279,7 +298,10 @@ class GwIB(IBWrapper, IBClient, BaseGateway):
         pass
 
     def historicalDataEnd(self, reqId:int, start:str, end:str):
-        thread = threading.Thread(target=self.threadHistoricalDataEnd, args=(reqId, start, end))
+        if self.liveHookFunc_ is not None:
+            return
+
+        thread = threading.Thread(target=self.threadHistoricalDataEnd, args=(reqId, start, end),daemon=True)
         thread.start()
         self.semHistCall_ .release()
         self.log.debug('semHistCall_ .release()')
@@ -393,15 +415,17 @@ class GwIB(IBWrapper, IBClient, BaseGateway):
             self.conditionVar_.notify()
         pass
 
-    def getSnapshot(self, symbolsList,contractDict=None ):
-        symbols = ','.join(symbolsList)
-        if contractDict is None:
-            contractDict = self. getContractDetails(symbols, secType='STK')
-        assert contractDict is not None
+    def getSnapshot(self, symbolsList,cdsList=None ):
+        symbols = symbolsList
+        if cdsList is None:
+            cdsList = self. getContractDetails(symbols, secType='STK')
+        assert cdsList is not None
         self.rcvDatabyreqIds_ = dict()
         reqIdToSymbols = dict(); self.rcvDatabyreqIds_ = dict(); reqId = 100
         cnt  = 1
-        for s,c in contractDict.items():
+        for cds in cdsList:
+            c = cds.contract
+            s = c.symbol
             c.exchange ='SMART'
             self.log.debug('semMktDataCall_ .acquire()')
             self.semMktDataCall_ .acquire()
@@ -414,7 +438,7 @@ class GwIB(IBWrapper, IBClient, BaseGateway):
 
         maxTimeout = 10
         start  = time.time()
-        while maxTimeout > (time.time() -start) and len(self.rcvDatabyreqIds_) < len(contractDict):
+        while maxTimeout > (time.time() -start) and len(self.rcvDatabyreqIds_) < len(cdsList):
             self.log.debug('wait a condition for reqMktData')
             with self.conditionVar_:
                 self.conditionVar_.wait(timeout=maxTimeout)
@@ -426,8 +450,8 @@ class GwIB(IBWrapper, IBClient, BaseGateway):
             #v['price'] = self.rcvDatabyreqIds_[reqId]['price']
             snapDict[s] =  self.rcvDatabyreqIds_[reqId]
         df  = pd.DataFrame(snapDict).T[['BID','ASK','LAST','CLOSE']]
-        #display(df); sys.exit(0)
-        return df, contractDict
+        df = df[(df.BID >3 )& (df.ASK >3) & (df.LAST>3)]
+        return df, cdsList
 
     def tickPrice(self, reqId:'TickerId' , tickType:TickType, price:float, attrib:'TickAttrib'):
         """Market data tick price callback. Handles all price related ticks."""
@@ -455,6 +479,7 @@ class GwIB(IBWrapper, IBClient, BaseGateway):
         self.semMktDataCall_ .release()
         with self.conditionVar_:
             self.conditionVar_.notify()
+        self.log.debug(f'tickSnapshotEnd({reqId})')
         pass
 
     def writeHistoricalBigTableToFile(self):
@@ -633,7 +658,7 @@ def getContractDetails():
 @click.command()
 @click.argument('group')
 @click.argument('dst')
-@click.option('--duration',  help='3 D etc...', default='3 D')
+@click.option('--duration',  help=HistoricalDataLimitations, default='3 D')
 @click.option('--interval',  help='5 mins|1 min etc...', default='5 mins')
 @click.option('--timeout',  help='default:60 by seconds', default=60)
 def downloadHistory(group, dst, duration, interval, timeout):
@@ -654,9 +679,87 @@ def downloadHistory(group, dst, duration, interval, timeout):
 @click.argument('src', nargs=-1)
 @click.argument('dst')
 def merge_df(src, dst):
-    v  = [ pd.read_csv(f,index_col=0, header=[0,1], parse_dates=True) for f in src]
-    df = pd.concat(v).sort_values(by='date').drop_duplicates()
+    v  = [ pd.read_csv(f,index_col=0, header=[0,1], parse_dates=True).dropna() for f in src]
+    df = pd.concat(v).sort_values(by='date')
+    df[~df.index.duplicated(keep='first')].dropna(1, 'any')
     df.to_csv(dst)
+
+
+@click.command()
+@click.argument('x')
+@click.argument('y')
+@click.option('-s','--slope',  help='', type=float)
+@click.option('-i','--intercept',  help='', type=float)
+@click.option('-m','--mean',  help='', default=0, type=float)
+@click.option('--std',  help='', default=0, type=float)
+def plotLivePair(x,y,slope,intercept,mean,std):
+    logInit(logging.ERROR)
+    confPath = '../conf/v-trade.utest.conf'
+    c = ConfigFactory.parse_file(confPath)
+    gw = GwIB(c)
+    fig = plt.figure(figsize = (12,8))
+    plt.rcParams['font.sans-serif'] = ['Arial Unicode MS']
+    ax = fig.add_subplot(111)
+    #diff.plot(ax=ax)
+    symbols = [x,y]
+    MAX_NUM = 720
+    timeS = {x:[], y:[]}
+
+    def updatePairs():
+        if len(timeS[x]) == 0 or len(timeS[y]) == 0:
+            return
+        for xVal in reversed(timeS[x]):
+            for yVal in reversed(timeS[y]):
+                if xVal.date == yVal.date:
+                    d = slope * xVal.close + intercept - yVal.close
+                    z = (d - mean)/std
+                    print(z)
+                    return z
+        return None
+
+
+
+    def reDraw(symbol,bar, *arg,**kwargs ):
+        bars = timeS[symbol]
+        bars.append(bar)
+        if len(bars) > MAX_NUM:
+            del bars[0]
+        # print(timeS[symbol][-1])
+        updatePairs()
+        pass
+
+        #print(symbol)
+        #print(f'symbol:{symbol}, data:{data}, ax:{ax}')
+        #return None
+        # ax.axhline(mean+std*2, color='g', linestyle='--', label= f'Sell {x}/Buy {y}')
+        #ax.axhline(mean-std*2, color='r', linestyle='--', label= f'Buy {x}/Sell {y}')
+        #ax.axhline(mean-std, color='y', linestyle='--')
+        #ax.axhline(mean+std, color='y', linestyle='--')
+        #ax.axhline(mean,  linestyle='--')
+        #ax.set_title(f'+:{n1} short {n1}+ long {n2};-:short {n2}+ long {n1};')
+        # plt.legend()
+        # plt.pause(0.05)
+        # plt.show()
+        pass
+
+    gw.setLiveHookFunc(reDraw,ax=ax)
+    gw.getHistoricalData(symbols, 'STK', durationString='3600 S', barSizeSetting='5 secs',useRTH=0, keepUpToDate=True)
+    pass
+
+
+@click.command()
+def web():
+    from flask import Flask, render_template
+    from flask_socketio import SocketIO
+    app = Flask(__name__)
+    app.config['SECRET_KEY'] = 'secret!'
+    socketio = SocketIO(app)
+    @app.route('/')
+    def hello():
+        return '<H1>Hello World </H1>'
+    socketio.run(app)
+    pass
+
 
 
 @click.group()
@@ -670,21 +773,9 @@ if __name__ == '__main__':
     cli.add_command(watchPosition)
     cli.add_command(downloadHistory)
     cli.add_command(merge_df)
+    cli.add_command(plotLivePair)
+    cli.add_command(web)
+
     cli(); sys.exit(0)
     if len(sys.argv) > 1 and sys.argv[1] == 'test':
         import doctest; doctest.testmod(); sys.exit(0)
-
-    confPath = '../conf/v-trade.utest.conf'
-    c = ConfigFactory.parse_file(confPath)
-    gw = GwIB(c)
-    symbols = c.ticker.stock.us.top_150V
-    symbols = c.ticker.stock.us.cn
-    symbols = c.ticker.stock.us.topV100_MC200
-    symbols = ','.join(symbols)
-    symbols = 'SNOW,MRVL,MDT,PG,KO,BMY,BNTX,NKE,JD,WFC,LRCX,LLY,INTU,GM,GS'
-    #ret = gw.getHistoricalData(symbols, endDateTime='20210924  09:30:00')
-    ret = gw.getHistoricalData(symbols,durationString='60 D',barSizeSetting='1 min', endDateTime='')
-    #ret = gw.getHistoricalData(symbols,durationString='3 D', endDateTime='')
-    gw.disconnect()
-
-    sys.exit(0)

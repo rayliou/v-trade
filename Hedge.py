@@ -136,7 +136,6 @@ class Hedge:
             Ywin = Y[b:e]
             return Xwin.corr(Ywin)
 
-        #print(f'dsAux={dsAux}')
         C = dsAux.rolling(window=self.lRegWindow_ ,min_periods=self.lRegWindow_).apply(auxWindowFunc,raw=True)
         return C
 
@@ -161,7 +160,6 @@ class Hedge:
         df = dfPairs[(dfPairs.x > 5) & (dfPairs.y > 5)]
         df.drop(['x','y','z'], axis=1,inplace=True)
         df.to_csv(self.lrPath_, index=False)
-        display(df)
         pass
 
     def testLinregress(self,symbols ='AMZN,JPM', doPlot = False):
@@ -247,6 +245,7 @@ class Hedge:
         dsAux = pd.Series(np.arange(N)) #value
         dsAux.index  = X.index
 
+
         def auxWindowFunc(A):
             #print(f'A={A}')
             b = int(A[0])
@@ -257,8 +256,12 @@ class Hedge:
             ret = rollFunc(Xwin,Ywin,out)
             outList.append(out)
             return ret
-        #print(f'dsAux={dsAux}')
         dsAux.rolling(window=window ,min_periods=100).apply(auxWindowFunc,raw=True)
+
+        #display(dsAux)
+        #display(X)
+        #display(Y)
+        #print(N)
         pass
 
 

@@ -48,12 +48,15 @@ class TickerScreener:
 
         nTopMktCap = 7000
         nTopVlm   = 5000
+
+        nTopMktCap = 400
+        nTopVlm   = 300
         setTopMktCap = set(df_sorted_by_mc.head(nTopMktCap).Symbol )
         setTopMktCap
         #display(df_sorted_by_v)
         df_sorted_by_v = df_sorted_by_v.head(nTopVlm)
         df_sorted_by_v = df_sorted_by_v.loc[lambda df: [s in setTopMktCap  for s in df.Symbol] ,:]
-        #print(df_sorted_by_v.shape); sys.exit(0)
+        print(df_sorted_by_v.shape); sys.exit(0)
         symbList= ','.join(df_sorted_by_v.Symbol)
         return symbList
     pass
