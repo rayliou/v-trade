@@ -1,0 +1,15 @@
+   ticker                           owner   cost    value         dt              dt_sec
+23    CRCT  Abdiel Capital Management, LLC  23.90  4780000 2021-11-29 2021-11-29 18:22:00
+5     RVNC                    Foley Mark J  12.90   515924 2021-11-29 2021-11-29 21:24:00
+18    SAFE                      ISTAR INC.  71.15   499900 2021-11-29 2021-11-29 19:43:00
+34    EVRG                   WILDER C JOHN  65.10   459447 2021-11-29 2021-11-29 16:58:00
+51    AMBC                 IGLESIAS LISA G  15.15   125745 2021-11-29 2021-11-29 16:29:00
+103    CLF            Goncalves Celso L Jr  21.18   105895 2021-11-29 2021-11-29 10:42:00
+14    PSTX  Malin Life Sciences Holdings L   6.89    76209 2021-11-29 2021-11-29 19:55:00
+53     PCB                  LEE SANG YOUNG  22.25    62300 2021-11-29 2021-11-29 16:26:00
+19    AVNW                    SINGH SOMESH  30.79    61580 2021-11-29 2021-11-29 19:11:00
+22    LODE                  Drozdoff Leo M   1.65    60654 2021-11-29 2021-11-29 18:36:00
+78    PWOD                Brewer Daniel K.  23.75    23750 2021-11-29 2021-11-29 14:56:00
+47     FRD                   Taylor Mike J  11.04    22080 2021-11-29 2021-11-29 16:32:00
+37    AOMR                  Filson Brandon  16.34     8172 2021-11-29 2021-11-29 16:50:00
+50    NICK          Keating Brendan Joseph  12.00     5748 2021-11-29 2021-11-29 16:30:00

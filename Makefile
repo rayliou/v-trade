@@ -42,11 +42,13 @@ lineregress $(ROOT)/lineregress.done:$(ROOT)/cointegration.done
 	./Hedge.py lr  $(BIG_TABLE_MERGED_FILE) -l $(ROOT)/lineregress.1mon.800bar.csv -w 800 -p $(ROOT)/cointegration.1mon.csv
 	touch $(ROOT)/lineregress.done
 
-cointegration $(ROOT)/cointegration.done: $(ROOT)/start.done $(BIG_TABLE_MERGED_FILE)
+cointegration $(ROOT)/cointegration.done: $(ROOT)/start.done $(BIG_TABLE_MERGED_FILE) $(STOCK_BY_PLATES_FILE)
 	#./Hedge.py coin  $(BIG_TABLE_MERGED_FILE) -p $(ROOT)/cointegration.1mon.csv -c 30
 	#./Hedge.py coin  $(BIG_TABLE_MERGED_FILE) -p  $(ROOT)/cointegration.2mon.csv -c 60
 	./v-trade.py cointegrate --stock_plates_json $(STOCK_BY_PLATES_FILE) --max_days 30 $(BIG_TABLE_MERGED_FILE)  $(ROOT)/cointegration.1mon.csv
 	touch $(ROOT)/cointegration.done
+$(STOCK_BY_PLATES_FILE) :
+	./screener/ScreenByPlates.py $@
 
 
 start $(ROOT)/start.done: $(BIG_TABLE_MERGED_FILE)
