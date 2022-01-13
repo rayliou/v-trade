@@ -82,8 +82,9 @@ def rmtz(src,dst):
 @click.argument('group')
 @click.argument('dst')
 @click.option('--interval',  help='5m,1m etc', default='5m')
-def mdownload(group, dst, interval):
-    confPath = '../conf/v-trade.utest.conf'
+@click.option('--conf',  help='conf')
+def mdownload(group, dst, interval,conf):
+    confPath = conf
     c = ConfigFactory.parse_file(confPath)
     symbols = c.ticker.stock.us[group]
     symbols = ','.join(symbols)
@@ -101,9 +102,6 @@ if __name__ == '__main__':
     if len(sys.argv) > 1 and sys.argv[1] == 'test':
         import doctest; doctest.testmod(); sys.exit(0)
 
-    confPath = '../conf/v-trade.utest.conf'
-    c = ConfigFactory.parse_file(confPath)
-    gw = GwYahoo(c)
     cli.add_command(rmtz)
     cli.add_command(mdownload)
     cli()

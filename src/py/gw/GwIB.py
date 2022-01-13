@@ -661,8 +661,10 @@ def getContractDetails():
 @click.option('--duration',  help=HistoricalDataLimitations, default='3 D')
 @click.option('--interval',  help='5 mins|1 min etc...', default='5 mins')
 @click.option('--timeout',  help='default:60 by seconds', default=60)
-def downloadHistory(group, dst, duration, interval, timeout):
-    confPath = '../conf/v-trade.utest.conf'
+@click.option('--conf',  help='conf file')
+def downloadHistory(group, dst, duration, interval, timeout,conf ):
+    assert conf is not None and conf != '' ,  '--conf needed'
+    confPath = conf
     c = ConfigFactory.parse_file(confPath)
     symbols = c.ticker.stock.us[group]
     symbols = [s.replace('/',' ') for s in symbols]

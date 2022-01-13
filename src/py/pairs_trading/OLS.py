@@ -36,8 +36,8 @@ def load_merged_data(file = 'data.cn/20211222.csvx'):
     symbols = list(set([c[0] for c in df.columns]))
     return df,symbols
 
-class Cointegrate:
-    log = logging.getLogger("main.Cointegrate")
+class OLS:
+    log = logging.getLogger("main.OLS")
     def __init__(self,df, symbols, maxDays =30):
         self.df_ = df
         self.symbols_ = symbols
@@ -57,7 +57,6 @@ class Cointegrate:
         #loop
         pPairs = []
         cnt  = 0
-        start = datetime.now() - timedelta(days=int(self.maxDays_)/2)
         totalCnt =  int(N *(N-1) /2)
         for i in range(N):
             for j in range(i+1,N):
@@ -66,14 +65,9 @@ class Cointegrate:
                 cnt += 1
                 X1 = self.df_[k1].close
                 X2 = self.df_[k2].close
-                X1_h  = X1[X1.index > start]
-                X2_h  = X2[X2.index > start]
-
-
                 _, pCoin, _ = coint(X1, X2)
-                _, pCoin_h, _ = coint(X1_h, X2_h)
-                self.log.debug(f'[{cnt}/{totalCnt}]:\t{k1} {k2}\t{pCoin:.3f},{pCoin_h:.3f}')
-                v = {'pair': f'{k1}_{k2}', 'p': (pCoin if pCoin > pCoin_h else pCoin_h) }
+                self.log.debug(f'[{cnt}/{totalCnt}]:\t{k1} {k2}\t{pCoin}')
+                v = {'pair': f'{k1}_{k2}', 'p': pCoin}
                 v['n1'] = k1
                 v['n2'] = k2
                 pPairs.append(v)
@@ -91,10 +85,10 @@ class Cointegrate:
 @click.argument('dst')
 @click.option('-d','--max_days',  help='', default=30)
 @click.option('--stock_plates_json',  help='', default='')
-def cointegrate(bigcsv,dst,max_days, stock_plates_json):
+def ols(bigcsv,dst,max_days, stock_plates_json):
     logInit()
     df,symbols = load_merged_data(bigcsv)
-    c  = Cointegrate(df,symbols,max_days)
+    c  = OLS(df,symbols,max_days)
     dfP = c.run()
     if stock_plates_json != '':
         extList = []
@@ -130,6 +124,5 @@ def cli():
 
 if __name__ == '__main__':
 
-    cli.add_command(cointegrate)
     cli(); sys.exit(0)
 

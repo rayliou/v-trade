@@ -1,16 +1,9 @@
-GROUP=cn
-GROUP=topV100_MC200
-#BASE_DATE=20220109
-#Sunday
-BASE_DATE=$(shell python -c  'from datetime import datetime,timedelta; tm = datetime.now()  ; tm -= timedelta(days=tm.weekday()); print(tm.strftime("%Y%m%d"))')
-DATE=$(shell date +%Y%m%d)
-FEED_SOURCE=Yahoo
+include ../../../vars.mk
 
-DATA_ROOT=../data_test
+BASE_DATE=$(shell python -c  'from datetime import datetime,timedelta; tm = datetime.now()  ; tm -= timedelta(days=tm.weekday()); print(tm.strftime("%Y%m%d"))')
 BIG_TABLE_BASE_FILE=$(DATA_ROOT)/stk-base-$(BASE_DATE).$(GROUP).$(FEED_SOURCE).csv
 BIG_TABLE_DAILY_FILE=$(DATA_ROOT)/stk-daily-$(DATE).$(GROUP).$(FEED_SOURCE).csv
 BIG_TABLE_DAILY_FILE_1m=$(DATA_ROOT)/stk-daily-$(DATE).$(GROUP).$(FEED_SOURCE).1m.csv
-BIG_TABLE_MERGED_FILE=$(DATA_ROOT)/stk-merged-$(DATE).$(GROUP).$(FEED_SOURCE).csv
 
 all:
 	GROUP=cn            make -e merge
@@ -27,7 +20,7 @@ merge: $(BIG_TABLE_MERGED_FILE)
 $(BIG_TABLE_MERGED_FILE): $(BIG_TABLE_BASE_FILE) $(BIG_TABLE_DAILY_FILE)
 	./GwIB.py  merge-df $^ $@
 $(BIG_TABLE_DAILY_FILE):
-	./GwIB.py  downloadhistory $(GROUP) $@  --interval '5 mins'  --duration '3 D'  --timeout 600
+	./GwIB.py  downloadhistory $(GROUP) $@  --interval '5 mins'  --duration '3 D'  --timeout 600 --conf $(CONF_FILE)
 
 test: $(BIG_TABLE_DAILY_FILE_1m)
 $(BIG_TABLE_DAILY_FILE_1m):
@@ -35,7 +28,7 @@ $(BIG_TABLE_DAILY_FILE_1m):
 
 $(BIG_TABLE_BASE_FILE): $(DATA_ROOT)/start.done
 	#./GwIB.py  downloadhistory $(GROUP) $@  --interval '5 mins' --duration '2 M' --timeout 1200
-	./GwYahoo.py mdownload  $(GROUP) $@ --interval 5m
+	./GwYahoo.py mdownload  $(GROUP) $@ --interval 5m --conf $(CONF_FILE)
 	#echo $(DATA_ROOT)
 rmtz:
 	echo $@

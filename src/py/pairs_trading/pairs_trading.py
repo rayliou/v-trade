@@ -69,12 +69,9 @@ if __name__ == '__main__':
     versionCheck()
     showUsage = False
     signal.signal(signal.SIGUSR1, debugToConsole)
-    # add workflow sub command
-    #from lib.wordlist import WordList
-    #cli.add_command(WordList.merge, 'wordlist_merge')
-    #cli.add_command(WordList.word_roots_proc)
-    #cli.add_command(WordList.reading_to_words)
-    from  pairs_trading.Cointegrate import cointegrate
+    from  Cointegrate import cointegrate
     cli.add_command(cointegrate)
+    from  OLS import ols
+    cli.add_command(ols)
     cli()
     sys.exit(0)
