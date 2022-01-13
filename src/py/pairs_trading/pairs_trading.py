@@ -71,7 +71,8 @@ if __name__ == '__main__':
     signal.signal(signal.SIGUSR1, debugToConsole)
     from  Cointegrate import cointegrate
     cli.add_command(cointegrate)
-    from  OLS import ols
+    from  OLS import ols,plot
     cli.add_command(ols)
+    cli.add_command(plot)
     cli()
     sys.exit(0)

@@ -26,15 +26,7 @@ import hashlib,json
 import click,logging
 from screener.ScreenByPlates import StockWithPlates
 
-
-def load_merged_data(file = 'data.cn/20211222.csvx'):
-    msg  = f'pd.read_csv({file}, index_col=0, header=[0,1], parse_dates=True )'
-    print(msg)
-    df  = pd.read_csv(file, index_col=0, header=[0,1], parse_dates=True )
-    df = df[ ~ df.isna().any(axis=1)]
-    #symbols = ','.join(set([c[0] for c in df.columns]))
-    symbols = list(set([c[0] for c in df.columns]))
-    return df,symbols
+from common.BigPandasTable import load_merged_data
 
 class Cointegrate:
     log = logging.getLogger("main.Cointegrate")
