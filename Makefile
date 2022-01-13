@@ -60,7 +60,7 @@ rmtz:$(BIG_TABLE_MERGED_FILE) $(ROOT)/start.done
 	./S.py $(BIG_TABLE_MERGED_FILE) $(TMP_DATA)
 
 git_push:
-	git add *.py */*.py Makefile #*/*.mk
+	git add *.py *.md  */*.{py,md}  Makefile #*/*.mk
 	git ci  -am  'xxx'
 	git push
 

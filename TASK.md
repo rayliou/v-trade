@@ -1,0 +1,4 @@
+- v cones :
+    ZM NKE MRNA TSM UBER ROKU JD BBY TTD
+
+
