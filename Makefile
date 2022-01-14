@@ -10,16 +10,22 @@ clean:
 
 clean_:
 	rm -fr $(WORK_DATA_DIR)
+	cd $(PY_PATH)/gw && make clean
 
 show:
 	GROUP=cn cd $(PY_PATH)/gw && make show
 	GROUP=topV100_MC200 cd $(PY_PATH)/gw && make show
 web:
 	FLASK_APP=WebMain flask run
+study:
+	cd $(PY_PATH) && /usr/local/bin/jupyter-lab
 
 hedge: $(WORK_DATA_DIR)/lineregress.done
 #hedge: $(WORK_DATA_DIR)/cointegration.done
 	echo aaa
+
+watch_pairs:
+	$(PY_PATH)/pairs_trading/pairs_trading.py watchpairs ./$(DATE)*/*ols*.csv --conf $(CONF_FILE)
 
 lineregress $(WORK_DATA_DIR)/lineregress.done:$(WORK_DATA_DIR)/cointegration.done
 	$(PY_PATH)/pairs_trading/pairs_trading.py ols --windowsize 500  $(BIG_TABLE_MERGED_FILE)  $(WORK_DATA_DIR)/cointegration.1mon.csv $(WORK_DATA_DIR)/ols.1mon.csv
@@ -47,4 +53,4 @@ git_push:
 	git ci  -am  'xxx'
 	git push
 
-.PHONY : hedge start clean git_push web
+.PHONY : hedge start clean git_push web watch_pairs

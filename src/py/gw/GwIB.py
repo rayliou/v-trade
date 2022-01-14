@@ -683,7 +683,8 @@ def downloadHistory(group, dst, duration, interval, timeout,conf ):
 def merge_df(src, dst):
     v  = [ pd.read_csv(f,index_col=0, header=[0,1], parse_dates=True).dropna() for f in src]
     df = pd.concat(v).sort_values(by='date')
-    df[~df.index.duplicated(keep='first')].dropna(1, 'any')
+    df = df[~df.index.duplicated(keep='first')]
+    df.dropna(1, 'any',inplace=True)
     df.to_csv(dst)
 
 

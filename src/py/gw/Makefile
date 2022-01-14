@@ -4,6 +4,7 @@ BASE_DATE=$(shell python -c  'from datetime import datetime,timedelta; tm = date
 BIG_TABLE_BASE_FILE=$(DATA_ROOT)/stk-base-$(BASE_DATE).$(GROUP).$(FEED_SOURCE).csv
 BIG_TABLE_DAILY_FILE=$(DATA_ROOT)/stk-daily-$(DATE).$(GROUP).$(FEED_SOURCE).csv
 BIG_TABLE_DAILY_FILE_1m=$(DATA_ROOT)/stk-daily-$(DATE).$(GROUP).$(FEED_SOURCE).1m.csv
+BIG_TABLE_DAILY_FILE_30s=$(DATA_ROOT)/stk-daily-$(DATE).$(GROUP).$(FEED_SOURCE).30s.csv
 
 all:
 	GROUP=cn            make -e merge
@@ -15,16 +16,26 @@ clean_all:
 	GROUP=cn            make -e _clean
 	GROUP=topV100_MC200 make -e _clean
 
+study:
+	#GROUP=cn            make -e 1m
+	#GROUP=topV100_MC200 make -e 1m
+	GROUP=cn            make -e 30s
+	GROUP=topV100_MC200 make -e 30s
+
 merge: $(BIG_TABLE_MERGED_FILE)
 	echo merge $^  to  $@
 $(BIG_TABLE_MERGED_FILE): $(BIG_TABLE_BASE_FILE) $(BIG_TABLE_DAILY_FILE)
 	./GwIB.py  merge-df $^ $@
 $(BIG_TABLE_DAILY_FILE):
-	./GwIB.py  downloadhistory $(GROUP) $@  --interval '5 mins'  --duration '3 D'  --timeout 600 --conf $(CONF_FILE)
+	./GwIB.py  downloadhistory $(GROUP) $@  --interval '5 mins'  --duration '5 D'  --timeout 600 --conf $(CONF_FILE)
 
-test: $(BIG_TABLE_DAILY_FILE_1m)
+1m: $(BIG_TABLE_DAILY_FILE_1m)
 $(BIG_TABLE_DAILY_FILE_1m):
-	./GwIB.py  downloadhistory test $@  --interval '1 min'  --duration '10 D'  --timeout 1200
+	./GwIB.py  downloadhistory $(GROUP) $@  --interval '1 min'  --duration '20 D'  --timeout 1200 --conf $(CONF_FILE)
+
+30s: $(BIG_TABLE_DAILY_FILE_30s)
+$(BIG_TABLE_DAILY_FILE_30s):
+	./GwIB.py  downloadhistory $(GROUP) $@  --interval '30 secs'  --duration '20 D'  --timeout 2400 --conf $(CONF_FILE)
 
 $(BIG_TABLE_BASE_FILE): $(DATA_ROOT)/start.done
 	#./GwIB.py  downloadhistory $(GROUP) $@  --interval '5 mins' --duration '2 M' --timeout 1200
@@ -38,7 +49,7 @@ start $(DATA_ROOT)/start.done:
 _clean:
 	rm -fr $(BIG_TABLE_BASE_FILE) $(BIG_TABLE_DAILY_FILE) $(BIG_TABLE_MERGED_FILE)
 _clean_daily:
-	rm -fr $(BIG_TABLE_DAILY_FILE)
+	rm -fr $(BIG_TABLE_DAILY_FILE) $(BIG_TABLE_MERGED_FILE)
 
 show:
 	@echo Base: $(BIG_TABLE_BASE_FILE)

@@ -74,5 +74,7 @@ if __name__ == '__main__':
     from  OLS import ols,plot
     cli.add_command(ols)
     cli.add_command(plot)
+    from MarketWatcher import watchPairs
+    cli.add_command(watchPairs)
     cli()
     sys.exit(0)

@@ -55,8 +55,8 @@ class OLS:
             cnt  += 1
         dfZ = pd.DataFrame(oList)
         self.dfPairs_ = pd.concat([dfZ, self.dfPairs_,],axis=1)
-        self.dfPairs_ = self.dfPairs_[self.dfPairs_.slope > 0.05]
-        return self.dfPairs_ 
+        self.dfPairs_ = self.dfPairs_[self.dfPairs_.s > 0.05]
+        return self.dfPairs_
 
     @classmethod
     def regressOneWindow(cls, n1,n2,df):
@@ -71,9 +71,9 @@ class OLS:
         slope = coeff.close
         intercepter = coeff.const
         diff = X1 * slope + intercepter -Y
-        mean = diff.mean()
-        std  = diff.std()
-        o = { 'slope' : slope, 'intercepter': intercepter, 'mean' : mean, 'std': std }
+        m = diff.mean()
+        st  = diff.std()
+        o = { 's' : slope, 'i': intercepter, 'm' : m, 'st': st }
         o['halflife'] = cls.getHalflife(diff)
         return o,diff
 
@@ -83,7 +83,6 @@ class OLS:
         s_lag.iloc[0] = s_lag.iloc[1]
         s_ret = s - s_lag
         s_ret.iloc[0] = s_ret.iloc[1]
-        
     #     s_lag2 = sm.add_constant(s_lag)
     #     model = sm.OLS(s_ret,s_lag2)
     #     res = model.fit()
@@ -92,7 +91,6 @@ class OLS:
         res = stats.linregress(s_lag, s_ret)
         halflife = round(-np.log(2) /res.slope,2)
         return halflife
-                     
 
     pass
 
@@ -126,10 +124,10 @@ def plot(n1,n2, bigcsv,pairscsv, windowsize):
     df = df.tail(windowsize)
     row = dfPairs[dfPairs.pair == f'{n1}_{n2}'].iloc[0]
 
-    std = row['std'].astype(float)
-    mean = row['mean'].astype(float)
-    slope = row.slope.astype(float)
-    intercepter = row.intercepter.astype(float)
+    std = row['st'].astype(float)
+    mean = row['m'].astype(float)
+    slope = row.s.astype(float)
+    intercepter = row.i.astype(float)
     diff = df[n1].close * slope + intercepter - df[n2].close
 
     fig = plt.figure(figsize = (12,8))
@@ -178,12 +176,12 @@ start = datetime.now() - timedelta(days=1)
 df = df[df.index >start]
 #display(df.head(1))
 
-                     
-    
-    
-    
-    
-    
-    
+
+
+
+
+
+
+
     '''
 
