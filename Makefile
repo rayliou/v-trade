@@ -1,13 +1,22 @@
 include vars.mk
+# vars.prod.mk  vars.study.mk
+include vars.prod_or_study.mk
 
-DATE=$(shell date +%Y%m%d)
+
+#DATE=$(shell date +%Y%m%d)
 # BIG_TABLE_MERGED_FILE=/Users/henry/stock/v-trade/data/data_study/stk-merged-20220114.cn.Yahoo.csv
-END_DATES_LIST=$(shell $(PY_PATH)/pairs_trading/studyCointegrate.py date-list-from-bigcsv  --skipdays 28  $(BIG_TABLE_MERGED_FILE) )
+#BIG_TABLE_MERGED_FILE=xxxxxxxxxxxxxxxxx
+#END_DATES_LIST=$(shell $(PY_PATH)/pairs_trading/studyCointegrate.py date-list-from-bigcsv  --skipdays 28  $(BIG_TABLE_MERGED_FILE) )
 
 all:
-	END_DATES_LIST=$(DATE) make -e m_study
-clean:
-	END_DATES_LIST=$(DATE) make -e m_clean
+	cd /Users/henry/stock/env_prod && make m_study
+study:
+	cd /Users/henry/stock/env_study && make m_study
+#	END_DATES_LIST='2022-01-11 2022-01-12 2022-01-13 2022-01-14' make -e m_study
+clean:m_clean
+#clean:
+#	END_DATES_LIST=$(DATE) make -e m_clean
+
 clean_data:
 	for g in $(GROUPS); do\
 		GROUP=$${g} make -C $(PY_PATH)/gw clean ;\
@@ -36,7 +45,7 @@ $(DATE).$(GROUP)/coint:$(BIG_TABLE_MERGED_FILE) $(STOCK_BY_PLATES_FILE) $(DATE).
 
 $(DATE).$(GROUP)/start: $(BIG_TABLE_MERGED_FILE)
 	mkdir -p `dirname $@`
-	ln -sf $^ `dirname $@`
+	ln -sf $^ `dirname $@`/bigcsv.csv
 	touch $@
 
 $(DATE).$(GROUP)/clean:
@@ -48,9 +57,10 @@ $(DATE).$(GROUP)/clean:
 show:
 	BIG_TABLE_MERGED_FILE=$(BIG_TABLE_MERGED_FILE) GROUP=cn  make  -C $(PY_PATH)/gw -e show
 	GROUP=topV100_MC200 make  -C $(PY_PATH)/gw -e show
+	echo END_DATES_LIST=$(END_DATES_LIST)
 web:
 	FLASK_APP=WebMain flask run
-study:
+xstudy:
 	cd $(PY_PATH) && /usr/local/bin/jupyter-lab
 
 hedge: $(WORK_DATA_DIR)/ols.done
