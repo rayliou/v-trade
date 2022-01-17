@@ -9,7 +9,8 @@ PY_PATH=$(ROOT)/src/py
 DATA_STATIC=$(ROOT)/data/data_static
 STOCK_BY_PLATES_FILE=$(DATA_STATIC)/ScreenByPlates-20220112.json
 DATA_ROOT=$(ROOT)/data/data_test
-UNI_NAME=$(DATE).$(GROUP).$(FEED_SOURCE).test
+
+UNI_NAME=$(DATE)/$(GROUP).$(FEED_SOURCE).test
 BIG_TABLE_MERGED_FILE=$(DATA_ROOT)/stk-merged-$(DATE).$(GROUP).$(FEED_SOURCE).csv
 
 CONF_FILE=$(ROOT)/conf/v-trade.utest.conf

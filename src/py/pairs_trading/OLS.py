@@ -34,8 +34,10 @@ from common.BigPandasTable import load_merged_data
 
 class OLS:
     log = logging.getLogger("main.OLS")
-    def __init__(self,df, dfPairs,windowsize=800):
-        self.df_ = df
+    def __init__(self,df, dfPairs,windowsize=800,end_date=''):
+        self.end_date_ = end_date
+        self.df_ =  df[:end_date] if end_date is not None and end_date != '' else df
+
         self.dfPairs_ = dfPairs
         self.windowsize_ = windowsize
         display(self.df_.head(1))
@@ -46,16 +48,16 @@ class OLS:
         cnt = 1
         totalN = self.dfPairs_.shape[0]
         for index,row in self.dfPairs_.iterrows():
-            df = self.df_.tail(self.windowsize_)
-            x = row.n1
-            y = row.n2
-            o,_ = self.regressOneWindow(x,y,df)
+            #df = self.df_.tail(self.windowsize_)
+            df = self.df_[row.start_of_pmin:]
+            n1,n2 = row.pair.split('_')
+            o,_ = self.regressOneWindow(n1,n2,df)
             # print(f'{cnt}/{totalN}t:\t', end='')
             oList.append(o)
             cnt  += 1
         dfZ = pd.DataFrame(oList)
         self.dfPairs_ = pd.concat([dfZ, self.dfPairs_,],axis=1)
-        self.dfPairs_ = self.dfPairs_[self.dfPairs_.s > 0.05]
+        self.dfPairs_ = self.dfPairs_[self.dfPairs_.s > 0.05].drop(['start_of_pmin','pmin'], axis=1,inplace=False)
         return self.dfPairs_
 
     @classmethod
@@ -99,12 +101,13 @@ class OLS:
 @click.argument('pairscsv')
 @click.argument('dst')
 @click.option('--windowsize',  help='', default=500)
-def ols(bigcsv,pairscsv, dst,windowsize):
+@click.option('--end_date',  help='', default='')
+def ols(bigcsv,pairscsv, dst,windowsize,end_date):
     logInit()
     df,symbols = load_merged_data(bigcsv)
     dfPairs = pd.read_csv(pairscsv)
 
-    olsRegress  = OLS(df,dfPairs,windowsize)
+    olsRegress  = OLS(df,dfPairs,windowsize,end_date)
     df = olsRegress.run()
     df.to_csv(dst,index=False)
     display(df.tail(10))

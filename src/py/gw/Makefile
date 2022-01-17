@@ -1,6 +1,7 @@
 include ../../../vars.mk
 
 BASE_DATE=$(shell python -c  'from datetime import datetime,timedelta; tm = datetime.now()  ; tm -= timedelta(days=tm.weekday()); print(tm.strftime("%Y%m%d"))')
+DIFF_DAYS=$(shell python -c  'from datetime import datetime,timedelta; tm = datetime.now() ;  print(1+tm.weekday())')
 BIG_TABLE_BASE_FILE=$(DATA_ROOT)/stk-base-$(BASE_DATE).$(GROUP).$(FEED_SOURCE).csv
 BIG_TABLE_DAILY_FILE=$(DATA_ROOT)/stk-daily-$(DATE).$(GROUP).$(FEED_SOURCE).csv
 BIG_TABLE_DAILY_FILE_1m=$(DATA_ROOT)/stk-daily-$(DATE).$(GROUP).$(FEED_SOURCE).1m.csv
@@ -27,7 +28,7 @@ merge: $(BIG_TABLE_MERGED_FILE)
 $(BIG_TABLE_MERGED_FILE): $(BIG_TABLE_BASE_FILE) $(BIG_TABLE_DAILY_FILE)
 	./GwIB.py  merge-df $^ $@
 $(BIG_TABLE_DAILY_FILE):
-	./GwIB.py  downloadhistory $(GROUP) $@  --interval '5 mins'  --duration '5 D'  --timeout 600 --conf $(CONF_FILE)
+	./GwIB.py  downloadhistory $(GROUP) $@  --interval '5 mins'  --duration '$(DIFF_DAYS) D'  --timeout 600 --conf $(CONF_FILE)
 
 1m: $(BIG_TABLE_DAILY_FILE_1m)
 $(BIG_TABLE_DAILY_FILE_1m):

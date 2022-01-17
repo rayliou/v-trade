@@ -34,6 +34,10 @@ def load_merged_data(file = 'data.cn/20211222.csvx'):
     df  = pd.read_csv(file, index_col=0, header=[0,1], parse_dates=True )
     #df = df[ ~ df.isna().any(axis=1)]
     symbols = list(set([c[0] for c in df.columns]))
+    #print(df.index)
+    #print(df.index.iloc[-1])
+    #print(df.index.iloc[0])
+    assert df.index[-1] - df.index[0]  >  timedelta(days=50)
     return df,symbols
 
 

@@ -1,47 +1,71 @@
 include vars.mk
 
+DATE=$(shell date +%Y%m%d)
+# BIG_TABLE_MERGED_FILE=/Users/henry/stock/v-trade/data/data_study/stk-merged-20220114.cn.Yahoo.csv
+END_DATES_LIST=$(shell $(PY_PATH)/pairs_trading/studyCointegrate.py date-list-from-bigcsv  --skipdays 28  $(BIG_TABLE_MERGED_FILE) )
+
 all:
-	GROUP=cn make -e hedge
-	GROUP=topV100_MC200 make -e hedge
-
+	END_DATES_LIST=$(DATE) make -e m_study
 clean:
-	GROUP=cn make -e clean_
-	GROUP=topV100_MC200 make -e clean_
+	END_DATES_LIST=$(DATE) make -e m_clean
+clean_data:
+	for g in $(GROUPS); do\
+		GROUP=$${g} make -C $(PY_PATH)/gw clean ;\
+	done
 
-clean_:
-	rm -fr $(WORK_DATA_DIR)
-	cd $(PY_PATH)/gw && make clean
+GROUPS=cn topV100_MC200
+
+m_study:m_ols
+	echo study done
+
+m_ols:m_coint
+
+
+m_%:
+	for d in $(END_DATES_LIST); do  for g in $(GROUPS); do\
+		DATE=$${d} GROUP=$${g} make -e $${d}.$${g}/$*; \
+	done; done
+
+$(DATE).$(GROUP)/ols:$(DATE).$(GROUP)/coint
+	$(PY_PATH)/pairs_trading/pairs_trading.py ols --windowsize 500  $(BIG_TABLE_MERGED_FILE) --end_date $(DATE)  `dirname $@`/coint.csv  `dirname $@`/ols.csv
+	touch $@
+
+$(DATE).$(GROUP)/coint:$(BIG_TABLE_MERGED_FILE) $(STOCK_BY_PLATES_FILE) $(DATE).$(GROUP)/start
+	$(PY_PATH)/pairs_trading/pairs_trading.py cointegrate --stock_plates_json $(STOCK_BY_PLATES_FILE) --end_date $(DATE) --max_days 30 $(BIG_TABLE_MERGED_FILE)  `dirname $@`/coint.csv
+	touch $@
+
+$(DATE).$(GROUP)/start: $(BIG_TABLE_MERGED_FILE)
+	mkdir -p `dirname $@`
+	ln -sf $^ `dirname $@`
+	touch $@
+
+$(DATE).$(GROUP)/clean:
+	rm -vrf  `dirname $@`
+
+
+
 
 show:
-	GROUP=cn cd $(PY_PATH)/gw && make show
-	GROUP=topV100_MC200 cd $(PY_PATH)/gw && make show
+	BIG_TABLE_MERGED_FILE=$(BIG_TABLE_MERGED_FILE) GROUP=cn  make  -C $(PY_PATH)/gw -e show
+	GROUP=topV100_MC200 make  -C $(PY_PATH)/gw -e show
 web:
 	FLASK_APP=WebMain flask run
 study:
 	cd $(PY_PATH) && /usr/local/bin/jupyter-lab
 
-hedge: $(WORK_DATA_DIR)/lineregress.done
+hedge: $(WORK_DATA_DIR)/ols.done
 #hedge: $(WORK_DATA_DIR)/cointegration.done
 	echo aaa
 
 watch_pairs:
 	$(PY_PATH)/pairs_trading/pairs_trading.py watchpairs ./$(DATE)*/*ols*.csv --conf $(CONF_FILE)
 
-lineregress $(WORK_DATA_DIR)/lineregress.done:$(WORK_DATA_DIR)/cointegration.done
-	$(PY_PATH)/pairs_trading/pairs_trading.py ols --windowsize 500  $(BIG_TABLE_MERGED_FILE)  $(WORK_DATA_DIR)/cointegration.1mon.csv $(WORK_DATA_DIR)/ols.1mon.csv
-	touch $(WORK_DATA_DIR)/lineregress.done
 
-cointegrate $(WORK_DATA_DIR)/cointegration.done: $(WORK_DATA_DIR)/start.done $(BIG_TABLE_MERGED_FILE) $(STOCK_BY_PLATES_FILE)
-	$(PY_PATH)/pairs_trading/pairs_trading.py cointegrate --stock_plates_json $(STOCK_BY_PLATES_FILE) --max_days 30 $(BIG_TABLE_MERGED_FILE)  $(WORK_DATA_DIR)/cointegration.1mon.csv
-	touch $(WORK_DATA_DIR)/cointegration.done
 $(STOCK_BY_PLATES_FILE) :
 	$(PY_PATH)/screener/ScreenByPlates.py $@
 
 
-start $(WORK_DATA_DIR)/start.done: $(BIG_TABLE_MERGED_FILE)
-	mkdir -p $(WORK_DATA_DIR)
-	ln -sf $^ $(WORK_DATA_DIR)
-	touch $(WORK_DATA_DIR)/start.done
+
 $(BIG_TABLE_MERGED_FILE):
 	cd $(PY_PATH)/gw && make
 
@@ -54,3 +78,4 @@ git_push:
 	git push
 
 .PHONY : hedge start clean git_push web watch_pairs
+#.PRECIOUS: %.start %.coint %.m_coint %.ols %.m_ols
