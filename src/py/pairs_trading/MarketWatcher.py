@@ -82,7 +82,11 @@ def watchPairs(lrfiles,conf,threshold):
     c = ConfigFactory.parse_file(conf)
     dfs = [ pd.read_csv(f) for f in lrfiles]
     df  = pd.concat(dfs)
-    symbList  = list(set(df.n1).union(set(df.n2)))
+    symbList  = set()
+    for s in [set(p) for p in df.pair.str.split('_')]:
+        symbList.update(s)
+    print( symbList)
+
     cdsList = None
     gw = GwIB(c)
     while True:

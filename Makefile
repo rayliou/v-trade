@@ -9,9 +9,9 @@ include vars.prod_or_study.mk
 #END_DATES_LIST=$(shell $(PY_PATH)/pairs_trading/studyCointegrate.py date-list-from-bigcsv  --skipdays 28  $(BIG_TABLE_MERGED_FILE) )
 
 all:
-	cd /Users/henry/stock/env_prod && make m_study
-study:
-	cd /Users/henry/stock/env_study && make m_study
+	make m_study
+study prod:
+	cd /Users/henry/stock/env_$@ && make m_study
 #	END_DATES_LIST='2022-01-11 2022-01-12 2022-01-13 2022-01-14' make -e m_study
 clean:m_clean
 #clean:
@@ -24,16 +24,22 @@ clean_data:
 
 GROUPS=cn topV100_MC200
 
-m_study:m_ols
-	echo study done
+m_study:m_bt
+	touch $@
 
+m_bt:m_ols
 m_ols:m_coint
-
 
 m_%:
 	for d in $(END_DATES_LIST); do  for g in $(GROUPS); do\
 		DATE=$${d} GROUP=$${g} make -e $${d}.$${g}/$*; \
 	done; done
+
+BT_DATA_SOURCE=/Users/henry/stock/v-trade/data/data_study/stk-daily-20220113.$(GROUP).Yahoo.30s.csv
+
+$(DATE).$(GROUP)/bt:$(DATE).$(GROUP)/ols
+	$(PY_PATH)/pairs_trading/pairs_trading.py m-bt  $(BT_DATA_SOURCE)  `dirname $@`/ols.csv  `dirname $@`/$(DATE).$(GROUP).bt.csv
+	touch $@
 
 $(DATE).$(GROUP)/ols:$(DATE).$(GROUP)/coint
 	$(PY_PATH)/pairs_trading/pairs_trading.py ols --windowsize 500  $(BIG_TABLE_MERGED_FILE) --end_date $(DATE)  `dirname $@`/coint.csv  `dirname $@`/ols.csv
@@ -55,9 +61,9 @@ $(DATE).$(GROUP)/clean:
 
 
 show:
+	echo END_DATES_LIST=$(END_DATES_LIST)
 	BIG_TABLE_MERGED_FILE=$(BIG_TABLE_MERGED_FILE) GROUP=cn  make  -C $(PY_PATH)/gw -e show
 	GROUP=topV100_MC200 make  -C $(PY_PATH)/gw -e show
-	echo END_DATES_LIST=$(END_DATES_LIST)
 web:
 	FLASK_APP=WebMain flask run
 xstudy:

@@ -32,13 +32,14 @@ class Cointegrate:
     log = logging.getLogger("main.Cointegrate")
     def __init__(self,df, symbols, maxDays =28, end_date=''):
         self.end_date_ = end_date
-        self.df_ =  df[:end_date] if end_date is not None and end_date != '' else df
+        df =  df[:end_date] if end_date is not None and end_date != '' else df
         self.symbols_ = symbols
-
         self.maxDays_ = maxDays
         self.pThreshhold_ = 0.06
         start = df.index[-1] - timedelta(days=self.maxDays_)
-        self.df_ = self.df_ [self.df_.index >start]
+        df = df[start:]
+        self.df_ =  df
+        self.log.debug(f'start:{start}')
         display(self.df_.head(1))
         display(self.df_.tail(1))
         self.log.debug(f'symbols:{",".join(self.symbols_)}')
@@ -66,7 +67,7 @@ class Cointegrate:
                     start = self.df_.index[-1] - timedelta(days=7*dTimes)
                     X = self.df_[k1][start:].close
                     Y = self.df_[k2][start:].close
-                    # self.log.info(f'coint(X:{X.index[0]}:{X.index[-1]};Y:{Y.index[0]}:{Y.index[-1]}) ')
+                    # self.log.info(f'coint(X:{X.index[0]}:{X.index[-1]};Y:{Y.index[0]}:{Y.index[-1]}) start:{start} ')
                     _, pCoin, _ = coint(X,Y)
                     pList.append(pCoin)
                     if pCoin < pMin:
@@ -74,7 +75,7 @@ class Cointegrate:
                         start_of_pmin = start
                     #display(X);sys.exit(0)
                 p = np.mean(pList)                           
-                v = {'pair': f'{k1}_{k2}', 'p': p, 'pmin':pMin, 'start_of_pmin':start_of_pmin }
+                v = {'pair': f'{k1}_{k2}', 'p': p, 'pmin':pMin, 'start_of_pmin':start_of_pmin,}# 'plist': pList }
                 self.log.debug(f'[{self.end_date_}]:[{cnt}/{totalCnt}]:\t{v}') 
                 pPairs.append(v)
                 #P[k1][k2] = P[k2][k1] = pCoin

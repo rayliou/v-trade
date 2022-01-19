@@ -27,7 +27,7 @@ import click,logging
 
 log = logging.getLogger('main.BigPandasTable')
 
-def load_merged_data(file = 'data.cn/20211222.csvx'):
+def load_merged_data(file = 'data.cn/20211222.csvx', verifyDays = 50):
     global log
     msg  = f'pd.read_csv({file}, index_col=0, header=[0,1], parse_dates=True )'
     log.debug(msg)
@@ -37,7 +37,7 @@ def load_merged_data(file = 'data.cn/20211222.csvx'):
     #print(df.index)
     #print(df.index.iloc[-1])
     #print(df.index.iloc[0])
-    assert df.index[-1] - df.index[0]  >  timedelta(days=50)
+    assert df.index[-1] - df.index[0]  >  timedelta(days=verifyDays)
     return df,symbols
 
 

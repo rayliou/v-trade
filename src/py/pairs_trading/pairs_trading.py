@@ -76,5 +76,7 @@ if __name__ == '__main__':
     cli.add_command(plot)
     from MarketWatcher import watchPairs
     cli.add_command(watchPairs)
+    from  BT import m_bt
+    cli.add_command(m_bt)
     cli()
     sys.exit(0)

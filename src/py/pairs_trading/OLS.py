@@ -50,6 +50,8 @@ class OLS:
         for index,row in self.dfPairs_.iterrows():
             #df = self.df_.tail(self.windowsize_)
             df = self.df_[row.start_of_pmin:]
+            # self.log.debug(f'start_of_pmin:{row.start_of_pmin}')
+            # display(df.head(1)); display(df.tail(1)); sys.exit(0)
             n1,n2 = row.pair.split('_')
             o,_ = self.regressOneWindow(n1,n2,df)
             # print(f'{cnt}/{totalN}t:\t', end='')
@@ -57,7 +59,8 @@ class OLS:
             cnt  += 1
         dfZ = pd.DataFrame(oList)
         self.dfPairs_ = pd.concat([dfZ, self.dfPairs_,],axis=1)
-        self.dfPairs_ = self.dfPairs_[self.dfPairs_.s > 0.05].drop(['start_of_pmin','pmin'], axis=1,inplace=False)
+        # self.dfPairs_ = self.dfPairs_[self.dfPairs_.s > 0.05].drop(['start_of_pmin','pmin'], axis=1,inplace=False)
+        self.dfPairs_ = self.dfPairs_[self.dfPairs_.s > 0.05].drop(['start_of_pmin'], axis=1,inplace=False)
         return self.dfPairs_
 
     @classmethod
