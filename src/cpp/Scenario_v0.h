@@ -13,12 +13,16 @@
 
 class Scenario_v0 : public IScenario {
 public:
-    Scenario_v0(const char * conf) ;
-    virtual void execute() = 0;
+    Scenario_v0(const char * pairCsv, const char * conf = nullptr) ;
+    virtual void execute(){
+                throw std::runtime_error("needed to be implement" + string(__FUNCTION__));
+    }
     virtual ~Scenario_v0() {}
     virtual std::vector<SnapData> &  getSymbolList()  { return m_snapDataVector;}
+protected:
+    void setupContractPairTrades(const char *pairCsv);
 private:
     std::vector<ContractPairTrade> m_contracts;
     std::vector<SnapData> m_snapDataVector;
     LogType  m_log;
-public:
+};

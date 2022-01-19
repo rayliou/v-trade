@@ -19,7 +19,7 @@
 //
 struct SnapData {
     SnapData(const std::string &symbol) : symbol(symbol) {}
-    void debug(LogType log) { log.debug("idx:{},sym:{},open:{},close:{},high:{},low:{},volume:{}",idx, symbol, open, close, high, low,volume); }
+    void debug(LogType log) { log->debug("idx:{},sym:{},open:{},close:{},high:{},low:{},volume:{}",idx, symbol, open, close, high, low,volume); }
     int idx {-1};
     std::string symbol;
     float open {0.0};

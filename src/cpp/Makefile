@@ -1,6 +1,8 @@
 
 CXXFLAGS=-g  -std=c++17  -I3rd-party/spdlog/include
 
+Scenario_v0: Scenario_v0.cpp  Scenario_v0.h  common.h  contract.h  scenario.h  strategy.h
+	clang++ -o $@ $(CXXFLAGS)  $< #$^
 
 bt: main_bt.cpp BigTable.h  deal.h  scenario.h  strategy.h
 	g++ -o $@ $(CXXFLAGS)  $< #$^
