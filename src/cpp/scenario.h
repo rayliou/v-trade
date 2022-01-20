@@ -15,12 +15,15 @@
 #include "contract.h"
 #include "strategy.h"
 #include <time.h>
+#include <any>
                    //
 //using namespace std;
 //
 struct SnapData {
     const int Y20 = 24 *3600 * 365 * 20;
-    SnapData(const std::string &symbol) : symbol(symbol) {}
+    SnapData(const std::string &symbol) : symbol(symbol) {
+
+    }
     void debug(LogType log) { 
 #if 0
         if (tm == 0) {
@@ -62,9 +65,10 @@ struct SnapData {
 
 class IScenario {
 public:
-    virtual std::vector<SnapData> &  getSymbolList()  = 0;
+    virtual std::vector<SnapData> &  getSnapDataList()  = 0;
     virtual void postSetup() = 0;
-    virtual void execute() = 0;
+    virtual void execute(const std::pair<std::string, time_t>  & cur,const std::pair<std::string, time_t>  & start ) = 0;
+    virtual void summary(const std::map<std::string, std::any>& ext) = 0;
     virtual void debug(LogType *log) = 0;
     virtual ~IScenario() {}
 };

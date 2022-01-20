@@ -2,6 +2,7 @@
 //
 #include "common.h"
 #include <execution>
+#include <regex>
 #include "BigTable.h"
 #include "scenario.h"
 #include "Scenario_v0.h"
@@ -11,9 +12,9 @@
 class RunnerBT{
 public:
     RunnerBT(const char * bigCsvPath): m_bigtable(bigCsvPath){
-        m_log = spdlog::stdout_color_mt("RunnerBT");
+        m_log = spdlog::stdout_color_mt(typeid(*this).name());
     }
-    void run(const char * pairCsv);
+    void run(const char * pairCsv, int continueDays = 1);
     void addScenarios_v0(const char * pairCsv, const char * conf=nullptr);
     void setupScenarios(IScenario * s);
     ~RunnerBT();
@@ -31,7 +32,7 @@ RunnerBT::~RunnerBT (){
     m_scenarios.clear();
 }
 void RunnerBT:: setupScenarios(IScenario * s){
-    std::vector<SnapData> & snaps =  s->getSymbolList() ;
+    std::vector<SnapData> & snaps =  s->getSnapDataList() ;
     auto updateDate = [&] (SnapData & snap ) {
         auto it = m_bigtable.m_symbolToColIdx.find(snap.symbol);
         assert(m_bigtable.m_symbolToColIdx.end() != it);
@@ -47,19 +48,58 @@ void RunnerBT::addScenarios_v0(const char * pairCsv, const char * conf){
     s->postSetup();
     m_scenarios.push_back(s);
 }
-void RunnerBT::run(const char * pairCsv){
+void RunnerBT::run(const char * pairCsv, int continueDays){
+    std::map<std::string, std::any> extEnv;
     this->addScenarios_v0(pairCsv);
 
     int N = m_symList.size();
     int totalCnt = N*(N-1)/2;
-    auto itStart = m_bigtable.m_index.begin();
+    //auto strRe =".*(20[-0-9]+)\\.(.*)/ols.csv";
+    auto strRe =".*(20\\d\\d-\\d+-\\d+)\\.(.*)/ols.csv";
+    std::regex re(strRe);
+    std::smatch pieces_match;
+    string var {pairCsv} ;
+    auto ret = regex_match(var, pieces_match, re);
+    if(!ret ||pieces_match.size() !=3) {
+        m_log->critical("pairCsv {} does not match re {}", pairCsv, strRe);
+        return;
+    }
+    auto date = pieces_match[1].str();
+    auto group  = pieces_match[2].str();
+    //vector<string> dateList;
+    vector<time_t> dateList;
+    auto tmStart = m_bigtable.strTime2time_t((date+" 23:59:59")  .c_str(),"%Y-%m-%d %H:%M:%S");
+    //use the next trade day after the date which is set.
+    auto itStart = find_if(m_bigtable.m_index.begin(),m_bigtable.m_index.end(),[&] (auto & i){ 
+            return i.second >= tmStart;
+    });
+    struct tm tPrev;
+    memset(&tPrev, 0, sizeof(tPrev));
+    //remove duplicate/uniq
+    for_each(itStart,m_bigtable.m_index.end(), [&] (auto & i){
+            struct tm t;
+            localtime_r(&(i.second), &t);
+            if(t.tm_year > tPrev.tm_year ||t.tm_mon > tPrev.tm_mon ||t.tm_mday > tPrev.tm_mday ) {
+                dateList.push_back(i.second);
+            }
+            tPrev = t;
+    });
     auto itEnd   = m_bigtable.m_index.end();
+    if (dateList.size() >=2) {
+        itEnd = find_if(itStart,m_bigtable.m_index.end(),[&] (auto & i){ 
+                //m_log->debug(i.first);
+                return i.second > dateList[continueDays];
+        });
+    }
+
+
+
     (*m_scenarios.begin())->debug(&m_log);
     for (auto it = itStart; it != itEnd; it++) {
         auto pos = it - itStart;
         auto refresh = [&] (IScenario * s ) {
             //s.updateData();
-            std::vector<SnapData> & snaps =  s->getSymbolList() ;
+            std::vector<SnapData> & snaps =  s->getSnapDataList() ;
             auto updateDate = [&] (SnapData & snap ) {
                 auto itCol = m_bigtable.m_columnData.begin() + snap.idx;
                 //close	high	low	open	volume
@@ -76,18 +116,17 @@ void RunnerBT::run(const char * pairCsv){
                 //m_log->debug("{},{},{}", itCol->first,snap.symbol, snap.close);
             };
             for_each(snaps.begin(), snaps.end(), updateDate);
-            s->debug(&m_log);
-            s->execute();
+            //s->debug(&m_log);
+            s->execute(*it, *itStart);
         };
         // for_each(std::execution::par_unseq, m_scenarios.begin(), m_scenarios.end(), refresh);
         for_each(m_scenarios.begin(), m_scenarios.end(), refresh);
     }
 
+    for_each(m_scenarios.begin(), m_scenarios.end(), [&] (auto s){
+            s->summary(extEnv);
+    });
 }
-
-
-
-
 
 int main(int argc, char * argv[]) {
     spdlog::set_level(spdlog::level::err);

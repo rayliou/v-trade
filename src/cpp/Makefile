@@ -5,7 +5,7 @@ CXXFLAGS=-g  -std=c++17  -I3rd-party/spdlog/include
 test:main_bt
 	./$< /Users/henry/stock/env_study/2021-12-17.cn/bigcsv.csv /Users/henry/stock/env_study/2021-12-17.cn/ols.csv
 
-main_bt: main_bt.cpp Scenario_v0.cpp
+main_bt: main_bt.cpp Scenario_v0.cpp ContractPairTrade.cpp
 	clang++  -include  common.h  -o $@ $(CXXFLAGS)  $^ #$<
 
 Scenario_v0: Scenario_v0.cpp common.h.pch  Scenario_v0.h   contract.h  scenario.h  strategy.h
