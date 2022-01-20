@@ -180,6 +180,7 @@ public:
 #endif
         return *this;
         //return TableData({});
+        LogType m_log { spdlog::stdout_color_mt("BigTable")};
     }
 
 };

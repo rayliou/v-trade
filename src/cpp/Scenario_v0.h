@@ -8,21 +8,22 @@
 #include "strategy.h"
 #include "scenario.h"
 
-#include "3rd-party/spdlog/include/spdlog/spdlog.h"
-#include "3rd-party/spdlog/include/spdlog/sinks/stdout_color_sinks.h"
 
 class Scenario_v0 : public IScenario {
 public:
     Scenario_v0(const char * pairCsv, const char * conf = nullptr) ;
-    virtual void execute(){
-                throw std::runtime_error("needed to be implement" + string(__FUNCTION__));
-    }
+    virtual void execute();
+    virtual void postSetup();
     virtual ~Scenario_v0() {}
+    virtual void debug(LogType *log = nullptr);
     virtual std::vector<SnapData> &  getSymbolList()  { return m_snapDataVector;}
 protected:
     void setupContractPairTrades(const char *pairCsv);
 private:
     std::vector<ContractPairTrade> m_contracts;
     std::vector<SnapData> m_snapDataVector;
+
+    std::vector<std::pair<SnapData*, ContractPairTrade* >   > m_snapAsN1;
+    std::vector<std::pair<SnapData*, ContractPairTrade* >   > m_snapAsN2;
     LogType  m_log;
 };
