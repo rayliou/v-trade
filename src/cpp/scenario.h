@@ -65,10 +65,30 @@ struct SnapData {
 
 class IScenario {
 public:
+    IScenario(CmdOption &cmd) :m_cmdOption(cmd) {
+        auto var = m_cmdOption.get("--includes");
+        if (nullptr != var) {
+            auto symbols = strSplit(var,',');
+            std::for_each(symbols.begin(), symbols.end(), [&] (auto &s) {  m_includes.insert(s);} );
+        }
+        var  = m_cmdOption.get("--excludes");
+        if (nullptr != var) {
+            auto symbols = strSplit(var,',');
+            std::for_each(symbols.begin(), symbols.end(), [&] (auto &s) {  m_excludes.insert(s);} );
+        }
+
+    }
     virtual std::vector<SnapData> &  getSnapDataList()  = 0;
     virtual void postSetup() = 0;
-    virtual void execute(const std::pair<std::string, time_t>  & cur,const std::pair<std::string, time_t>  & start ) = 0;
-    virtual void summary(const std::map<std::string, std::any>& ext) = 0;
+    virtual void runOneEpoch(const std::pair<std::string, time_t>  & cur,const std::pair<std::string, time_t>  & start ) = 0;
+    virtual void preOneEpoch(const std::map<std::string, std::any>& ext) = 0;
+    virtual void postOneEpoch(const std::map<std::string, std::any>& ext) = 0;
+    virtual std::string getConfPath() const= 0;
+    // virtual void summary(const std::map<std::string, std::any>& ext) = 0;
     virtual void debug(LogType *log) = 0;
     virtual ~IScenario() {}
+protected:
+    CmdOption & m_cmdOption;
+    std::set<std::string> m_excludes;
+    std::set<std::string> m_includes;
 };

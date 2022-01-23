@@ -9,9 +9,11 @@
 
 // https://github.com/gabime/spdlog
 
+
+
 class RunnerBT{
 public:
-    RunnerBT(const char * bigCsvPath): m_bigtable(bigCsvPath){
+    RunnerBT(const char * bigCsvPath,CmdOption & cmd): m_bigtable(bigCsvPath), m_cmdOption(cmd) {
         m_log = spdlog::stdout_color_mt(typeid(*this).name());
     }
     void run(const char * pairCsv, int continueDays = 1);
@@ -24,6 +26,7 @@ private:
     vector<string> m_symList;
     BigTable m_bigtable;
     std::shared_ptr<spdlog::logger> m_log;
+    CmdOption & m_cmdOption;
 
 };
 
@@ -35,15 +38,17 @@ void RunnerBT:: setupScenarios(IScenario * s){
     std::vector<SnapData> & snaps =  s->getSnapDataList() ;
     auto updateDate = [&] (SnapData & snap ) {
         auto it = m_bigtable.m_symbolToColIdx.find(snap.symbol);
-        assert(m_bigtable.m_symbolToColIdx.end() != it);
-        snap.idx = it->second * m_bigtable.m_fieldsNum;
-        snap.debug(m_log);
+        if(m_bigtable.m_symbolToColIdx.end() == it) {
+            m_log->critical("Cannot get {} from bigtable, pair path: {}", snap.symbol, s->getConfPath());
+        }
+        snap.idx = it->second ;
+        //snap.debug(m_log);
     };
     for_each(snaps.begin(), snaps.end(), updateDate);
 
 }
 void RunnerBT::addScenarios_v0(const char * pairCsv, const char * conf){
-    Scenario_v0 *s = new Scenario_v0(pairCsv);
+    Scenario_v0 *s = new Scenario_v0(pairCsv, m_cmdOption);
     setupScenarios(s);
     s->postSetup();
     m_scenarios.push_back(s);
@@ -92,13 +97,16 @@ void RunnerBT::run(const char * pairCsv, int continueDays){
         });
     }
 
+    for_each(m_scenarios.begin(), m_scenarios.end(), [&] (auto s){
+            s->preOneEpoch(extEnv);
+    });
 
-
-    (*m_scenarios.begin())->debug(&m_log);
+    //(*m_scenarios.begin())->debug(&m_log);
     for (auto it = itStart; it != itEnd; it++) {
-        auto pos = it - itStart;
+        auto pos = it - m_bigtable.m_index.begin(); //not itStart
         auto refresh = [&] (IScenario * s ) {
             //s.updateData();
+            //m_log->debug("pos:{}", pos);
             std::vector<SnapData> & snaps =  s->getSnapDataList() ;
             auto updateDate = [&] (SnapData & snap ) {
                 auto itCol = m_bigtable.m_columnData.begin() + snap.idx;
@@ -117,21 +125,29 @@ void RunnerBT::run(const char * pairCsv, int continueDays){
             };
             for_each(snaps.begin(), snaps.end(), updateDate);
             //s->debug(&m_log);
-            s->execute(*it, *itStart);
+            s->runOneEpoch(*it, *itStart);
         };
         // for_each(std::execution::par_unseq, m_scenarios.begin(), m_scenarios.end(), refresh);
         for_each(m_scenarios.begin(), m_scenarios.end(), refresh);
     }
-
     for_each(m_scenarios.begin(), m_scenarios.end(), [&] (auto s){
-            s->summary(extEnv);
+            s->postOneEpoch(extEnv);
     });
 }
 
 int main(int argc, char * argv[]) {
-    spdlog::set_level(spdlog::level::err);
-    spdlog::set_level(spdlog::level::debug);
-    spdlog::info("Welcome to spdlog!");
+    CmdOption cmd(argc,argv);
+    auto level = spdlog::level::level_enum::off;;
+    auto s  = cmd.get("-v");
+    if ( s != nullptr) {
+        level = static_cast<spdlog::level::level_enum>(atoi(s));
+        //trace debug info warn err critical off n_levels
+    }
+
+
+    spdlog::set_level(level);
+    //spdlog::set_level(spdlog::level::xdebug);
+    //spdlog::info("Welcome to spdlog!");
      auto    log = spdlog::stdout_color_mt("xconsole");
     if (argc <2){
         // cout << "csv file path is needed" << endl;
@@ -139,11 +155,16 @@ int main(int argc, char * argv[]) {
 
         return 1;
     }
-    auto filePath  = argv[1];
-    const char * pairCsv = argv[2];
+    auto filePath  = cmd.get("--src");
+    const char * pairCsv = cmd.get("--olscsv");
+    auto  pairCsvs = cmd.getM("--olscsv");
+    RunnerBT c(filePath, cmd);
     //const char * endDate = argv[2];
     // const char * endDate = "2022-01-13 08:09:0";
-    RunnerBT c(filePath);
-    c.run(pairCsv);
+    //for (auto & p :strSplit(pairCsv, ',')) {
+    for (auto & p :pairCsvs) {
+        c.run(p.c_str());
+    }
+    spdlog::info("{}", cmd.str());
     return 0;
 }

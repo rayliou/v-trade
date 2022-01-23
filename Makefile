@@ -38,7 +38,8 @@ m_%:
 BT_DATA_SOURCE=/Users/henry/stock/v-trade/data/data_study/stk-daily-20220113.$(GROUP).Yahoo.30s.csv
 
 $(DATE).$(GROUP)/bt:$(DATE).$(GROUP)/ols
-	$(PY_PATH)/pairs_trading/pairs_trading.py m-bt  $(BT_DATA_SOURCE)  `dirname $@`/ols.csv  `dirname $@`/$(DATE).$(GROUP).bt.csv
+	#$(PY_PATH)/pairs_trading/pairs_trading.py m-bt  $(BT_DATA_SOURCE)  `dirname $@`/ols.csv  `dirname $@`/$(DATE).$(GROUP).bt.csv
+	$(CPP_PATH)/main_bt --src  $(BT_DATA_SOURCE) --olscsv  `dirname $@`/ols.csv -v 1 --dst  `dirname $@`/$(DATE).$(GROUP).bt.csv  #info #
 	touch $@
 
 $(DATE).$(GROUP)/ols:$(DATE).$(GROUP)/coint

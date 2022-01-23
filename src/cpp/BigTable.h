@@ -10,6 +10,7 @@
 #include <tuple>
 #include <map>
 #include <time.h>
+#include "common.h"
                    //
 using namespace std;
 
@@ -90,95 +91,51 @@ public:
 
     }
     const BigTable & read_csv( const std::string &filename) {
+        using namespace csv;
+        using namespace std;
+        CSVFormat format;
+        format.delimiter(',').no_header();
 
-        std::ifstream myFile(filename);
-        // Make sure the file is open
-        if(!myFile.is_open()) throw std::runtime_error("Could not open file");
-        // Helper vars
-        std::string line, colname;
-        // Read the column names
-        vector<string> columns, symbols; 
-        if(myFile.good())
-        {
-            // Extract the first line in the file
-            std::getline(myFile, line);
-            // Create a stringstream from line
-            std::stringstream ss(line);
-            std::getline(ss, colname, ',');
-            assert( colname == "");
-            // Extract each column name
-            string symbolsPrev;
-            int i = 0;
-            while(std::getline(ss, colname, ','))
-            {
-                columns.push_back(colname);
-                if (colname != symbolsPrev)
-                {
-                    symbols.push_back(colname);
-                    m_symbolToColIdx[colname] = i;
-                    i++;
-                }
-                symbolsPrev = colname;
+        CSVReader reader0(filename,format);
+        auto  itRow = reader0.begin();
+        vector<string> cols  ,symbols;
+        string symbolPrev;
+        int i = 0;
+        for (auto itField = itRow->begin() +1 ; itField != itRow->end() ;itField ++ ){
+            string symbol = itField->get<>();
+            cols.push_back(symbol);
+            if (symbolPrev != symbol) {
+                symbols.push_back( itField->get<>());
+                m_symbolToColIdx[symbol] = i;
             }
+            symbolPrev  = symbol;
+            i++;
         }
-        if(myFile.good())
-        {
-            // Extract the 2nd line in the file
-            std::getline(myFile, line);
-            // Create a stringstream from line
-            std::stringstream ss(line);
-            std::getline(ss, colname, ',');
-            assert( colname == "");
-            // Extract each column name
-            int i = 0;
-            while(std::getline(ss, colname, ','))
-            {
-                columns[i] = columns[i] + '_'+ colname;
-                //cout << columns[i] << endl;
-                // colum data
-                m_columnData.push_back({columns[i] , std::vector<double> {}});
-                i++;
-            }
-            // Extract the 3rd line in the file
-            std::getline(myFile, line);
+        itRow ++;
+        i = 0;
+        for (auto itField = itRow->begin() + 1; itField != itRow->end() ;itField ++ ){
+            cols[i] = cols[i]  + "_"  + itField->get<>();
+            m_columnData.push_back({cols[i] , std::vector<double> {}});
+            i++;
         }
-        //cout << "xxxxxxxxx" << endl;
-
-        // Read data, line by line
-        // from the 4th line
-        string idx;
-        while(std::getline(myFile, line))
-        {
-            std::stringstream ss(line);
-            std::getline(ss, idx, ',');
+        format.column_names(cols);
+        CSVReader reader(filename,format);
+        itRow =  reader.begin();
+        itRow ++;
+        itRow ++;
+        itRow ++;
+        for(;itRow != reader.end(); itRow++ ) {
+            auto itField = itRow->begin();
+            string idx = itField->get<>();
             time_t t = strTime2time_t(idx.c_str());
             m_index.push_back(make_pair(idx,t));
-            //cout << "idx: " << idx << endl;
-            int colIdx = 0;
-            string  strVal;
-            while(std::getline(ss, strVal, ',')){
-                double v = -999999;
-                if (strVal != ""){
-                    v = std::stod(strVal);
-                }
-                //cout << strVal << " to "  << v << endl;
-                m_columnData.at(colIdx).second.push_back(v);
-                colIdx++;
+            int i = 0;
+            for(itField++ ;itField != itRow->end(); itField++){
+                m_columnData[i++].second.push_back( itField->get<double>());
             }
         }
 
-        // Close file
-#if 0
-        myFile.close();
-        auto & r = columnData.at(2);
-        cout << r.first << endl;
-        for (auto &v : r.second){
-            cout << v << endl;
-        }
-#endif
         return *this;
-        //return TableData({});
-        LogType m_log { spdlog::stdout_color_mt("BigTable")};
     }
 
 };

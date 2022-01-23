@@ -5,6 +5,7 @@ FEED_SOURCE=Yahoo
 
 ROOT=/Users/henry/stock/v-trade
 PY_PATH=$(ROOT)/src/py
+CPP_PATH=$(ROOT)/src/cpp
 
 DATA_STATIC=$(ROOT)/data/data_static
 STOCK_BY_PLATES_FILE=$(DATA_STATIC)/ScreenByPlates-20220112.json

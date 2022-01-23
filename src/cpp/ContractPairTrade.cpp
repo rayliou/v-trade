@@ -7,8 +7,9 @@
 
 using namespace std;
 
+LogType Money::m_log = spdlog::stdout_color_mt("Money");
 LogType ContractPairTrade::m_log = spdlog::stdout_color_mt("ContractPairTrade");
-ContractPairTrade::ContractPairTrade (csv::CSVRow& row) {
+ContractPairTrade::ContractPairTrade (csv::CSVRow& row, Money &m) : m_money(&m) {
     // s,i,m,st,halflife,pair,p,pmin,ext
     m_slope  = row["s"].get<float>();
     m_intercept  = row["i"].get<float>();
@@ -45,26 +46,86 @@ void ContractPairTrade::debug(LogType log) {
         m_symbolsPair.first,m_symbolsPair.second, m_slope,m_intercept ,m_mean, m_std, m_halflife, m_p,m_pmin, m_ext); 
 }
 
-void ContractPairTrade::newPosition(float x, float y,bool buyN1, const std::map<std::string, std::any> & ext) {
-    auto & pos2  = m_position2.m_position = 100;
-    auto & pr2  = m_position2.m_avgprice = y;
-    auto & pos1 = m_position1.m_position  = m_position2.m_position  * m_slope;
-    auto & pr1 = m_position1.m_avgprice = x;
-    if (buyN1) { m_position2.m_position *= -1; }
-    else {m_position1.m_position *= -1;}
-    m_log->warn("[{}_{}]:newPosition: x({},{}),y({},{})",m_n1, m_n2, pr1,pos1, pr2,pos2 );
+void ContractPairTrade::newPosition(float x, float y,bool buyN1, float z0, const time_t &t, const std::map<std::string, std::any> & ext) {
+    m_openTime = t;
+    //apply for $10000
+    double amount = 10000;
+    //use 100% margin rate
+    int pos_y = round ((x < y) ? (amount /y) : (amount /x / m_slope) );
+    int pos_x = round(pos_y * m_slope);
+    if(buyN1) {
+        pos_y *= -1;
+    }
+    else {
+        pos_x *= -1;
+    }
+    auto cap_x = x * pos_x;
+    auto cap_y = y * pos_y;
+    auto totalCashPrev =  m_money->getTotalCash() ;
+    auto totalMarginPrev =   m_money->getTotalMarginFreezed();
+    if( !m_money->isMoneyAvailable(max(cap_x, cap_y), -min(cap_x, cap_y), 0.5,0.5)) {
+        m_log->warn("C[{}];M[{}] Money is not enough. cap_x:{}, cap_y:{}"
+        , totalCashPrev, totalMarginPrev
+        ,cap_x, cap_y
+        );
+        return;
+    }
+    m_position1.m_position = pos_x;
+    m_position2.m_position = pos_y;
+    m_position1.m_avgprice = x;
+    m_position2.m_avgprice = y;
+    m_z0 = z0;
+    m_money->withdraw(max(cap_x, cap_y), -min(cap_x, cap_y));
+
+    auto totalCash =  m_money->getTotalCash() ;
+    auto totalMargin =   m_money->getTotalMarginFreezed();
+    m_log->warn("C:[{},{}];M:[{},{}]\t[{}_{}]:newPosition: x({}x{}={}),y({}x{}={}), slope:{}"
+        ,totalCashPrev,totalCash,totalMarginPrev, totalMargin
+        ,m_n1, m_n2
+        ,x,pos_x,cap_x
+        ,y,pos_y,cap_y
+        ,m_slope
+    );
+
 }
 float ContractPairTrade::closePosition(float x, float y, const std::map<std::string, std::any> & ext) {
-    auto & pos2  = m_position2.m_position;
-    auto  diff2  = y - m_position2.m_avgprice;
-    auto & pos1 = m_position1.m_position;
-    auto  diff1 = x-  m_position1.m_avgprice ;
-    auto profit = diff1 * pos1 + diff2 * pos2;
-    m_profit += profit;
-    m_log->warn("[{}_{}]:ClosePosition:profit:{};  X:(pos:{},d:{},p0:{},p:{} ),Y:(pos:{},d:{},p0:{},p:{} )    ",m_n1, m_n2, profit
-            ,pos1, diff1, m_position1.m_avgprice,x
-            ,pos2, diff2, m_position2.m_avgprice,y
-            );
+    auto pos_x = m_position1.m_position;
+    auto pos_y = m_position2.m_position;
+    auto x0 = m_position1.m_avgprice ;
+    auto y0 = m_position2.m_avgprice ;
+    auto dx = x - x0;
+    auto dy = y - y0;
+    auto cap_x = x * pos_x;
+    auto cap_y = y * pos_y;
+    auto cap_x_d = dx * pos_x;
+    auto cap_y_d = dy * pos_y;
+
+    auto profit = dx * pos_x + dy * pos_y;
+
+    auto totalCashPrev =  m_money->getTotalCash() ;
+    auto totalMarginPrev =   m_money->getTotalMarginFreezed();
+
+    auto commission = (abs(pos_x) + abs(pos_y)) * 0.01;
+    if(pos_x >0){
+        m_money->deposit(-commission + cap_x +cap_y_d, -pos_y *y0);
+    }
+    else {
+        m_money->deposit(-commission +cap_y + cap_x_d, -pos_x *x0);
+    }
+    auto totalCash =  m_money->getTotalCash() ;
+    auto totalMargin =   m_money->getTotalMarginFreezed();
+    profit -= commission;
+    addProfit( profit);
+
+    
+
+    m_log->warn("C:[{},{}];M:[{},{}]\t[{}_{}]:closePosition: (x:{} - x0:{}) * pos_x:{} = cap_x_d:{}; (y:{} - y0:{}) * pos_y:{} = cap_y_d:{}; slope:{} "
+        ,totalCashPrev,totalCash,totalMarginPrev, totalMargin
+        ,m_n1, m_n2
+        ,x,x0,pos_x, cap_x_d
+        ,y,y0,pos_y, cap_y_d
+        ,m_slope
+    );
     m_position1.m_position  = m_position2.m_position = 0;
     return profit;
 }
