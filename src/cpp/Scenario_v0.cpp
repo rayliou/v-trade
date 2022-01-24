@@ -8,9 +8,11 @@
 
 using namespace std;
 
+LogType Scenario_v0::m_log = spdlog::stderr_color_mt("Scenario_v0");
+LogType Scenario_v0::m_out = spdlog::stdout_color_mt("stdout");
 Scenario_v0::Scenario_v0(const char * pairCsv, CmdOption &cmd, const char * conf) : IScenario(cmd), m_pairCsv(pairCsv)  {
-        m_log = spdlog::stdout_color_mt(typeid(*this).name());
-    //m_log = spdlog::stdout_color_mt("Scenario_v0");
+        //m_log = spdlog::stderr_color_mt(typeid(*this).name());
+        //m_log = spdlog::get("Scenario_v0");
     setupContractPairTrades(pairCsv);
     for_each(m_contracts.begin(),m_contracts.end(), [&] (ContractPairTrade & c ) {
         //if(c.isIgnored()) {
@@ -56,12 +58,13 @@ void Scenario_v0::postSetup() {
 
         }
     });
+    auto isSnapAvailable  = []  (auto * ptr) -> bool { return ptr != nullptr && ptr->idx != -1;  };
     if ( m_includes.size() >0) {
         for_each(m_contracts.begin(),m_contracts.end(), [&] (ContractPairTrade & c ) {
             auto it1 = m_includes.find(c.m_n1);
             auto it2 = m_includes.find(c.m_n2);
             auto available =  ( it1 != m_includes.end() && it2 != m_includes.end());
-            available = available && c.m_snap1 != nullptr && c.m_snap2 != nullptr;
+            available = available && isSnapAvailable(c.m_snap1) && isSnapAvailable(c.m_snap2);
             c.setAvailable(available);
         });
     }
@@ -70,57 +73,72 @@ void Scenario_v0::postSetup() {
             auto it1 = m_excludes.find(c.m_n1);
             auto it2 = m_excludes.find(c.m_n2);
             auto available =  ( it1 == m_excludes.end() && it2 == m_excludes.end());
-            available = available && c.m_snap1 != nullptr && c.m_snap2 != nullptr;
+            available = available && isSnapAvailable(c.m_snap1) && isSnapAvailable(c.m_snap2);
             c.setAvailable(available);
         });
     }
     else {
         for(auto & c: m_contracts) {
-            auto  available = c.m_snap1 != nullptr && c.m_snap2 != nullptr;
+            auto  available = isSnapAvailable(c.m_snap1) && isSnapAvailable(c.m_snap2);
             c.setAvailable(available);
         }
     }
     auto endIt = remove_if(m_contracts.begin(),m_contracts.end(), [&] (ContractPairTrade & c ) {
             bool ret =  !c.isAvailable();
+            ret |= c.m_he > 0.45;
+            ret |= c.m_halflife > 6 *3600;
             m_log->info("{}_{}:{}", c.m_n1, c.m_n2, (ret?"Remove unused":"Keep"));
             return ret;
     });
     m_contracts.erase(endIt,m_contracts.end());
-    m_profits.clear();
 }
 void Scenario_v0::preOneEpoch(const std::map<std::string, std::any>& ext) {
 }
 void Scenario_v0::postOneEpoch(const std::map<std::string, std::any>& ext) {
 
-
-    vector<pair<string,int>> contracts;
-    transform(m_contracts.begin(),m_contracts.end(),back_inserter(contracts),[&] (auto & c ) -> auto {
-        return make_pair(c.m_n1 + "_" +c.m_n2, c.getProfit());
-    });
-    sort(contracts.begin(),contracts.end(), [&] (auto & a, auto & b ) -> auto {
-        if ( a.second == b.second) {
-            return a.first < b.first;
+    vector<IContract *> contracts;
+    for (auto &c:m_contracts ) {
+        auto p  = c.getProfit();
+        if(p == 0) {
+            continue;
         }
-        if ( a.second == 0){
+        contracts.push_back(&c);
+    }
+    // transform(m_contracts.begin(),m_contracts.end(),back_inserter(contracts),[&] (auto & c ) -> auto { return &c; });
+    sort(contracts.begin(),contracts.end(), [&] (IContract *aC, IContract *bC) -> auto {
+        auto a  = aC->getProfit();
+        auto b  = bC->getProfit();
+        if (a == b) {
+            return aC->getName() < bC->getName();
+        }
+        if ( a == 0){
             return true;
         }
-        if ( b.second == 0){
+        if ( b == 0){
             return false;
         }
-        return a.second < b.second;
+        return a <b;
     });
-    for_each(contracts.begin(),contracts.end(), [&] (auto & c ) {
-        m_log->info("[{}] Profit:{} " , c.first,c.second);
-    });
+    for (auto c :contracts ) {
+        ContractPairTrade *p = dynamic_cast<ContractPairTrade *>(c);
+        int duration = p->getTransDuration();
+        int halflife = p->m_halflife ;
+        m_out->info("[{}]\tTrans:{},profit:{},duration: {} mins, halflife:{} mins ", p->getName(),p->getTransactionNum(), p->getProfit()
+        , duration/60, halflife/60
+        );
+    }
     // for_each(m_contracts.begin(),m_contracts.end(),[&] (auto & c ) {
     //     m_log->debug("[{}_{}] Profit:{} " , c.m_n1,c.m_n2, c.getProfit());
     // });
-    auto &v = m_profits;
+    vector<float> v;
+    transform(contracts.begin(),contracts.end(), back_inserter(v),  [&] (auto & c ) {
+        return c->getProfit();
+    });
     auto sum = std::accumulate(v.begin(), v.end(), 0.0);
     auto mean = sum / v.size();
     auto sq_sum = std::inner_product(v.begin(), v.end(), v.begin(), 0.0);
     auto stdev = std::sqrt(sq_sum / v.size() - mean * mean);
-    m_log->info("Total:{}, mean: {}, std:{},sum:{}", v.size(),mean, stdev, sum);
+    m_out->info("Total:{}, mean: {}, std:{},sum:{}", v.size(),mean, stdev, sum);
 
 }
 void Scenario_v0::runOneEpoch(const std::pair<std::string, time_t>  & cur,const std::pair<std::string, time_t>  & start ) {
@@ -131,22 +149,71 @@ void Scenario_v0::runOneEpoch(const std::pair<std::string, time_t>  & cur,const 
     std::map<std::string, std::any>  ext;
     ext["start"] = start;
     for_each(m_contracts.begin(),m_contracts.end(),[&] (auto &c ) {
+            auto transactionNum = c.getTransactionNum();
             //if (!c.isAvailable()) { return; }
+            if(transactionNum >= 1) {
+                //do nothing
+                m_log->debug("{}:{} Reach out of the max transaction num:{} " ,cur.first, c.getName(), transactionNum);
+                return;
+            }
             auto x = c.m_snap1->close;
             auto y = c.m_snap2->close;
             auto diff = x * c.m_slope + c.m_intercept - y;
             c.m_z = (diff - c.m_mean)/c.m_std;
             m_log->debug("[{}][{}_{}] Start strategy test  z:{}, zPrev:{} x:{},y:{}, slope/intercept:{},{},mean:{},std:{}" , cur.first,
                     c.m_n1,c.m_n2, c.m_z, c.m_zPrev, x,y, c.m_slope, c.m_intercept,c.m_mean, c.m_std);
-
-            if (cur.second > forceCloseTime ) {
-                if (c.m_position1.m_position != 0 ) {
+            if (c.m_position1.m_position != 0 ) { //holding a position
+                if (cur.second > forceCloseTime ) {
                     m_log->warn("next day Close position {}_{} {} {} " , c.m_n1,c.m_n2, x,y);
-                    m_profits .push_back( c.closePosition(x,y,ext));
+                     c.closePosition(x,y,cur.second,ext);
+                }
+                else if (c.getHoldingTime(cur.second) > c.m_halflife ) {
+                    m_log->warn("[{}][{}] close position due to timeout of halflife {}", cur.first, c.getName(), c.m_halflife);
+                     c.closePosition(x,y,cur.second,ext);
+                }
+                else { 
+                    auto z0 = c.m_z0;
+                    auto z = c.m_z;
+                    auto zPrev = c.m_zPrev;
+                    bool isProfit = (z0 <0 )? ( z> z0): ( z <z0);
+                    bool isNearer = (z0 <0 )? ( z> zPrev): ( z <zPrev);
+                    auto zdiff = abs(z-z0);
+                    auto zdiffPrev = abs(zPrev-z0);
+
+                    m_log->debug("isProfit,isNearer,zdiff,zdiffPrev:{} {} {} {}", isProfit,isNearer,zdiff,zdiffPrev);
+                    if (isNearer) { //-> near
+                        m_log->debug("[{}_{}] Trail: let it go.  z:{}, zPrev:{} z0 {}" , c.m_n1,c.m_n2, z,zPrev,z0); 
+                    }
+                    else { //-> far
+                        if(isProfit) {
+                            if (abs(zPrev -z0)> 1.3  ) {
+                                m_log->warn("[-{}_+{}] Wow profit close Position z:{}, zPrev:{} z0 {}" , c.m_n1,c.m_n2, z,zPrev,z0);
+                                c.closePosition(x,y,cur.second,ext);
+                            }
+                        else { //wait for the profit point
+                            m_log->debug("[{}_{}] Wait for the profit point z:{}, zPrev:{} z0 {}" , c.m_n1,c.m_n2, z,zPrev,z0); 
+                        }
+                        }
+                        else { //uder loss state
+                            if (zdiff > 1.0 && !isProfit) { //cut loss
+                                m_log->warn("[-{}_+{}] Stop loss close Position z:{}, zPrev:{} z0 {}" , c.m_n1,c.m_n2, z,zPrev,z0);
+                                c.closePosition(x,y,cur.second,ext);
+                            }
+                            else { //draw down
+                                m_log->debug("[{}_{}] Drawdown. maybe increase position z:{}, zPrev:{} z0 {}" , c.m_n1,c.m_n2, z,zPrev,z0); 
+                            }
+                        }
+
+
+                    }
+
                 }
             }
             else {
-                if (c.m_position1.m_position == 0 ) {
+                if (cur.second > forceCloseTime ) {
+                    return;
+                }
+                else {
                     if( (c.m_zPrev <0 && c.m_z < c.m_zPrev ) || ( c.m_zPrev >0 && c.m_z > c.m_zPrev ) ) {
                         m_log->debug("[{}_{}] Trail far z:{}, zPrev:{} " , c.m_n1,c.m_n2, c.m_z, c.m_zPrev);
                     }
@@ -162,43 +229,7 @@ void Scenario_v0::runOneEpoch(const std::pair<std::string, time_t>  & cur,const 
                         m_log->debug("[{}_{}] Do nothing  z:{}, zPrev:{} " , c.m_n1,c.m_n2, c.m_z, c.m_zPrev);
                     }
                 }
-                else { // Position have been hold.
-                    auto z0 = c.m_z0;
-                    auto z = c.m_z;
-                    auto zPrev = c.m_zPrev;
-                    bool isProfit = (z0 <0 )? ( z> z0): ( z <z0);
-                    bool isNearer = (z0 <0 )? ( z> zPrev): ( z <zPrev);
-                    auto zdiff = abs(z-z0);
-                    auto zdiffPrev = abs(zPrev-z0);
 
-                    m_log->debug("isProfit,isNearer,zdiff,zdiffPrev:{} {} {} {}", isProfit,isNearer,zdiff,zdiffPrev);
-                    if (isNearer) { //-> near
-                        m_log->debug("[{}_{}] Trail: let it go.  z:{}, zPrev:{} z0 {}" , c.m_n1,c.m_n2, z,zPrev,z0); 
-                    }
-                    else { //-> far
-                        if(isProfit) {
-                            if (abs(zPrev -z0)> 0.5  ) {
-                                m_log->warn("[-{}_+{}] Wow profit close Position z:{}, zPrev:{} z0 {}" , c.m_n1,c.m_n2, z,zPrev,z0);
-                                m_profits .push_back( c.closePosition(x,y,ext));
-                            }
-                        else { //wait for the profit point
-                            m_log->debug("[{}_{}] Wait for the profit point z:{}, zPrev:{} z0 {}" , c.m_n1,c.m_n2, z,zPrev,z0); 
-                        }
-                        }
-                        else { //uder loss state
-                            if (zdiff > 1.5 && !isProfit) { //cut loss
-                                m_log->warn("[-{}_+{}] Stop loss close Position z:{}, zPrev:{} z0 {}" , c.m_n1,c.m_n2, z,zPrev,z0);
-                                m_profits .push_back( c.closePosition(x,y,ext));
-                            }
-                            else { //draw down
-                                m_log->debug("[{}_{}] Drawdown. maybe increase position z:{}, zPrev:{} z0 {}" , c.m_n1,c.m_n2, z,zPrev,z0); 
-                            }
-                        }
-
-
-                    }
-
-                }
             }
             c.m_zPrev = c.m_z;
     });

@@ -24,6 +24,7 @@ struct SnapData {
     SnapData(const std::string &symbol) : symbol(symbol) {
 
     }
+    bool  isAvailable() { return  idx != -1;} 
     void debug(LogType log) { 
 #if 0
         if (tm == 0) {
@@ -77,6 +78,12 @@ public:
             std::for_each(symbols.begin(), symbols.end(), [&] (auto &s) {  m_excludes.insert(s);} );
         }
 
+    }
+    virtual void insertIncludes(const std::string &s) {
+         m_includes.insert(s);
+    }
+    virtual void insertExcludes(const std::string &s) {
+         m_excludes.insert(s);
     }
     virtual std::vector<SnapData> &  getSnapDataList()  = 0;
     virtual void postSetup() = 0;

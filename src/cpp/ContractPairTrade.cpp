@@ -7,16 +7,19 @@
 
 using namespace std;
 
-LogType Money::m_log = spdlog::stdout_color_mt("Money");
-LogType ContractPairTrade::m_log = spdlog::stdout_color_mt("ContractPairTrade");
+LogType Money::m_log = spdlog::stderr_color_mt("Money");
+LogType ContractPairTrade::m_log = spdlog::stderr_color_mt("ContractPairTrade");
+
 ContractPairTrade::ContractPairTrade (csv::CSVRow& row, Money &m) : m_money(&m) {
     // s,i,m,st,halflife,pair,p,pmin,ext
     m_slope  = row["s"].get<float>();
     m_intercept  = row["i"].get<float>();
     m_mean  = row["m"].get<float>();
     m_std  = row["st"].get<float>();
-    m_halflife  = row["halflife"].get<float>();
+    m_halflife  = row["halflife"].get<float>() * 5 * 60;
+    m_he  = row["HE"].get<float>();
     auto var  = row["pair"].get<>();
+    m_name = var;
     //
     std::string reStr = "(.*)_(.*)";
     std::regex re(reStr);
@@ -88,7 +91,8 @@ void ContractPairTrade::newPosition(float x, float y,bool buyN1, float z0, const
     );
 
 }
-float ContractPairTrade::closePosition(float x, float y, const std::map<std::string, std::any> & ext) {
+float ContractPairTrade::closePosition(float x, float y, const time_t &t, const std::map<std::string, std::any> & ext) {
+    m_closeTime = t;
     auto pos_x = m_position1.m_position;
     auto pos_y = m_position2.m_position;
     auto x0 = m_position1.m_avgprice ;

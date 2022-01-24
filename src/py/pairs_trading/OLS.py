@@ -14,6 +14,8 @@ import matplotlib.pyplot as plt
 from scipy import stats
 from statsmodels.tsa.stattools import coint
 import statsmodels.api as sm
+from hurst import compute_Hc, random_walk
+
 #from statsmodels.tsa.stattools import adfuller
 
 import pandas as pd
@@ -30,7 +32,18 @@ from pyhocon import ConfigFactory
 import hashlib,json
 import click,logging
 
+#https://www.analyticsvidhya.com/blog/2021/06/using-hurst-exponent-to-analyse-the-stock-and-crypto-market-with-python/
 from common.BigPandasTable import load_merged_data
+
+
+def get_hurst_exponent(time_series, max_lag=20):
+    """Returns the Hurst Exponent of the time series"""
+    lags = range(2, max_lag)
+    # variances of the lagged differences
+    tau = [np.std(np.subtract(time_series[lag:], time_series[:-lag])) for lag in lags]
+    # calculate the slope of the log plot -> the Hurst Exponent
+    reg = np.polyfit(np.log(lags), np.log(tau), 1)
+    return reg[0]
 
 class OLS:
     log = logging.getLogger("main.OLS")
@@ -80,6 +93,10 @@ class OLS:
         st  = diff.std()
         o = { 's' : slope, 'i': intercepter, 'm' : m, 'st': st }
         o['halflife'] = cls.getHalflife(diff)
+        #H, hc, hdata = compute_Hc(diff- intercepter, kind='price', simplified=True)
+        H  = get_hurst_exponent(diff.values)
+        o['HE'] = H
+
         return o,diff
 
     @classmethod

@@ -14,7 +14,8 @@
 class RunnerBT{
 public:
     RunnerBT(const char * bigCsvPath,CmdOption & cmd): m_bigtable(bigCsvPath), m_cmdOption(cmd) {
-        m_log = spdlog::stdout_color_mt(typeid(*this).name());
+        //m_log = spdlog::stderr_color_mt(typeid(*this).name());
+        //m_log = spdlog::get("RunnerBT");
     }
     void run(const char * pairCsv, int continueDays = 1);
     void addScenarios_v0(const char * pairCsv, const char * conf=nullptr);
@@ -25,10 +26,11 @@ private:
     vector<IScenario *> m_scenarios;
     vector<string> m_symList;
     BigTable m_bigtable;
-    std::shared_ptr<spdlog::logger> m_log;
+    static LogType  m_log;
     CmdOption & m_cmdOption;
 
 };
+LogType RunnerBT::m_log = spdlog::stderr_color_mt("RunnerBT");
 
 RunnerBT::~RunnerBT (){
     for_each(m_scenarios.begin(), m_scenarios.end(),[] (IScenario *s) { delete s; });
@@ -40,6 +42,7 @@ void RunnerBT:: setupScenarios(IScenario * s){
         auto it = m_bigtable.m_symbolToColIdx.find(snap.symbol);
         if(m_bigtable.m_symbolToColIdx.end() == it) {
             m_log->critical("Cannot get {} from bigtable, pair path: {}", snap.symbol, s->getConfPath());
+            return;
         }
         snap.idx = it->second ;
         //snap.debug(m_log);
@@ -108,7 +111,10 @@ void RunnerBT::run(const char * pairCsv, int continueDays){
             //s.updateData();
             //m_log->debug("pos:{}", pos);
             std::vector<SnapData> & snaps =  s->getSnapDataList() ;
-            auto updateDate = [&] (SnapData & snap ) {
+            for(auto &snap : snaps) {
+                if( !snap.isAvailable()) {
+                    continue;
+                }
                 auto itCol = m_bigtable.m_columnData.begin() + snap.idx;
                 //close	high	low	open	volume
                 auto c  = itCol->second[pos];
@@ -121,10 +127,7 @@ void RunnerBT::run(const char * pairCsv, int continueDays){
                 itCol ++;
                 auto v  = itCol->second[pos];
                 snap.update(o,h,l,c,v,it->second);
-                //m_log->debug("{},{},{}", itCol->first,snap.symbol, snap.close);
-            };
-            for_each(snaps.begin(), snaps.end(), updateDate);
-            //s->debug(&m_log);
+            }
             s->runOneEpoch(*it, *itStart);
         };
         // for_each(std::execution::par_unseq, m_scenarios.begin(), m_scenarios.end(), refresh);
@@ -137,34 +140,40 @@ void RunnerBT::run(const char * pairCsv, int continueDays){
 
 int main(int argc, char * argv[]) {
     CmdOption cmd(argc,argv);
+    spdlog::cfg::load_env_levels();
+#if 0
     auto level = spdlog::level::level_enum::off;;
     auto s  = cmd.get("-v");
     if ( s != nullptr) {
         level = static_cast<spdlog::level::level_enum>(atoi(s));
         //trace debug info warn err critical off n_levels
     }
-
-
     spdlog::set_level(level);
+#endif
     //spdlog::set_level(spdlog::level::xdebug);
     //spdlog::info("Welcome to spdlog!");
-     auto    log = spdlog::stdout_color_mt("xconsole");
+     auto    log = spdlog::stderr_color_mt("xconsole");
     if (argc <2){
         // cout << "csv file path is needed" << endl;
         log->error("CSV file path is needed");
-
         return 1;
     }
-    auto filePath  = cmd.get("--src");
-    const char * pairCsv = cmd.get("--olscsv");
-    auto  pairCsvs = cmd.getM("--olscsv");
-    RunnerBT c(filePath, cmd);
-    //const char * endDate = argv[2];
-    // const char * endDate = "2022-01-13 08:09:0";
-    //for (auto & p :strSplit(pairCsv, ',')) {
-    for (auto & p :pairCsvs) {
-        c.run(p.c_str());
+    auto mSsources  = cmd.getM("--m_src");
+    if (mSsources.size() >0) {
+        for (auto & srcPair : mSsources ) {
+            auto ss = strSplit(srcPair, ':');
+            RunnerBT c(ss[0].c_str(), cmd);
+            c.run(ss[1].c_str());
+        }
+
     }
+    else {
+        auto srcPair = cmd.get("--src");
+        auto ss = strSplit(srcPair, ':');
+        RunnerBT c(ss[0].c_str(), cmd);
+        c.run(ss[1].c_str());
+    }
+
     spdlog::info("{}", cmd.str());
     return 0;
 }

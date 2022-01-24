@@ -7,8 +7,10 @@
 #include <list>
 #include <sstream>
 
+//https://github.com/gabime/spdlog
 #include "3rd-party/spdlog/include/spdlog/spdlog.h"
 #include "3rd-party/spdlog/include/spdlog/sinks/stdout_color_sinks.h"
+#include "3rd-party/spdlog/include/spdlog/cfg/env.h"
 #include "3rd-party/csv-parser/single_include/csv.hpp"
 // https://github.com/nlohmann/json
 //#include "3rd-party/json/single_include/nlohmann/json.hpp"
@@ -19,8 +21,8 @@
 using LogType = std::shared_ptr<spdlog::logger>;
 
 
-inline std::list<std::string>  strSplit(std::string str, char delim) {
-    std::list<std::string> ret;
+inline std::vector<std::string>  strSplit(std::string str, const char delim) {
+    std::vector<std::string> ret;
     std::istringstream ss(str);
     std::string v;
     while( getline(ss, v, delim)){
@@ -45,13 +47,13 @@ public:
         }
         return nullptr;
     }
-    std::list<std::string> getM(const std::string & option)
+    std::vector<std::string> getM(const std::string & option)
     {
-         std::list<std::string> ret;
+        std::vector<std::string> ret;
         auto begin = m_argv;
         auto end = m_argv + m_argc;
         char ** itr = std::find(begin,end, option);
-        if (nullptr == itr) {
+        if (end == itr) {
             return ret;
         }
         for(itr++;(itr != end && **itr != '-' ) ; itr++) {

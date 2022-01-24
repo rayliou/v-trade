@@ -30,8 +30,8 @@ private:
 
     //std::vector<std::pair<SnapData*, ContractPairTrade* >   > m_snapAsN1;
     //std::vector<std::pair<SnapData*, ContractPairTrade* >   > m_snapAsN2;
-    std::list<float> m_profits;
     std::string m_pairCsv;
     Money m_money;
-    LogType  m_log;
+    static LogType  m_log;
+    static LogType  m_out;
 };

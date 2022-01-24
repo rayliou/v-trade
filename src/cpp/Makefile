@@ -3,7 +3,7 @@ CXXFLAGS=-g  -std=c++17  -I3rd-party/spdlog/include
 
 
 test:main_bt
-	./$<  --src /Users/henry/stock/env_study/2021-12-17.cn/bigcsv.csv --olscsv /Users/henry/stock/env_study/2021-12-17.cn/ols.csv -v 1
+	SPDLOG_LEVEL=err,Scenario_v0=debug,bt=info,stdout=trace ./$<  --m_src /Users/henry/stock/env_study/2021-12-17.cn/bigcsv.csv:/Users/henry/stock/env_study/2021-12-17.cn/ols.csv
 
 main_bt: main_bt.cpp Scenario_v0.cpp ContractPairTrade.cpp
 	clang++  -include  common.h  -o $@ $(CXXFLAGS)  $^ #$<

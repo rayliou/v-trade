@@ -13,10 +13,13 @@ public:
 class IContract{
 public:
     virtual ~IContract( ) {}
+    virtual string getName() const = 0;
     float getProfit () const { return m_profit;}
-    void addProfit (float value) { m_profit += value;}
-    void clearProfit () { m_profit  =0; }
+    float getTransactionNum () const { return m_transNum;}
+    void addProfit (float value) { m_profit += value; m_transNum++;}
+    void clearProfit () { m_profit  =0; m_transNum = 0; }
 private:
     float m_profit {0};
+    int m_transNum {0};
 };
 

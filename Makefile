@@ -2,6 +2,9 @@ include vars.mk
 # vars.prod.mk  vars.study.mk
 include vars.prod_or_study.mk
 
+#DIRS=$(shell find /Users/henry/stock/env_study -name  '20*' -maxdepth 1 | xargs    echo)
+DIRS=$(shell find /Users/henry/stock/env_study -name  '20*${GROUP}' -maxdepth 1 | xargs    echo)
+BT_SRC=/Users/henry/stock/v-trade/data/data_study/stk-daily-20220113.$(GROUP).Yahoo.30s.csv
 
 #DATE=$(shell date +%Y%m%d)
 # BIG_TABLE_MERGED_FILE=/Users/henry/stock/v-trade/data/data_study/stk-merged-20220114.cn.Yahoo.csv
@@ -9,7 +12,11 @@ include vars.prod_or_study.mk
 #END_DATES_LIST=$(shell $(PY_PATH)/pairs_trading/studyCointegrate.py date-list-from-bigcsv  --skipdays 28  $(BIG_TABLE_MERGED_FILE) )
 
 all:
-	make m_study
+	GROUP=cn make -e by_group
+	#make m_study
+by_group:
+	SPDLOG_LEVEL=err,bt=info,stdout=trace $(CPP_PATH)/main_bt -v 4 --m_src $(foreach d,$(DIRS),"$(BT_SRC):$(d)/ols.csv")
+
 study prod:
 	cd /Users/henry/stock/env_$@ && make m_study
 #	END_DATES_LIST='2022-01-11 2022-01-12 2022-01-13 2022-01-14' make -e m_study
@@ -39,7 +46,7 @@ BT_DATA_SOURCE=/Users/henry/stock/v-trade/data/data_study/stk-daily-20220113.$(G
 
 $(DATE).$(GROUP)/bt:$(DATE).$(GROUP)/ols
 	#$(PY_PATH)/pairs_trading/pairs_trading.py m-bt  $(BT_DATA_SOURCE)  `dirname $@`/ols.csv  `dirname $@`/$(DATE).$(GROUP).bt.csv
-	$(CPP_PATH)/main_bt --src  $(BT_DATA_SOURCE) --olscsv  `dirname $@`/ols.csv -v 1 --dst  `dirname $@`/$(DATE).$(GROUP).bt.csv  #info #
+	$(CPP_PATH)/main_bt --src  $(BT_DATA_SOURCE) --olscsv  `dirname $@`/ols.csv -v 2 --dst  `dirname $@`/$(DATE).$(GROUP).bt.csv  #info #
 	touch $@
 
 $(DATE).$(GROUP)/ols:$(DATE).$(GROUP)/coint

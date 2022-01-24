@@ -28,9 +28,9 @@ public:
     }
     virtual double getTotalCash() const { return m_cash;}
     virtual double getTotalMarginFreezed() const { return m_margin_freeze;}
-    virtual void subCash(double amount) { m_cash -= amount; }
     virtual ~Money() {}
 private:
+    virtual void subCash(double amount) { m_cash -= amount; }
     double m_cash {100000.};
     double m_margin_freeze {0};
     static LogType  m_log;
@@ -47,10 +47,14 @@ public:
 
     void debug(LogType log) ;
     void newPosition(float x, float y, bool buyN1,float z0, const time_t &t, const std::map<std::string, std::any> &ext);
-    float  closePosition(float x, float y, const std::map<std::string, std::any> & ext);
+    float  closePosition(float x, float y,const time_t &t, const std::map<std::string, std::any> & ext);
+    virtual string getName() const { return m_name; }
+    virtual int getHoldingTime(const time_t &now) const {return now - m_openTime;}
+    virtual int getTransDuration() const {return m_closeTime - m_openTime;}
 
 public:
     float m_slope,m_intercept ,m_mean, m_std, m_halflife, m_p,m_pmin;
+    float m_he {1.0};
     float m_z {0};
     float m_zPrev {0};
     float m_z0 {0};
@@ -68,6 +72,8 @@ private:
 private:
     static LogType  m_log;
     bool m_isAvailable {false};
-    time_t  m_openTime;
+    time_t  m_openTime {0};
+    time_t  m_closeTime {0};
+    std::string m_name;
 };
 
