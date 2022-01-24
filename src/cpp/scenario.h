@@ -19,6 +19,21 @@
                    //
 //using namespace std;
 //
+struct TimeSeries {
+public:
+    void add(double v, const time_t &t) {
+        m_v = v; m_tm = t;
+        m_vars->push_back(v);
+        m_tms->push_back(t);
+    }
+
+public:
+    double m_v {0};
+    time_t m_tm {0};
+private:
+    std::vector<double> *m_vars {nullptr};
+    std::vector<time_t> *m_tms{nullptr};
+};
 struct SnapData {
     const int Y20 = 24 *3600 * 365 * 20;
     SnapData(const std::string &symbol) : symbol(symbol) {

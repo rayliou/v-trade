@@ -10,6 +10,19 @@ using namespace std;
 
 LogType Scenario_v0::m_log = spdlog::stderr_color_mt("Scenario_v0");
 LogType Scenario_v0::m_out = spdlog::stdout_color_mt("stdout");
+
+//https://stackoverflow.com/questions/18939869/how-to-get-the-slope-of-a-linear-regression-line-using-c
+template<typename T>
+T slope(const std::vector<T>& x, const std::vector<T>& y) {
+    const auto n    = x.size();
+    const auto s_x  = std::accumulate(x.begin(), x.end(), 0.0);
+    const auto s_y  = std::accumulate(y.begin(), y.end(), 0.0);
+    const auto s_xx = std::inner_product(x.begin(), x.end(), x.begin(), 0.0);
+    const auto s_xy = std::inner_product(x.begin(), x.end(), y.begin(), 0.0);
+    const auto a    = (n * s_xy - s_x * s_y) / (n * s_xx - s_x * s_x);
+    return a;
+}
+
 Scenario_v0::Scenario_v0(const char * pairCsv, CmdOption &cmd, const char * conf) : IScenario(cmd), m_pairCsv(pairCsv)  {
         //m_log = spdlog::stderr_color_mt(typeid(*this).name());
         //m_log = spdlog::get("Scenario_v0");
@@ -123,8 +136,10 @@ void Scenario_v0::postOneEpoch(const std::map<std::string, std::any>& ext) {
         ContractPairTrade *p = dynamic_cast<ContractPairTrade *>(c);
         int duration = p->getTransDuration();
         int halflife = p->m_halflife ;
-        m_out->info("[{}]\tTrans:{},profit:{},duration: {} mins, halflife:{} mins ", p->getName(),p->getTransactionNum(), p->getProfit()
+        m_out->info("[{}]\tTrans:{},profit:{:.2f}\tP:{:04.2f},Pmin:{:04.2f},HE:{:04.2f}\tduration: {:1d} mins, halflife:{:1d} mins", p->getName(),p->getTransactionNum(), p->getProfit()
+        ,p->m_p,p->m_pmin, p->m_he
         , duration/60, halflife/60
+        //, p->m_ext
         );
     }
     // for_each(m_contracts.begin(),m_contracts.end(),[&] (auto & c ) {

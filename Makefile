@@ -12,7 +12,8 @@ BT_SRC=/Users/henry/stock/v-trade/data/data_study/stk-daily-20220113.$(GROUP).Ya
 #END_DATES_LIST=$(shell $(PY_PATH)/pairs_trading/studyCointegrate.py date-list-from-bigcsv  --skipdays 28  $(BIG_TABLE_MERGED_FILE) )
 
 all:
-	GROUP=cn make -e by_group
+	#GROUP=cn make -e by_group
+	GROUP=topV100_MC200 make -e by_group
 	#make m_study
 by_group:
 	SPDLOG_LEVEL=err,bt=info,stdout=trace $(CPP_PATH)/main_bt -v 4 --m_src $(foreach d,$(DIRS),"$(BT_SRC):$(d)/ols.csv")

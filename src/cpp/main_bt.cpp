@@ -17,6 +17,7 @@ public:
         //m_log = spdlog::stderr_color_mt(typeid(*this).name());
         //m_log = spdlog::get("RunnerBT");
     }
+    void t();
     void run(const char * pairCsv, int continueDays = 1);
     void addScenarios_v0(const char * pairCsv, const char * conf=nullptr);
     void setupScenarios(IScenario * s);
@@ -137,6 +138,8 @@ void RunnerBT::run(const char * pairCsv, int continueDays){
             s->postOneEpoch(extEnv);
     });
 }
+void RunnerBT::t(){
+}
 
 int main(int argc, char * argv[]) {
     CmdOption cmd(argc,argv);
@@ -163,6 +166,7 @@ int main(int argc, char * argv[]) {
         for (auto & srcPair : mSsources ) {
             auto ss = strSplit(srcPair, ':');
             RunnerBT c(ss[0].c_str(), cmd);
+            c.t(); return 0;
             c.run(ss[1].c_str());
         }
 
@@ -171,6 +175,7 @@ int main(int argc, char * argv[]) {
         auto srcPair = cmd.get("--src");
         auto ss = strSplit(srcPair, ':');
         RunnerBT c(ss[0].c_str(), cmd);
+        c.t(); return 0;
         c.run(ss[1].c_str());
     }
 

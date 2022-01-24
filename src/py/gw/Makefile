@@ -18,10 +18,10 @@ clean_all:
 	GROUP=topV100_MC200 make -e _clean
 
 study:
-	#GROUP=cn            make -e 1m
-	#GROUP=topV100_MC200 make -e 1m
-	GROUP=cn            make -e 30s
-	GROUP=topV100_MC200 make -e 30s
+	GROUP=cn            make -e 1m
+	GROUP=topV100_MC200 make -e 1m
+	#GROUP=cn            make -e 30s
+	#GROUP=topV100_MC200 make -e 30s
 
 merge: $(BIG_TABLE_MERGED_FILE)
 	echo merge $^  to  $@
@@ -32,7 +32,7 @@ $(BIG_TABLE_DAILY_FILE):
 
 1m: $(BIG_TABLE_DAILY_FILE_1m)
 $(BIG_TABLE_DAILY_FILE_1m):
-	./GwIB.py  downloadhistory $(GROUP) $@  --interval '1 min'  --duration '20 D'  --timeout 1200 --conf $(CONF_FILE)
+	./GwIB.py  downloadhistory $(GROUP) $@  --interval '1 min'  --duration '60 D'  --timeout 2400 --conf $(CONF_FILE)
 
 30s: $(BIG_TABLE_DAILY_FILE_30s)
 $(BIG_TABLE_DAILY_FILE_30s):
