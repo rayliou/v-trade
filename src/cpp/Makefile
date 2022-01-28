@@ -3,10 +3,11 @@ CXXFLAGS=-g  -std=c++17  -I3rd-party/spdlog/include
 
 
 test:main_bt
-	SPDLOG_LEVEL=err,Scenario_v0=debug,bt=info,stdout=trace ./$<  --m_src /Users/henry/stock/env_study/2021-12-17.cn/bigcsv.csv:/Users/henry/stock/env_study/2021-12-17.cn/ols.csv
+	#SPDLOG_LEVEL=err,RunnerBT=trace,Scenario_v0=debug,bt=info,stdout=trace ./$<  --m_src /Users/henry/stock/v-trade/data/data_test/stk-daily-20220124.topV100_MC200.Yahoo.1m.csv:/Users/henry/stock/env_study/2021-12-17.cn/ols.csv
+	SPDLOG_LEVEL=err,RunnerBT=trace,Scenario_v0=debug,bt=info,stdout=trace ./$<  --m_src /Users/henry/stock/v-trade/data/data_test/stk-merged-20220118.topV100_MC200.Yahoo.csv:/Users/henry/stock/env_study/2021-12-17.cn/ols.csv
 
 main_bt: main_bt.cpp Scenario_v0.cpp ContractPairTrade.cpp
-	clang++  -include  common.h  -o $@ $(CXXFLAGS)  $^ #$<
+	clang++  -include  common.h  -o $@ $(CXXFLAGS)  $^  3rd-party/JohansenCointegration/JohansenHelper.cpp -I./3rd-party/JohansenCointegration/  -lgsl -lgslcblas   #$<
 
 Scenario_v0: Scenario_v0.cpp common.h.pch  Scenario_v0.h   contract.h  scenario.h  strategy.h
 	clang++  -include  common.h  -o $@ $(CXXFLAGS)  $< #$^

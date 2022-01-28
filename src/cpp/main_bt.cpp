@@ -6,6 +6,7 @@
 #include "BigTable.h"
 #include "scenario.h"
 #include "Scenario_v0.h"
+#include "./3rd-party/JohansenCointegration/JohansenHelper.h"
 
 // https://github.com/gabime/spdlog
 
@@ -18,6 +19,7 @@ public:
         //m_log = spdlog::get("RunnerBT");
     }
     void t();
+    void t(IndexData::iterator & start, IndexData::iterator &end );
     void run(const char * pairCsv, int continueDays = 1);
     void addScenarios_v0(const char * pairCsv, const char * conf=nullptr);
     void setupScenarios(IScenario * s);
@@ -138,7 +140,104 @@ void RunnerBT::run(const char * pairCsv, int continueDays){
             s->postOneEpoch(extEnv);
     });
 }
+void RunnerBT::t(IndexData::iterator & start, IndexData::iterator &end){
+    auto n1 = "V";
+    auto n2 = "MA";
+    auto it = m_bigtable.m_symbolToColIdx.find(n1);
+    if (it == m_bigtable.m_symbolToColIdx.end()) {
+        m_log->critical("Cannot get {} from bigtable", n1);
+        return;
+    }
+    int col_1 = it->second;
+    it = m_bigtable.m_symbolToColIdx.find(n2);
+    if (it == m_bigtable.m_symbolToColIdx.end()) {
+        m_log->critical("Cannot get {} from bigtable", n2);
+        return;
+    }
+    int col_2 = it->second;
+    auto itCol1 = m_bigtable.m_columnData.begin() + col_1;
+    auto itCol2 = m_bigtable.m_columnData.begin() + col_2;
+    auto posStart = start - m_bigtable.m_index.begin();
+    auto posEnd = end - m_bigtable.m_index.begin();
+    DoubleMatrix xMat;
+    xMat.resize(2);
+    xMat[0].clear();
+    xMat[1].clear();
+    std::copy(itCol1->second.begin()+posStart,itCol1->second.begin()+posEnd,std::back_inserter(xMat[0]));
+    std::copy(itCol2->second.begin()+posStart,itCol2->second.begin()+posEnd,std::back_inserter(xMat[1]));
+
+    vector<MaxEigenData> outStats;
+    DoubleVector eigenValuesVec;
+    DoubleMatrix eigenVecMatrix;
+    JohansenHelper johansenHelper(xMat);
+    int days = round((end->second - start->second)/3600./24);
+    for(int lags = 1; lags <=64; lags <<=1) {
+        johansenHelper.DoMaxEigenValueTest(lags);
+        int cointCount = johansenHelper.CointegrationCount();
+        if (cointCount >0) {
+            eigenValuesVec = johansenHelper.GetEigenValues();
+            eigenVecMatrix = johansenHelper.GetEigenVecMatrix();
+            auto beta_0 = eigenVecMatrix[0][0]/eigenVecMatrix[0][1];
+            auto beta_1 = eigenVecMatrix[1][0]/eigenVecMatrix[1][1];
+#if 0
+            for (auto & ev : eigenVecMatrix ) {
+                for (auto & c : ev ) {
+                    cout << c << " ";
+                }
+                cout << endl;
+            }
+#endif
+            m_log->debug("{}_{}cointCount:{};lambda_beta:{:.3f}:{:.3f},{:.3f}:{:.3f}\tlag:{}, days:{}\t{}:{}",
+                    n1,n2
+                    ,cointCount,eigenValuesVec[0],beta_0,eigenValuesVec[1],beta_1, lags,days,start->first, end->first);
+        }
+        outStats = johansenHelper.GetOutStats();
+    }
+}
 void RunnerBT::t(){
+#if 0
+        s	i	m	st	halflife	HE	pair	p
+    1.3900345809740500	-2.3424026533661100	-1.33214340879219E-14	0.39436858070784800	4.84	0.3274200600137500	TME_GTEC	0.0058521697013129
+    18.825885929277600	-0.37935722984402000	1.20454485849993E-14	0.13865395586702800	5.35	0.2726943051716730	METX_IQ	0.0113077349412209
+    14.1802997843113	-42.76635618329670	-6.63835730752094E-14	2.7019161074638800	22.39	0.43406404462359300	LU_FUTU	0.0148821258533774
+    0.3079874795503250	1.7812422152179200	1.32878944832619E-14	0.18363037474109100	19.03	0.5305223630105	BZUN_LU	0.0155388896678845
+#endif
+    //detect data interval
+    auto interval = (m_bigtable.m_index.begin() +1)->second - m_bigtable.m_index.begin()->second;
+    int step = 3600/interval;
+
+    for(int days =10; days <= 30; days +=10) {
+        auto secs = days * 24 * 3600;
+        auto s =  m_bigtable.m_index.begin()->second + secs;
+        auto e =  (m_bigtable.m_index.end() -1)->second - 48 * 3600;
+        auto itStart = find_if(m_bigtable.m_index.begin(),m_bigtable.m_index.end(),[&] (auto & i){ 
+                return i.second >= s;
+        });
+        if(m_bigtable.m_index.end() == itStart) {
+            m_log->trace("skip due to itStart find failed");
+            continue;
+        }
+        auto itEnd = find_if(itStart,m_bigtable.m_index.end(),[&] (auto & i){ 
+                return i.second >= e;
+        });
+        if(m_bigtable.m_index.end() == itEnd) {
+            m_log->trace("skip due to itEnd find failed");
+            continue;
+        }
+        //itStart as the 1st end for a range
+        m_log->debug("{}:{}", itStart->first, (itEnd-1)->first);
+        auto is = m_bigtable.m_index.begin();
+        auto isPrev = is;
+        //run it every 1 hr
+
+        for(auto it = itStart; is< itStart &&it < itEnd; is++,it++) {
+            if (is->second -isPrev->second > 3600 || is == itStart ) {
+               // m_log->debug("interval {}, step: {}", interval, step);
+                t(is,it);
+                isPrev = is;
+            }
+        }
+    }
 }
 
 int main(int argc, char * argv[]) {

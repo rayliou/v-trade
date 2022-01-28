@@ -32,10 +32,9 @@ from pyhocon import ConfigFactory
 import hashlib,json
 import click,logging
 
-#https://www.analyticsvidhya.com/blog/2021/06/using-hurst-exponent-to-analyse-the-stock-and-crypto-market-with-python/
 from common.BigPandasTable import load_merged_data
 
-
+#https://www.analyticsvidhya.com/blog/2021/06/using-hurst-exponent-to-analyse-the-stock-and-crypto-market-with-python/
 def get_hurst_exponent(time_series, max_lag=20):
     """Returns the Hurst Exponent of the time series"""
     lags = range(2, max_lag)

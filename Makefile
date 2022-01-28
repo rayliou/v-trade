@@ -35,7 +35,7 @@ GROUPS=cn topV100_MC200
 m_study:m_bt
 	touch $@
 
-m_bt:m_ols
+m_bt:m_js_coint
 m_ols:m_coint
 
 m_%:
@@ -43,7 +43,9 @@ m_%:
 		DATE=$${d} GROUP=$${g} make -e $${d}.$${g}/$*; \
 	done; done
 
-BT_DATA_SOURCE=/Users/henry/stock/v-trade/data/data_study/stk-daily-20220113.$(GROUP).Yahoo.30s.csv
+#BT_DATA_SOURCE=/Users/henry/stock/v-trade/data/data_study/stk-daily-20220113.$(GROUP).Yahoo.30s.csv
+#BT_DATA_SOURCE=/Users/henry/stock/v-trade/data/data_study/stk-daily-20220125.$(GROUP).Yahoo.1m.csv
+BIG_TABLE_MERGED_FILE=/Users/henry/stock/v-trade/data/data_study/stk-daily-20220125.$(GROUP).Yahoo.1m.csv
 
 $(DATE).$(GROUP)/bt:$(DATE).$(GROUP)/ols
 	#$(PY_PATH)/pairs_trading/pairs_trading.py m-bt  $(BT_DATA_SOURCE)  `dirname $@`/ols.csv  `dirname $@`/$(DATE).$(GROUP).bt.csv
@@ -55,7 +57,11 @@ $(DATE).$(GROUP)/ols:$(DATE).$(GROUP)/coint
 	touch $@
 
 $(DATE).$(GROUP)/coint:$(BIG_TABLE_MERGED_FILE) $(STOCK_BY_PLATES_FILE) $(DATE).$(GROUP)/start
-	$(PY_PATH)/pairs_trading/pairs_trading.py cointegrate --stock_plates_json $(STOCK_BY_PLATES_FILE) --end_date $(DATE) --max_days 30 $(BIG_TABLE_MERGED_FILE)  `dirname $@`/coint.csv
+	$(PY_PATH)/pairs_trading/pairs_trading.py cointegrate --stock_plates_json $(STOCK_BY_PLATES_FILE) --end_date $(DATE) $(BIG_TABLE_MERGED_FILE)  `dirname $@`/coint.csv
+	touch $@
+
+$(DATE).$(GROUP)/js_coint:$(BIG_TABLE_MERGED_FILE) $(STOCK_BY_PLATES_FILE) $(DATE).$(GROUP)/start
+	$(PY_PATH)/pairs_trading/./CointegrateJohansen.py js-coint   $(BIG_TABLE_MERGED_FILE)  `dirname $@`/js_coint.json  --model_time $(DATE)  --thrshld_he 0.45
 	touch $@
 
 $(DATE).$(GROUP)/start: $(BIG_TABLE_MERGED_FILE)

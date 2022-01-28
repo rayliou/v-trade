@@ -29,22 +29,28 @@ from screener.ScreenByPlates import StockWithPlates
 from common.BigPandasTable import load_merged_data
 
 class Cointegrate:
+    MIN_DAYS = 14
+    MAX_TIMES = 3
     log = logging.getLogger("main.Cointegrate")
-    def __init__(self,df, symbols, maxDays =28, end_date=''):
+    def __init__(self,df, symbols, end_date=''):
+        #set model date.
         self.end_date_ = end_date
         df =  df[:end_date] if end_date is not None and end_date != '' else df
+        start = df.index[-1] - timedelta(days=self.MIN_DAYS * self.MAX_TIMES)
+        df =  df[start:]
+
         self.symbols_ = symbols
-        self.maxDays_ = maxDays
         self.pThreshhold_ = 0.06
-        start = df.index[-1] - timedelta(days=self.maxDays_)
-        df = df[start:]
         self.df_ =  df
-        self.log.debug(f'start:{start}')
         display(self.df_.head(1))
         display(self.df_.tail(1))
         self.log.debug(f'symbols:{",".join(self.symbols_)}')
         pass
     def run(self):
+        '''
+        /Users/henry/stock/v-trade/data/data_study/stk-daily-20220125.cn.Yahoo.1m.csv
+        2021-10-28 09:30:00 -> 2022-01-24 15:59:00
+        '''
         symList = self.symbols_
         N = len(self.symbols_)
         P = np.zeros((N,N))
@@ -53,29 +59,34 @@ class Cointegrate:
         #loop
         pPairs = []
         cnt  = 0
-        start = datetime.now() - timedelta(days=int(self.maxDays_)/2)
+        # start = datetime.now() - timedelta(days=int(self.maxDays_)/2)
+        # start = df.index[-1] - timedelta(days=self.maxDays_)
         totalCnt =  int(N *(N-1) /2)
         for i in range(N):
             for j in range(i+1,N):
                 k1 = symList[i]
                 k2 = symList[j]
+                v = {'pair': f'{k1}_{k2}', }
                 cnt += 1
                 pList = []
                 pMin = 1.0
                 start_of_pmin = None
-                for dTimes in range(1,5):
-                    start = self.df_.index[-1] - timedelta(days=7*dTimes)
+                #14,28,42
+                for dTimes in range(1,self.MAX_TIMES+1):
+                    days=self.MIN_DAYS*dTimes
+                    start = self.df_.index[-1] - timedelta(days=days)
                     X = self.df_[k1][start:].close
                     Y = self.df_[k2][start:].close
                     # self.log.info(f'coint(X:{X.index[0]}:{X.index[-1]};Y:{Y.index[0]}:{Y.index[-1]}) start:{start} ')
                     _, pCoin, _ = coint(X,Y)
+                    v["p_"+ str(days)] = pCoin
                     pList.append(pCoin)
                     if pCoin < pMin:
                         pMin = pCoin
                         start_of_pmin = start
                     #display(X);sys.exit(0)
                 p = np.mean(pList)                           
-                v = {'pair': f'{k1}_{k2}', 'p': p, 'pmin':pMin, 'start_of_pmin':start_of_pmin,}# 'plist': pList }
+                v.update({'p': p, 'pmin':pMin, 'start_of_pmin':start_of_pmin,})
                 self.log.debug(f'[{self.end_date_}]:[{cnt}/{totalCnt}]:\t{v}') 
                 pPairs.append(v)
                 #P[k1][k2] = P[k2][k1] = pCoin
@@ -90,13 +101,12 @@ class Cointegrate:
 @click.command()
 @click.argument('bigcsv')
 @click.argument('dst')
-@click.option('-d','--max_days',  help='', default=28)
 @click.option('--stock_plates_json',  help='', default='')
 @click.option('--end_date',  help='', default='')
-def cointegrate(bigcsv,dst,max_days, stock_plates_json, end_date):
+def cointegrate(bigcsv,dst,stock_plates_json, end_date):
     logInit()
     df,symbols = load_merged_data(bigcsv)
-    c  = Cointegrate(df,symbols,max_days,end_date)
+    c  = Cointegrate(df,symbols,end_date)
     dfP = c.run()
     #display(dfP)
     if stock_plates_json != '':

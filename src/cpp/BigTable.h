@@ -46,11 +46,6 @@ public:
             [](const decltype(m_symbolToColIdx)::value_type &pair){return pair.first;});
         return keys;
     }
-    time_t strTime2time_t(const char *s, const char *fmt=TIME_FORMAT) {
-            struct tm timeptr;
-            strptime(s,fmt,&timeptr);
-            return mktime(&timeptr);
-    }
     std::pair<IndexData::const_iterator,IndexData::const_iterator> getIndexRange(string start, string end) {
             time_t ts = strTime2time_t(start.c_str());
             time_t te = strTime2time_t(end.c_str());
@@ -136,6 +131,12 @@ public:
         }
 
         return *this;
+    }
+public:
+    time_t strTime2time_t(const char *s, const char *fmt=TIME_FORMAT) {
+            struct tm timeptr;
+            strptime(s,fmt,&timeptr);
+            return mktime(&timeptr);
     }
 
 };

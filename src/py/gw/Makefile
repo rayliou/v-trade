@@ -32,11 +32,11 @@ $(BIG_TABLE_DAILY_FILE):
 
 1m: $(BIG_TABLE_DAILY_FILE_1m)
 $(BIG_TABLE_DAILY_FILE_1m):
-	./GwIB.py  downloadhistory $(GROUP) $@  --interval '1 min'  --duration '60 D'  --timeout 2400 --conf $(CONF_FILE)
+	./GwIB.py  downloadhistory $(GROUP) $@  --interval '1 min'  --duration '60 D'  --timeout 3600 --conf $(CONF_FILE)
 
 30s: $(BIG_TABLE_DAILY_FILE_30s)
 $(BIG_TABLE_DAILY_FILE_30s):
-	./GwIB.py  downloadhistory $(GROUP) $@  --interval '30 secs'  --duration '30 D'  --timeout 2400 --conf $(CONF_FILE)
+	./GwIB.py  downloadhistory $(GROUP) $@  --interval '30 secs'  --duration '30 D'  --timeout 7200 --conf $(CONF_FILE)
 
 $(BIG_TABLE_BASE_FILE): $(DATA_ROOT)/start.done
 	#./GwIB.py  downloadhistory $(GROUP) $@  --interval '5 mins' --duration '2 M' --timeout 1200
