@@ -52,7 +52,8 @@ public:
     void newPosition(float x, float y, bool buyN1,float z0, const time_t &t, const std::map<std::string, std::any> &ext);
     float  closePosition(float x, float y,const time_t &t, const std::map<std::string, std::any> & ext);
     virtual string getName() const { return m_name; }
-    virtual float getRank() const { return -1;}
+    virtual void setRank(float rank)  {m_rank = rank;}
+    virtual float getRank() const { return m_rank;}
     virtual int getHoldingTime(const time_t &now) const {return now - m_openTime;}
     virtual int getTransDuration() const {return m_closeTime - m_openTime;}
 
@@ -80,5 +81,6 @@ private:
     time_t  m_closeTime {0};
     std::string m_name;
     std::string m_slopeName;
+    float m_rank {-1.};
 };
 

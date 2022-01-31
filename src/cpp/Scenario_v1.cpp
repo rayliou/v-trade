@@ -190,6 +190,11 @@ void Scenario_v1::updateSnapDataByBigTable(int pos) {
         snap.update(o,h,l,c,v,tm);
     }
 }
+void Scenario_v1::strategy() {
+    for_each(m_contracts.begin(), m_contracts.end(), [&](auto &c){
+        c.setRank(3);
+    });
+}
 void Scenario_v1::rank(vector<ContractPairTrade *> &contracts) {
     contracts.clear();
     for ( auto & c: m_contracts) {
@@ -232,6 +237,7 @@ void Scenario_v1::runBT() {
     auto tmPrev = tm;
     for (; pos < end; pos++) {
         updateSnapDataByBigTable(pos);
+        strategy();
         rank(contracts);
         time(&tm);
         if (tm - tmPrev > timeOut || contracts.size() > contractsLimit ) {
@@ -241,7 +247,6 @@ void Scenario_v1::runBT() {
         //-  analysis and log
     }
     //last piece.
-    rank(contracts);
     executeTrades(contracts);
     debug();
     //for (auto &[symbol, snap]:m_snapDataMap) { snap.debug(m_log); }

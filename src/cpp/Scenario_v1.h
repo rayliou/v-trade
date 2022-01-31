@@ -36,6 +36,7 @@ public:
     virtual std::string getConfPath() const { return m_pairCsv; }
 private:
     void updateSnapDataByBigTable(int pos);
+    void strategy() ;
     void rank(std::vector<ContractPairTrade *> &contracts ) ;
     void executeTrades(vector<ContractPairTrade *> &contracts) ;
 
