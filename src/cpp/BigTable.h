@@ -20,8 +20,8 @@ using SymbolToColIdx = map<string,int>;
 using TableData = tuple<SymbolToColIdx,IndexData,ColumnData>;
 
 
-const char * TIME_FORMAT = "%Y-%m-%d %H:%M:%S";
 class BigTable{
+    const   char * TIME_FORMAT = "%Y-%m-%d %H:%M:%S";
 
 public:
     int m_fieldsNum {5};
@@ -126,17 +126,23 @@ public:
             m_index.push_back(make_pair(idx,t));
             int i = 0;
             for(itField++ ;itField != itRow->end(); itField++){
-                m_columnData[i++].second.push_back( itField->get<double>());
+                //m_columnData[i++].second.push_back( itField->get<double>());
+                string var = itField->get<>();
+                double v = atof(var.c_str());
+                m_columnData[i++].second.push_back(v);
             }
         }
 
         return *this;
     }
 public:
-    time_t strTime2time_t(const char *s, const char *fmt=TIME_FORMAT) {
-            struct tm timeptr;
-            strptime(s,fmt,&timeptr);
-            return mktime(&timeptr);
+    time_t strTime2time_t(const char *s, const char *fmt=nullptr) {
+        if (nullptr == fmt) {
+            fmt = TIME_FORMAT;
+        }
+        struct tm timeptr;
+        strptime(s,fmt,&timeptr);
+        return mktime(&timeptr);
     }
 
 };

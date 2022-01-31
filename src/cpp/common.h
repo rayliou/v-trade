@@ -13,7 +13,9 @@
 #include "3rd-party/spdlog/include/spdlog/cfg/env.h"
 #include "3rd-party/csv-parser/single_include/csv.hpp"
 // https://github.com/nlohmann/json
-//#include "3rd-party/json/single_include/nlohmann/json.hpp"
+// https://github.com/nlohmann/json/blob/develop/doc/examples/README.cpp
+#include "3rd-party/json/single_include/nlohmann/json.hpp"
+using json = nlohmann::json;
 
 //https://github.com/vincentlaucsb/csv-parser
 #include "3rd-party/csv-parser/single_include/csv.hpp"

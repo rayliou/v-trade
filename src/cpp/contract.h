@@ -14,6 +14,7 @@ class IContract{
 public:
     virtual ~IContract( ) {}
     virtual string getName() const = 0;
+    virtual float getRank() const = 0;
     float getProfit () const { return m_profit;}
     float getTransactionNum () const { return m_transNum;}
     void addProfit (float value) { m_profit += value; m_transNum++;}

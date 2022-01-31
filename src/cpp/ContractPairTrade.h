@@ -38,7 +38,10 @@ private:
 
 class ContractPairTrade : public IContract {
 public:
-    ContractPairTrade (csv::CSVRow& row, Money &m);
+    ContractPairTrade (json& j,Money &m, std::string &slopeName);
+
+    //ContractPairTrade (csv::CSVRow& row, Money &m);
+
     std::vector<std::string>  getSymbols() const;
     time_t getOpenTime() const { return m_openTime;}
 
@@ -49,6 +52,7 @@ public:
     void newPosition(float x, float y, bool buyN1,float z0, const time_t &t, const std::map<std::string, std::any> &ext);
     float  closePosition(float x, float y,const time_t &t, const std::map<std::string, std::any> & ext);
     virtual string getName() const { return m_name; }
+    virtual float getRank() const { return -1;}
     virtual int getHoldingTime(const time_t &now) const {return now - m_openTime;}
     virtual int getTransDuration() const {return m_closeTime - m_openTime;}
 
@@ -75,5 +79,6 @@ private:
     time_t  m_openTime {0};
     time_t  m_closeTime {0};
     std::string m_name;
+    std::string m_slopeName;
 };
 

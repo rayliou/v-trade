@@ -23,10 +23,10 @@ T slope(const std::vector<T>& x, const std::vector<T>& y) {
     return a;
 }
 
-Scenario_v0::Scenario_v0(const char * pairCsv, CmdOption &cmd, const char * conf) : IScenario(cmd), m_pairCsv(pairCsv)  {
+Scenario_v0::Scenario_v0(const char * modelFilePath, CmdOption &cmd, const char * conf) : IScenario(cmd), m_pairCsv(modelFilePath)  {
         //m_log = spdlog::stderr_color_mt(typeid(*this).name());
         //m_log = spdlog::get("Scenario_v0");
-    setupContractPairTrades(pairCsv);
+    setupContractPairTrades(modelFilePath);
     for_each(m_contracts.begin(),m_contracts.end(), [&] (ContractPairTrade & c ) {
         //if(c.isIgnored()) {
             //m_log->debug("Ignore symbol {}_{}", c.m_n1, c.m_n2);
@@ -51,9 +51,9 @@ void Scenario_v0::debug(LogType *log) {
             }
     });
 }
-void Scenario_v0::setupContractPairTrades(const char *pairCsv) {
+void Scenario_v0::setupContractPairTrades(const char *modelFilePath) {
     using namespace csv;
-    CSVReader reader(pairCsv);
+    CSVReader reader(modelFilePath);
     for (CSVRow& row: reader) {
         m_contracts.push_back(ContractPairTrade(row, m_money));
     }

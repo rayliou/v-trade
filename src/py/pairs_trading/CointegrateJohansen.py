@@ -313,9 +313,10 @@ def _js_coint(src, dst, modelTime,thresholdHE, thresholdHalflifeHrs):
     logInit()
     dfSrc  = pd.read_csv(src, index_col=0, header=[0,1], parse_dates=True )
     symbolsSrc = list(set([c[0] for c in dfSrc.columns]))
-    ignored = ['RIVN',]
+    ignored = ['RIVN','GOOG',]
     for s in ignored:
-        symbolsSrc.remove(s)
+        if s in symbolsSrc:
+            symbolsSrc.remove(s)
     #modelTime = '2021-12-18'
     #modelTime = '2022-1-27'
     N = len(symbolsSrc)

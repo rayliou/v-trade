@@ -6,6 +6,7 @@ BIG_TABLE_BASE_FILE=$(DATA_ROOT)/stk-base-$(BASE_DATE).$(GROUP).$(FEED_SOURCE).c
 BIG_TABLE_DAILY_FILE=$(DATA_ROOT)/stk-daily-$(DATE).$(GROUP).$(FEED_SOURCE).csv
 BIG_TABLE_DAILY_FILE_1m=$(DATA_ROOT)/stk-daily-$(DATE).$(GROUP).$(FEED_SOURCE).1m.csv
 BIG_TABLE_DAILY_FILE_30s=$(DATA_ROOT)/stk-daily-$(DATE).$(GROUP).$(FEED_SOURCE).30s.csv
+BIG_TABLE_DAILY_FILE_5s=$(DATA_ROOT)/stk-daily-$(DATE).$(GROUP).$(FEED_SOURCE).5s.csv
 
 all:
 	GROUP=cn            make -e merge
@@ -18,8 +19,10 @@ clean_all:
 	GROUP=topV100_MC200 make -e _clean
 
 study:
-	GROUP=cn            make -e 1m
-	GROUP=topV100_MC200 make -e 1m
+	GROUP=cn            make -e 5s
+	GROUP=topV100_MC200 make -e 5s
+	#GROUP=cn            make -e 1m
+	#GROUP=topV100_MC200 make -e 1m
 	#GROUP=cn            make -e 30s
 	#GROUP=topV100_MC200 make -e 30s
 
@@ -37,6 +40,10 @@ $(BIG_TABLE_DAILY_FILE_1m):
 30s: $(BIG_TABLE_DAILY_FILE_30s)
 $(BIG_TABLE_DAILY_FILE_30s):
 	./GwIB.py  downloadhistory $(GROUP) $@  --interval '30 secs'  --duration '30 D'  --timeout 7200 --conf $(CONF_FILE)
+
+5s: $(BIG_TABLE_DAILY_FILE_5s)
+$(BIG_TABLE_DAILY_FILE_5s):
+	./GwIB.py  downloadhistory $(GROUP) $@  --interval '5 secs'  --duration '30 D'  --timeout 7200 --conf $(CONF_FILE)
 
 $(BIG_TABLE_BASE_FILE): $(DATA_ROOT)/start.done
 	#./GwIB.py  downloadhistory $(GROUP) $@  --interval '5 mins' --duration '2 M' --timeout 1200

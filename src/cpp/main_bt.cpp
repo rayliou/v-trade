@@ -2,10 +2,10 @@
 //
 #include "common.h"
 #include <execution>
-#include <regex>
 #include "BigTable.h"
 #include "scenario.h"
-#include "Scenario_v0.h"
+//#include "Scenario_v0.h"
+#include "Scenario_v1.h"
 #include "./3rd-party/JohansenCointegration/JohansenHelper.h"
 
 // https://github.com/gabime/spdlog
@@ -14,16 +14,14 @@
 
 class RunnerBT{
 public:
-    RunnerBT(const char * bigCsvPath,CmdOption & cmd): m_bigtable(bigCsvPath), m_cmdOption(cmd) {
-        //m_log = spdlog::stderr_color_mt(typeid(*this).name());
-        //m_log = spdlog::get("RunnerBT");
-    }
-    void t();
-    void t(IndexData::iterator & start, IndexData::iterator &end );
-    void run(const char * pairCsv, int continueDays = 1);
-    void addScenarios_v0(const char * pairCsv, const char * conf=nullptr);
-    void setupScenarios(IScenario * s);
+    RunnerBT(const char * bigCsvPath,CmdOption & cmd)
+        : m_bigCsvPath(bigCsvPath),m_bigtable(bigCsvPath), m_cmdOption(cmd) { }
     ~RunnerBT();
+
+    void johansenCoint();
+    void johansenCoint(IndexData::iterator & start, IndexData::iterator &end );
+    void runBT(const char * modelFilePath, int continueDays = 1);
+    void addScenarios_v1(const char * modelFilePath, const char * conf=nullptr);
 
 private:
     vector<IScenario *> m_scenarios;
@@ -31,6 +29,9 @@ private:
     BigTable m_bigtable;
     static LogType  m_log;
     CmdOption & m_cmdOption;
+    string m_bigCsvPath;
+    //singleton
+    SnapDataMap  m_snapDataMap;
 
 };
 LogType RunnerBT::m_log = spdlog::stderr_color_mt("RunnerBT");
@@ -39,73 +40,24 @@ RunnerBT::~RunnerBT (){
     for_each(m_scenarios.begin(), m_scenarios.end(),[] (IScenario *s) { delete s; });
     m_scenarios.clear();
 }
-void RunnerBT:: setupScenarios(IScenario * s){
-    std::vector<SnapData> & snaps =  s->getSnapDataList() ;
-    auto updateDate = [&] (SnapData & snap ) {
-        auto it = m_bigtable.m_symbolToColIdx.find(snap.symbol);
-        if(m_bigtable.m_symbolToColIdx.end() == it) {
-            m_log->critical("Cannot get {} from bigtable, pair path: {}", snap.symbol, s->getConfPath());
-            return;
-        }
-        snap.idx = it->second ;
-        //snap.debug(m_log);
-    };
-    for_each(snaps.begin(), snaps.end(), updateDate);
-
+void RunnerBT::addScenarios_v1(const char * modelFilePath, const char * conf){
+    for(auto name : {"s_0", "s_dayslr"}) {
+        Scenario_v1 *s = new Scenario_v1(name, m_cmdOption, m_snapDataMap,modelFilePath,m_bigtable);
+        s->postSetup();
+        m_scenarios.push_back(s);
+    }
 }
-void RunnerBT::addScenarios_v0(const char * pairCsv, const char * conf){
-    Scenario_v0 *s = new Scenario_v0(pairCsv, m_cmdOption);
-    setupScenarios(s);
-    s->postSetup();
-    m_scenarios.push_back(s);
-}
-void RunnerBT::run(const char * pairCsv, int continueDays){
+void RunnerBT::runBT(const char * modelFilePath, int continueDays){
     std::map<std::string, std::any> extEnv;
-    this->addScenarios_v0(pairCsv);
+    this->addScenarios_v1(modelFilePath);
+    for (IScenario * s: m_scenarios) {
+        s->runBT();
+    }
 
-    int N = m_symList.size();
-    int totalCnt = N*(N-1)/2;
+
     //auto strRe =".*(20[-0-9]+)\\.(.*)/ols.csv";
-    auto strRe =".*(20\\d\\d-\\d+-\\d+)\\.(.*)/ols.csv";
-    std::regex re(strRe);
-    std::smatch pieces_match;
-    string var {pairCsv} ;
-    auto ret = regex_match(var, pieces_match, re);
-    if(!ret ||pieces_match.size() !=3) {
-        m_log->critical("pairCsv {} does not match re {}", pairCsv, strRe);
-        return;
-    }
-    auto date = pieces_match[1].str();
-    auto group  = pieces_match[2].str();
-    //vector<string> dateList;
-    vector<time_t> dateList;
-    auto tmStart = m_bigtable.strTime2time_t((date+" 23:59:59")  .c_str(),"%Y-%m-%d %H:%M:%S");
-    //use the next trade day after the date which is set.
-    auto itStart = find_if(m_bigtable.m_index.begin(),m_bigtable.m_index.end(),[&] (auto & i){ 
-            return i.second >= tmStart;
-    });
-    struct tm tPrev;
-    memset(&tPrev, 0, sizeof(tPrev));
-    //remove duplicate/uniq
-    for_each(itStart,m_bigtable.m_index.end(), [&] (auto & i){
-            struct tm t;
-            localtime_r(&(i.second), &t);
-            if(t.tm_year > tPrev.tm_year ||t.tm_mon > tPrev.tm_mon ||t.tm_mday > tPrev.tm_mday ) {
-                dateList.push_back(i.second);
-            }
-            tPrev = t;
-    });
-    auto itEnd   = m_bigtable.m_index.end();
-    if (dateList.size() >=2) {
-        itEnd = find_if(itStart,m_bigtable.m_index.end(),[&] (auto & i){ 
-                //m_log->debug(i.first);
-                return i.second > dateList[continueDays];
-        });
-    }
-
-    for_each(m_scenarios.begin(), m_scenarios.end(), [&] (auto s){
-            s->preOneEpoch(extEnv);
-    });
+   
+#if 0
 
     //(*m_scenarios.begin())->debug(&m_log);
     for (auto it = itStart; it != itEnd; it++) {
@@ -139,8 +91,9 @@ void RunnerBT::run(const char * pairCsv, int continueDays){
     for_each(m_scenarios.begin(), m_scenarios.end(), [&] (auto s){
             s->postOneEpoch(extEnv);
     });
+#endif
 }
-void RunnerBT::t(IndexData::iterator & start, IndexData::iterator &end){
+void RunnerBT::johansenCoint(IndexData::iterator & start, IndexData::iterator &end){
     auto n1 = "V";
     auto n2 = "MA";
     auto it = m_bigtable.m_symbolToColIdx.find(n1);
@@ -194,7 +147,7 @@ void RunnerBT::t(IndexData::iterator & start, IndexData::iterator &end){
         outStats = johansenHelper.GetOutStats();
     }
 }
-void RunnerBT::t(){
+void RunnerBT::johansenCoint(){
 #if 0
         s	i	m	st	halflife	HE	pair	p
     1.3900345809740500	-2.3424026533661100	-1.33214340879219E-14	0.39436858070784800	4.84	0.3274200600137500	TME_GTEC	0.0058521697013129
@@ -233,7 +186,7 @@ void RunnerBT::t(){
         for(auto it = itStart; is< itStart &&it < itEnd; is++,it++) {
             if (is->second -isPrev->second > 3600 || is == itStart ) {
                // m_log->debug("interval {}, step: {}", interval, step);
-                t(is,it);
+                johansenCoint(is,it);
                 isPrev = is;
             }
         }
@@ -265,8 +218,8 @@ int main(int argc, char * argv[]) {
         for (auto & srcPair : mSsources ) {
             auto ss = strSplit(srcPair, ':');
             RunnerBT c(ss[0].c_str(), cmd);
-            c.t(); return 0;
-            c.run(ss[1].c_str());
+            //c.johansenCoint(); return 0;
+            c.runBT(ss[1].c_str());
         }
 
     }
@@ -274,8 +227,8 @@ int main(int argc, char * argv[]) {
         auto srcPair = cmd.get("--src");
         auto ss = strSplit(srcPair, ':');
         RunnerBT c(ss[0].c_str(), cmd);
-        c.t(); return 0;
-        c.run(ss[1].c_str());
+        //c.johansenCoint(); return 0;
+        c.runBT(ss[1].c_str());
     }
 
     spdlog::info("{}", cmd.str());

@@ -4,39 +4,75 @@
 #include <regex>
 #include "contract.h"
 #include "ContractPairTrade.h"
+#include <execinfo.h>
 
 using namespace std;
 
 LogType Money::m_log = spdlog::stderr_color_mt("Money");
 LogType ContractPairTrade::m_log = spdlog::stderr_color_mt("ContractPairTrade");
 
-ContractPairTrade::ContractPairTrade (csv::CSVRow& row, Money &m) : m_money(&m) {
-    // s,i,m,st,halflife,pair,p,pmin,ext
-    m_slope  = row["s"].get<float>();
-    m_intercept  = row["i"].get<float>();
-    m_mean  = row["m"].get<float>();
-    m_std  = row["st"].get<float>();
-    m_halflife  = row["halflife"].get<float>() * 5 * 60;
-    m_he  = row["HE"].get<float>();
-    auto var  = row["pair"].get<>();
-    m_name = var;
-    //
-    std::string reStr = "(.*)_(.*)";
-    std::regex re(reStr);
-    std::smatch pieces_match;
-    bool ret = std::regex_match(var,pieces_match,re);
-    if(!ret) {
-        throw std::runtime_error("Regx match error " + var + " re: " + reStr);
+ContractPairTrade::ContractPairTrade (json &j ,  Money &m, std::string &slopeName) : m_money(&m),m_slopeName(slopeName) {
+// ~/stock/env_study/2022-01-12.cn/js_coint.json
+// {"pair":"BZUN_GDS","s_0":10.19418,"s_dayslr":4.71023,"s_daysfast":3.20328,
+// "s_hllr":2.08931,"s_hlfast":3.24254,"std_rate":1.59872,"coint_days":14,
+// "interval_secs":60.0,"he_0":0.32497,"hl_bars_0":116.92,
+// "start":1640793540000,"end":1642003140000}
+
+    //cout << coint_days << endl;
+    try {
+        j[m_slopeName].get_to(m_slope);
+        int coint_days;
+        j["coint_days"].get_to(coint_days);
+        float std_rate, interval_secs, he_0, hl_bars_0;
+        j["std_rate"].get_to(std_rate);
+        //cout << std_rate << endl;
+        j["interval_secs"].get_to(interval_secs);
+        //cout << interval_secs << endl;
+        j["he_0"].get_to(he_0);
+        //cout << he_0 << endl;
+        j["hl_bars_0"].get_to(hl_bars_0);
+        //cout << hl_bars_0 << endl;
+        //https://github.com/nlohmann/json/blob/develop/doc/examples/get_to.cpp
+        string var;
+        unsigned long  start,end;
+        time_t m_start,m_end;
+        j["start"].get_to(start);
+        //cout << start << endl;
+        //m_start = atoll(var.c_str()) / 1000;
+        j["end"].get_to(end);
+        //cout << end << endl;
+        m_start = start /1000;
+        m_end = end /1000;
+        //m_end = atoll(var.c_str()) / 1000;
+
+        j["pair"].get_to(var);
+        std::string reStr = "(.*)_(.*)";
+        std::regex re(reStr);
+        std::smatch pieces_match;
+        bool ret = std::regex_match(var,pieces_match,re);
+        if(!ret) {
+            throw std::runtime_error("Regx match error " + var + " re: " + reStr);
+        }
+        assert(pieces_match.size() == 3);
+        m_n1 = pieces_match[1].str();
+        m_n2 = pieces_match[2].str();
+        m_symbolsPair = std::make_pair(m_n1,m_n2);
+        m_log->debug("[{}_{}] {}_{} coint_days:{},std_rate:{}, interval_secs:{}, he_0:{}, hl_bars_0:{},slopeName:{},slope:{} ", m_n1, m_n2
+                , m_start,m_end
+                ,coint_days,std_rate, interval_secs, he_0, hl_bars_0
+                ,m_slopeName, m_slope
+                );
     }
-    assert(pieces_match.size() == 3);
-    m_n1 = pieces_match[1].str();
-    m_n2 = pieces_match[2].str();
-    m_symbolsPair = std::make_pair(m_n1,m_n2);
-
-    m_p  = row["p"].get<float>();
-    m_pmin  = row["pmin"].get<float>();
-    m_ext  = row["ext"].get<>();
-
+    catch (nlohmann::detail::type_error &e) {
+        void* callstack[128];
+         int i, frames = backtrace(callstack, 128);
+         char** strs = backtrace_symbols(callstack, frames);
+         for (i = 0; i < frames; ++i) {
+             printf("%s\n", strs[i]);
+         }
+         free(strs);
+         exit(0);
+    }
 
 }
 std::vector<std::string>  ContractPairTrade::getSymbols() const {
@@ -134,3 +170,34 @@ float ContractPairTrade::closePosition(float x, float y, const time_t &t, const 
     return profit;
 }
 
+#if 0
+ContractPairTrade::ContractPairTrade (csv::CSVRow& row, Money &m) : m_money(&m) {
+    // s,i,m,st,halflife,pair,p,pmin,ext
+    m_slope  = row["s"].get<float>();
+    m_intercept  = row["i"].get<float>();
+    m_mean  = row["m"].get<float>();
+    m_std  = row["st"].get<float>();
+    m_halflife  = row["halflife"].get<float>() * 5 * 60;
+    m_he  = row["HE"].get<float>();
+    auto var  = row["pair"].get<>();
+    m_name = var;
+    //
+    std::string reStr = "(.*)_(.*)";
+    std::regex re(reStr);
+    std::smatch pieces_match;
+    bool ret = std::regex_match(var,pieces_match,re);
+    if(!ret) {
+        throw std::runtime_error("Regx match error " + var + " re: " + reStr);
+    }
+    assert(pieces_match.size() == 3);
+    m_n1 = pieces_match[1].str();
+    m_n2 = pieces_match[2].str();
+    m_symbolsPair = std::make_pair(m_n1,m_n2);
+
+    m_p  = row["p"].get<float>();
+    m_pmin  = row["pmin"].get<float>();
+    m_ext  = row["ext"].get<>();
+
+
+}
+#endif
