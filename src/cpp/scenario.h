@@ -37,18 +37,11 @@ public:
 
     //predict begin & end for backtest.
     std::string getName() const  {return m_name;}
+    virtual void postSetup() = 0;
     virtual void runBT() = 0;
     virtual void debug(LogType *log) = 0;
     virtual ~IScenario() {}
-#if 0
 
-    virtual void postSetup() = 0;
-    virtual void runOneEpoch(const std::pair<std::string, time_t>  & cur,const std::pair<std::string, time_t>  & start ) = 0;
-    virtual void preOneEpoch(const std::map<std::string, std::any>& ext) = 0;
-    virtual void postOneEpoch(const std::map<std::string, std::any>& ext) = 0;
-    virtual std::string getConfPath() const= 0;
-    // virtual void summary(const std::map<std::string, std::any>& ext) = 0;
-#endif
 protected:
     CmdOption & m_cmdOption;
     std::set<std::string> m_excludes;

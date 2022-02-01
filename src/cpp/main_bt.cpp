@@ -41,9 +41,10 @@ RunnerBT::~RunnerBT (){
     m_scenarios.clear();
 }
 void RunnerBT::addScenarios_v1(const char * modelFilePath, const char * conf){
-    for(auto name : {"s_0", "s_dayslr"}) {
+    //for(auto name : {"s_0", "s_dayslr"}) {
+    for(auto name : {"s_0" }) {
         Scenario_v1 *s = new Scenario_v1(name, m_cmdOption, m_snapDataMap,modelFilePath,m_bigtable);
-        s->postSetup();
+        // s->postSetup();
         m_scenarios.push_back(s);
     }
 }

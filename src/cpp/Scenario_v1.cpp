@@ -73,6 +73,7 @@ Scenario_v1::Scenario_v1(std::string name, CmdOption &cmd,SnapDataMap & snapData
     //debug();
 }
 void Scenario_v1::postSetup() {
+    m_log->info("Start:{}", __PRETTY_FUNCTION__ );
     auto isSnapAvailable  = []  (auto * ptr) -> bool { return ptr != nullptr && ptr->idx != -1;  };
     if ( m_includes.size() >0) {
         for_each(m_contracts.begin(),m_contracts.end(), [&] (ContractPairTrade & c ) {
@@ -119,10 +120,88 @@ void Scenario_v1::debug(LogType *log) {
             }
     });
 }
-void Scenario_v1::preOneEpoch(const std::map<std::string, std::any>& ext) {
+void Scenario_v1::updateSnapDataByBigTable(int pos, SnapData &snap) {
+    auto tm = m_bigtable.m_index[pos].second;
+    auto itCol = m_bigtable.m_columnData.begin() + snap.idx;
+    //close	high	low	open	volume
+    auto c  = itCol->second[pos];
+    itCol ++;
+    auto h  = itCol->second[pos];
+    itCol ++;
+    auto l  = itCol->second[pos];
+    itCol ++;
+    auto o  = itCol->second[pos];
+    itCol ++;
+    auto v  = itCol->second[pos];
+    snap.update(o,h,l,c,v,tm);
 }
-void Scenario_v1::postOneEpoch(const std::map<std::string, std::any>& ext) {
-
+void Scenario_v1::updateSnapDataByBigTable(int pos) {
+    for (auto &[symbol, snap]:m_snapDataMap) {
+        if( !snap.isAvailable()) {
+            continue;
+        }
+        updateSnapDataByBigTable(pos,snap);
+    }
+}
+void Scenario_v1::rank(std::vector<ContractPairTrade *> &openCtrcts,std::vector<ContractPairTrade *> &closeCtrcts) {
+    openCtrcts.clear();
+    closeCtrcts.clear();
+    for ( auto & c: m_contracts) {
+        strategy(c);
+        if( c.getRank() == 0) {
+            continue;
+        }
+        openCtrcts.push_back(&c);
+        closeCtrcts.push_back(&c);
+    }
+    sort(openCtrcts.begin(),openCtrcts.end(), [&] (ContractPairTrade * aC, ContractPairTrade * bC) -> bool {
+        //FIXME
+        return aC->getRank() < bC->getRank();
+    });
+    sort(closeCtrcts.begin(),closeCtrcts.end(), [&] (ContractPairTrade * aC, ContractPairTrade * bC) -> bool {
+        //FIXME
+        return aC->getRank() < bC->getRank();
+    });
+    return ;
+}
+void Scenario_v1::executeTrades(std::vector<ContractPairTrade *> &openCtrcts,std::vector<ContractPairTrade *> &closeCtrcts) {
+    for (ContractPairTrade *c: openCtrcts) {
+    }
+    for (ContractPairTrade *c: closeCtrcts) {
+    }
+    openCtrcts.clear();
+    closeCtrcts.clear();
+}
+void Scenario_v1::preRunBT() {
+    m_log->info("Start:{}", __PRETTY_FUNCTION__ );
+    auto itEnd = find_if(m_bigtable.m_index.begin(),m_bigtable.m_index.end(),[&] (auto & i){ 
+            return i.second >= m_modelTime;
+    });
+    if (itEnd == m_bigtable.m_index.end()) {
+        m_log->critical("Big table error, cannot find index time gt {}", m_modelTime);
+        exit(1);
+    }
+    int end = itEnd - m_bigtable.m_index.begin();
+    //int intervalSecs = (m_bigtable.m_index.begin() +1)->second - m_bigtable.m_index.begin()->second;
+    //auto maxBasrs = 1 + maxBTdays * 6.5 * 3600 / intervalSecs;
+    //int pos = itStart - m_bigtable.m_index.begin();
+    //int end = pos + maxBasrs;
+     //using WinDiffDataType=std::list<DiffData>;
+    for ( auto & c: m_contracts) {
+        int pos = end - c.getHalfLifeBars();
+        WinDiffDataType winDiff;
+        for(;pos != end ;pos++) {
+            DiffData d;
+            updateSnapDataByBigTable(pos, *c.m_snap1);
+            updateSnapDataByBigTable(pos, *c.m_snap2);
+            calContractDiffData(c,d);
+            winDiff.push_back(d);
+        }
+        c.initWindowByHistory(std::move(winDiff));
+    }
+}
+void Scenario_v1::postRunBT() {
+    m_log->info("Start:{}", __PRETTY_FUNCTION__ );
     vector<IContract *> contracts;
     for (auto &c:m_contracts ) {
         auto p  = c.getProfit();
@@ -149,7 +228,7 @@ void Scenario_v1::postOneEpoch(const std::map<std::string, std::any>& ext) {
     for (auto c :contracts ) {
         ContractPairTrade *p = dynamic_cast<ContractPairTrade *>(c);
         int duration = p->getTransDuration();
-        int halflife = p->m_halflife ;
+        int halflife = p->getHalfLifeBars();
         m_out->info("[{}]\tTrans:{},profit:{:.2f}\tP:{:04.2f},Pmin:{:04.2f},HE:{:04.2f}\tduration: {:1d} mins, halflife:{:1d} mins", p->getName(),p->getTransactionNum(), p->getProfit()
         ,p->m_p,p->m_pmin, p->m_he
         , duration/60, halflife/60
@@ -169,54 +248,15 @@ void Scenario_v1::postOneEpoch(const std::map<std::string, std::any>& ext) {
     auto stdev = std::sqrt(sq_sum / v.size() - mean * mean);
     m_out->info("Total:{}, mean: {}, std:{},sum:{}", v.size(),mean, stdev, sum);
 
-}
-void Scenario_v1::updateSnapDataByBigTable(int pos) {
-    auto tm = m_bigtable.m_index[pos].second;
-    for (auto &[symbol, snap]:m_snapDataMap) {
-        if( !snap.isAvailable()) {
-            continue;
-        }
-        auto itCol = m_bigtable.m_columnData.begin() + snap.idx;
-        //close	high	low	open	volume
-        auto c  = itCol->second[pos];
-        itCol ++;
-        auto h  = itCol->second[pos];
-        itCol ++;
-        auto l  = itCol->second[pos];
-        itCol ++;
-        auto o  = itCol->second[pos];
-        itCol ++;
-        auto v  = itCol->second[pos];
-        snap.update(o,h,l,c,v,tm);
-    }
-}
-void Scenario_v1::strategy() {
-    for_each(m_contracts.begin(), m_contracts.end(), [&](auto &c){
-        c.setRank(3);
-    });
-}
-void Scenario_v1::rank(vector<ContractPairTrade *> &contracts) {
-    contracts.clear();
-    for ( auto & c: m_contracts) {
-        if( c.getRank() == 0) {
-            continue;
-        }
-        contracts.push_back(&c);
-    }
-    sort(contracts.begin(),contracts.end(), [&] (ContractPairTrade * aC, ContractPairTrade * bC) -> bool {
-        //FIXME
-        return aC->getRank() < bC->getRank();
-    });
-    return ;
-}
-void Scenario_v1::executeTrades(vector<ContractPairTrade *> &contracts) {
-    for (ContractPairTrade *c: contracts) {
-    }
-    contracts.clear();
+    m_log->info("End:{}", __PRETTY_FUNCTION__ );
 }
 void Scenario_v1::runBT() {
+    m_log->info("Start:{}", __PRETTY_FUNCTION__ );
+    //runEpoch
+    preRunBT();
     const int contractsLimit  = 3;
     const int timeOut = 10; // 10 seconds.
+                            //
     float maxBTdays = 1.5;
     //use the next trade day after the date which is set.
     auto itStart = find_if(m_bigtable.m_index.begin(),m_bigtable.m_index.end(),[&] (auto & i){ 
@@ -231,25 +271,32 @@ void Scenario_v1::runBT() {
     int pos = itStart - m_bigtable.m_index.begin();
     int end = pos + maxBasrs;
     m_log->info("BT time range: {} to {}",m_bigtable.m_index[pos].first, m_bigtable.m_index[end-1].first);
-    vector<ContractPairTrade *>  contracts;
-    time_t tm;
-    time(&tm);
+
+    std::vector<ContractPairTrade *> openCtrcts;
+    std::vector<ContractPairTrade *> closeCtrcts;
+    auto tm = m_bigtable.m_index[pos].second;
     auto tmPrev = tm;
+
+    m_pOutWinDiff = &cout;
+    FIXME ofstream of("./xxx.csv");
+    m_pOutWinDiff = &of;
+    *m_pOutWinDiff << "pair," << m_contracts.begin()->getWinDiffDataFields() << endl;
+
     for (; pos < end; pos++) {
         updateSnapDataByBigTable(pos);
-        strategy();
-        rank(contracts);
-        time(&tm);
-        if (tm - tmPrev > timeOut || contracts.size() > contractsLimit ) {
-            executeTrades(contracts);
+        //evalue strategy & sort by rank
+        rank(openCtrcts,closeCtrcts);
+        tm = m_bigtable.m_index[pos].second;
+        if (tm - tmPrev > timeOut || openCtrcts.size() > contractsLimit || closeCtrcts.size() >contractsLimit ) {
+            executeTrades(openCtrcts,closeCtrcts);
             tmPrev = tm;
         }
         //-  analysis and log
     }
     //last piece.
-    executeTrades(contracts);
-    debug();
+    executeTrades(openCtrcts,closeCtrcts);
     //for (auto &[symbol, snap]:m_snapDataMap) { snap.debug(m_log); }
+    postRunBT();
 #if 0
     struct tm tPrev;
     memset(&tPrev, 0, sizeof(tPrev));
@@ -275,5 +322,21 @@ void Scenario_v1::runBT() {
     });
 #endif
 
-
+}
+void Scenario_v1::calContractDiffData(ContractPairTrade &c, DiffData &d) {
+    auto tm = c.m_snap1->tm;
+    auto slope = c.m_slope;
+    auto close1 = c.m_snap1->close;
+    auto close2 = c.m_snap2->close;
+    auto v1 = c.m_snap1->volume;
+    auto v2 = c.m_snap2->volume;
+    d.diff =  slope * close1 - close2;
+    d.tm = tm;
+}
+void Scenario_v1::strategy(ContractPairTrade &c) {
+    DiffData d;
+    calContractDiffData(c, d);
+    //cal Z
+    c.updateWindowBySnap(d,m_pOutWinDiff);
+    c.setRank(3);
 }

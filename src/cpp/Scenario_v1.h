@@ -23,22 +23,21 @@
 class Scenario_v1 : public IScenario {
 public:
     Scenario_v1(std::string name, CmdOption &cmd,SnapDataMap & snapDataMap,const char * modelFilePath, BigTable & bigtable);
+    virtual void postSetup();
 
     virtual void runBT();
-
-
-
-    virtual void preOneEpoch(const std::map<std::string, std::any>& ext);
-    virtual void postOneEpoch(const std::map<std::string, std::any>& ext);
-    virtual void postSetup();
     virtual ~Scenario_v1() {}
     virtual void debug(LogType *log = nullptr);
-    virtual std::string getConfPath() const { return m_pairCsv; }
+    //virtual std::string getConfPath() const { return m_pairCsv; }
 private:
+    void preRunBT();
+    void postRunBT();
+    void updateSnapDataByBigTable(int pos, SnapData &snap);
     void updateSnapDataByBigTable(int pos);
-    void strategy() ;
-    void rank(std::vector<ContractPairTrade *> &contracts ) ;
-    void executeTrades(vector<ContractPairTrade *> &contracts) ;
+    void calContractDiffData(ContractPairTrade &c, DiffData &d);
+    void strategy(ContractPairTrade &c) ;
+    void rank(std::vector<ContractPairTrade *> &openCtrcts,std::vector<ContractPairTrade *> &closeCtrcts) ;
+    void executeTrades(std::vector<ContractPairTrade *> &openCtrcts,std::vector<ContractPairTrade *> &closeCtrcts) ;
 
     std::list<ContractPairTrade> m_contracts;
 
@@ -49,4 +48,5 @@ private:
     static LogType  m_out;
     BigTable &m_bigtable;
     time_t m_modelTime;
+    std::ostream * m_pOutWinDiff {nullptr};
 };

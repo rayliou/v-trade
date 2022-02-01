@@ -21,9 +21,9 @@ ContractPairTrade::ContractPairTrade (json &j ,  Money &m, std::string &slopeNam
     //cout << coint_days << endl;
     try {
         j[m_slopeName].get_to(m_slope);
-        int coint_days;
         j["coint_days"].get_to(coint_days);
-        float std_rate, interval_secs, he_0, hl_bars_0;
+
+
         j["std_rate"].get_to(std_rate);
         //cout << std_rate << endl;
         j["interval_secs"].get_to(interval_secs);
@@ -35,7 +35,6 @@ ContractPairTrade::ContractPairTrade (json &j ,  Money &m, std::string &slopeNam
         //https://github.com/nlohmann/json/blob/develop/doc/examples/get_to.cpp
         string var;
         unsigned long  start,end;
-        time_t m_start,m_end;
         j["start"].get_to(start);
         //cout << start << endl;
         //m_start = atoll(var.c_str()) / 1000;
@@ -56,6 +55,7 @@ ContractPairTrade::ContractPairTrade (json &j ,  Money &m, std::string &slopeNam
         assert(pieces_match.size() == 3);
         m_n1 = pieces_match[1].str();
         m_n2 = pieces_match[2].str();
+        m_name = var;
         m_symbolsPair = std::make_pair(m_n1,m_n2);
         m_log->debug("[{}_{}] {}_{} coint_days:{},std_rate:{}, interval_secs:{}, he_0:{}, hl_bars_0:{},slopeName:{},slope:{} ", m_n1, m_n2
                 , m_start,m_end
@@ -80,11 +80,73 @@ std::vector<std::string>  ContractPairTrade::getSymbols() const {
     return p;
 }
 void ContractPairTrade::debug(LogType log) {
-    log->debug("available:{}; {}_{}:slope:{},intercept:{},mean:{},std:{},halflife:{},p:{},pmin:{},ext:{}",
+    log->debug("available:{}; {}_{}:slope:{},intercept:{},mean:{},std:{},p:{},pmin:{},ext:{}",
         m_isAvailable,
-        m_symbolsPair.first,m_symbolsPair.second, m_slope,m_intercept ,m_mean, m_std, m_halflife, m_p,m_pmin, m_ext); 
+        m_symbolsPair.first,m_symbolsPair.second, m_slope,m_intercept ,m_mean, m_std,m_p, m_pmin, m_ext); 
 }
 
+void ContractPairTrade::initWindowByHistory(WinDiffDataType &&winDiff) {
+    m_winDiff = winDiff;
+    // m_winDiff.resize(int(hl_bars_0));
+    m_log->debug("[{}]:Set m_winDiff.size:{}",m_name, m_winDiff.size());
+    auto i = 0;
+    auto totalCnt = m_winDiff.size();
+    for(auto & d:m_winDiff) { 
+        d.debug(m_log, i++, totalCnt,m_name); 
+    }
+}
+void ContractPairTrade::updateWindowBySnap(DiffData &diffData,std::ostream *pOut ) {
+    if (m_winDiff.size() >  hl_bars_0 ) {
+        m_winDiff.pop_front();
+    }
+    //cal mean & std
+    m_winDiff.push_back(diffData);
+    auto sum = std::accumulate(m_winDiff.begin(),m_winDiff.end(), 0.0, [&](float  a, auto &b) -> float {
+        return a + b.diff;
+    });
+    auto mean = sum/m_winDiff.size();
+    auto last = m_winDiff.rbegin();
+    last->mean = mean;
+    //std_s
+    auto std2 = std::accumulate(m_winDiff.begin(),m_winDiff.end(), 0.0, [&](float  a, auto &b) -> float {
+        auto d = b.diff - mean;
+        return a + d *d;
+    });
+    std2 /= (m_winDiff.size() -1);
+    std2 = std::sqrt(std2);
+    last->std = std2;
+    last->z   = (diffData.diff - mean)/std2;
+    // last->debug(m_log, m_cntWinDiff,m_cntWinDiff , m_name);
+    m_cntWinDiff++;
+    if (pOut != nullptr) {
+        *pOut << m_name << ",";
+        last->outValues(*pOut);
+        *pOut << endl;
+    }
+#if 0
+    auto add = [](float a, float b) -> float {
+        return a +b;
+    };
+    auto multiple = [](auto & a , auto &b) -> float {
+        return a.diff * b.diff;
+    };
+    auto sq_sum = std::inner_product(m_winDiff.begin(), m_winDiff.end(), m_winDiff.begin(), 0.0, add, multiple);
+    auto stdev = std::sqrt(sq_sum / m_winDiff.size() - mean * mean);
+    last->std = stdev;
+    //FIXME generate signal
+    m_log->debug("std: {} ,std2: {}, (std1-std2)/std2 rate: {} ", last->std, std2, (last->std-std2)/std2 * 100);
+#endif
+
+    return;
+}
+std::ostream & ContractPairTrade::outWinDiffDataValues(std::ostream & out) {
+    for(auto & d: m_winDiff) {
+        out << m_name << ",";
+        d.outValues(out);
+        out << endl;
+    }
+    return out;
+}
 void ContractPairTrade::newPosition(float x, float y,bool buyN1, float z0, const time_t &t, const std::map<std::string, std::any> & ext) {
     m_openTime = t;
     //apply for $10000

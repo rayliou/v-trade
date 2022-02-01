@@ -4,6 +4,7 @@
 #include <sstream> // std::stringstream
 #include <regex>
 #include "contract.h"
+#include "BigTable.h"
 
 class SnapData;
 class Money {
@@ -36,6 +37,32 @@ private:
     static LogType  m_log;
 };
 
+struct DiffData {
+    float diff;
+    float mean {0.};
+    float std {-1.};
+    float z {0.};
+    time_t tm;
+    std::ostream & outFieldsNames(std::ostream &out) const {
+        out << "tm,diff,mean,std,z";
+        return out;
+    }
+    std::ostream & outValues(std::ostream &out) const {
+        out << tm << "," << diff << "," << mean << "," << std << "," << z;
+        return out;
+    }
+    void debug(LogType log, int i, int totalCnt, std::string name = "") {
+        std::ostringstream os;
+        outFieldsNames(os);
+        os << ":";
+        outValues(os);
+        auto v = os.str();
+        log->debug("{}\tdiffData:[{}/{}]:{}", name,i, totalCnt,v);
+    }
+
+};
+using WinDiffDataType=std::list<DiffData>;
+
 class ContractPairTrade : public IContract {
 public:
     ContractPairTrade (json& j,Money &m, std::string &slopeName);
@@ -56,15 +83,25 @@ public:
     virtual float getRank() const { return m_rank;}
     virtual int getHoldingTime(const time_t &now) const {return now - m_openTime;}
     virtual int getTransDuration() const {return m_closeTime - m_openTime;}
+public:
+    virtual void initWindowByHistory(WinDiffDataType &&winDiff);
+    virtual void updateWindowBySnap(DiffData &diffData, std::ostream *pOut = nullptr);
+    int getHalfLifeBars() const { return int(hl_bars_0) +1; }
+    std::string getWinDiffDataFields() const {std::ostringstream out; m_winDiff.begin()->outFieldsNames(out); return out.str(); }
+    std::ostream & outWinDiffDataValues(std::ostream & out);
 
 public:
-    float m_slope,m_intercept ,m_mean, m_std, m_halflife, m_p,m_pmin;
+    float m_slope,m_intercept ,m_mean, m_std,  m_p,m_pmin;
+    int coint_days;
+    float std_rate, interval_secs, he_0, hl_bars_0;
+    time_t m_start,m_end;
+
     float m_he {1.0};
     float m_z {0};
     float m_zPrev {0};
     float m_z0 {0};
     std::string m_ext, m_n1,m_n2;
-    std::pair<std::string, std::string> m_symbolsPair; 
+    std::pair<std::string, std::string> m_symbolsPair;
     // s,i,m,st,halflife,pair,p,pmin,ext
     SnapData * m_snap1;;
     SnapData *  m_snap2;;
@@ -82,5 +119,7 @@ private:
     std::string m_name;
     std::string m_slopeName;
     float m_rank {-1.};
+    WinDiffDataType m_winDiff;
+    int m_cntWinDiff {0};
 };
 
