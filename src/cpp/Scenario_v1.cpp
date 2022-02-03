@@ -103,10 +103,14 @@ void Scenario_v1::postSetup() {
             bool ret =  !c.isAvailable();
             //ret |= c.m_he > 0.45;
             //ret |= c.m_halflife > 6 *3600;
-            m_log->info("{}_{}:{}", c.m_n1, c.m_n2, (ret?"Remove unused":"Keep"));
+            //m_log->info("{}_{}:{}", c.m_n1, c.m_n2, (ret?"Remove unused":"Keep"));
             return ret;
     });
     m_contracts.erase(endIt,m_contracts.end());
+    string allPairs = std::accumulate(m_contracts.begin(),m_contracts.end(), string(""), [&](const string & a, auto &b) -> string {
+        return a + b.getName() + ",";
+    });
+    m_log->info("All pairs:{}", allPairs);
 }
 void Scenario_v1::debug(LogType *log) {
     if (nullptr == log) {
@@ -195,9 +199,10 @@ void Scenario_v1::preRunBT() {
             updateSnapDataByBigTable(pos, *c.m_snap1);
             updateSnapDataByBigTable(pos, *c.m_snap2);
             calContractDiffData(c,d);
-            winDiff.push_back(d);
+            winDiff.push_back(d,false);
         }
         c.initWindowByHistory(std::move(winDiff));
+        //m_log->warn("windiff size:{}",winDiff.size()); exit(0);
     }
 }
 void Scenario_v1::postRunBT() {
@@ -277,10 +282,10 @@ void Scenario_v1::runBT() {
     auto tm = m_bigtable.m_index[pos].second;
     auto tmPrev = tm;
 
+    m_pOutWinDiff  = nullptr;
     m_pOutWinDiff = &cout;
-    FIXME ofstream of("./xxx.csv");
-    m_pOutWinDiff = &of;
-    *m_pOutWinDiff << "pair," << m_contracts.begin()->getWinDiffDataFields() << endl;
+    //FIXME ofstream of("./xxx.csv"); m_pOutWinDiff = &of; *m_pOutWinDiff << "pair," << m_contracts.begin()->getWinDiffDataFields() << endl;
+    ofstream of("./xxx.csv"); m_pOutWinDiff = &of; *m_pOutWinDiff << "pair," << m_contracts.begin()->getWinDiffDataFields() << endl;
 
     for (; pos < end; pos++) {
         updateSnapDataByBigTable(pos);
@@ -324,7 +329,7 @@ void Scenario_v1::runBT() {
 
 }
 void Scenario_v1::calContractDiffData(ContractPairTrade &c, DiffData &d) {
-    auto tm = c.m_snap1->tm;
+    auto tm = std::max(c.m_snap1->tm,c.m_snap2->tm );
     auto slope = c.m_slope;
     auto close1 = c.m_snap1->close;
     auto close2 = c.m_snap2->close;
@@ -334,9 +339,34 @@ void Scenario_v1::calContractDiffData(ContractPairTrade &c, DiffData &d) {
     d.tm = tm;
 }
 void Scenario_v1::strategy(ContractPairTrade &c) {
+    const int MAXBARS_STD_CHECK = 1;
+    const float THRESHOLD_Z = 2.0;
     DiffData d;
     calContractDiffData(c, d);
     //cal Z
-    c.updateWindowBySnap(d,m_pOutWinDiff);
+    WinDiffDataType & winDiff = c.updateWindowBySnap(d,m_pOutWinDiff);
+    WinDiffDataType::reverse_iterator rbegin = winDiff.rbegin();
+    WinDiffDataType::reverse_iterator it = rbegin;
+    if(c.existPosition() ) { // there existes position.
+    }
+    else { //0 position
+        // std decrease.
+        auto std  = rbegin->std;
+        for(int i =0; ++it,i< MAXBARS_STD_CHECK; i++) {
+            if (std > it->std) {
+                m_log->trace("[{}]:{}\t{}\t[Wait for std decrease]",winDiff.getTickCnt(), c.getName(), rbegin->toString());
+                return;
+            }
+        }
+        m_log->debug("[{}]:{}\t{}\t[Std ready]",winDiff.getTickCnt(), c.getName(), rbegin->toString());
+        //check cross into.
+        it = rbegin;
+        if ( fabs(it->z) >= THRESHOLD_Z 
+            //&& fabs((it++)->z) >= THRESHOLD_Z
+           ) {
+            m_log->warn("[{}]:{}\t{}\t[Z cross]",winDiff.getTickCnt(), c.getName(), rbegin->toString());
+            return;
+        }
+    }
     c.setRank(3);
 }

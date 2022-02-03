@@ -40,28 +40,50 @@ private:
 struct DiffData {
     float diff;
     float mean {0.};
+    float mean_half {0.};
     float std {-1.};
+    float sm_std_5 {0.};
+    float sm_std_10 {0.};
+    float sm_std_20 {0.};
     float z {0.};
     time_t tm;
     std::ostream & outFieldsNames(std::ostream &out) const {
-        out << "tm,diff,mean,std,z";
+        out << "std,mean,mean_half,tm,diff,z";
+        out << ",sm_std_5,sm_std_10,sm_std_20";
         return out;
     }
     std::ostream & outValues(std::ostream &out) const {
-        out << tm << "," << diff << "," << mean << "," << std << "," << z;
+        out << std << "," << mean << "," << mean_half << "," ;
+        out << tm << "," << diff << "," << z;
+        out << "," << sm_std_5 << "," << sm_std_10<< "," << sm_std_20;
         return out;
     }
-    void debug(LogType log, int i, int totalCnt, std::string name = "") {
+    std::string  toString() const {
         std::ostringstream os;
         outFieldsNames(os);
         os << ":";
         outValues(os);
-        auto v = os.str();
+        return os.str();
+    }
+    void debug(LogType log, int i, int totalCnt, std::string name = "") {
+        auto v = toString();
         log->debug("{}\tdiffData:[{}/{}]:{}", name,i, totalCnt,v);
     }
 
 };
-using WinDiffDataType=std::list<DiffData>;
+class WinDiffDataType :public std::list<DiffData> {
+    //typedef typename std::list<DiffData>      L;
+    using L=std::list<DiffData>;
+    //typedef typename L::const_iterator        const_iterator;
+public:
+    int getTickCnt() const { return cntTick;}
+    void push_back( DiffData &d, bool incTickCnt) { L::push_back(d); if(incTickCnt) {cntTick++;}}
+public:
+    float stdH {0.};
+    float stdL {0.};
+private:
+    int cntTick {0};
+};
 
 class ContractPairTrade : public IContract {
 public:
@@ -76,6 +98,7 @@ public:
     bool  isAvailable() { return  m_isAvailable;} 
 
     void debug(LogType log) ;
+    bool existPosition() const {return m_position1.m_position != 0;}
     void newPosition(float x, float y, bool buyN1,float z0, const time_t &t, const std::map<std::string, std::any> &ext);
     float  closePosition(float x, float y,const time_t &t, const std::map<std::string, std::any> & ext);
     virtual string getName() const { return m_name; }
@@ -85,7 +108,7 @@ public:
     virtual int getTransDuration() const {return m_closeTime - m_openTime;}
 public:
     virtual void initWindowByHistory(WinDiffDataType &&winDiff);
-    virtual void updateWindowBySnap(DiffData &diffData, std::ostream *pOut = nullptr);
+    virtual  WinDiffDataType & updateWindowBySnap(DiffData &diffData, std::ostream *pOut = nullptr);
     int getHalfLifeBars() const { return int(hl_bars_0) +1; }
     std::string getWinDiffDataFields() const {std::ostringstream out; m_winDiff.begin()->outFieldsNames(out); return out.str(); }
     std::ostream & outWinDiffDataValues(std::ostream & out);

@@ -5,6 +5,7 @@
 #include "contract.h"
 #include "ContractPairTrade.h"
 #include <execinfo.h>
+#include <tuple>
 
 using namespace std;
 
@@ -19,8 +20,26 @@ ContractPairTrade::ContractPairTrade (json &j ,  Money &m, std::string &slopeNam
 // "start":1640793540000,"end":1642003140000}
 
     //cout << coint_days << endl;
+#if 0
     try {
         j[m_slopeName].get_to(m_slope);
+#endif
+        list<float> slopes;
+        float s;
+        j["s_0"].get_to(s);
+        slopes.push_back(s);
+        j["s_dayslr"].get_to(s);
+        slopes.push_back(s);
+        j["s_daysfast"].get_to(s);
+        slopes.push_back(s);
+        j["s_hllr"].get_to(s);
+        slopes.push_back(s);
+        j["s_hlfast"].get_to(s);
+        slopes.push_back(s);
+        slopes.sort();
+        slopes.pop_back();
+        slopes.pop_front();
+        m_slope = std::accumulate(slopes.begin(), slopes.end(), 0.0)/slopes.size();
         j["coint_days"].get_to(coint_days);
 
 
@@ -62,8 +81,10 @@ ContractPairTrade::ContractPairTrade (json &j ,  Money &m, std::string &slopeNam
                 ,coint_days,std_rate, interval_secs, he_0, hl_bars_0
                 ,m_slopeName, m_slope
                 );
+#if 0
     }
-    catch (nlohmann::detail::type_error &e) {
+    catch (exception &e) {
+        cout << e.what() << endl;
         void* callstack[128];
          int i, frames = backtrace(callstack, 128);
          char** strs = backtrace_symbols(callstack, frames);
@@ -73,6 +94,7 @@ ContractPairTrade::ContractPairTrade (json &j ,  Money &m, std::string &slopeNam
          free(strs);
          exit(0);
     }
+#endif
 
 }
 std::vector<std::string>  ContractPairTrade::getSymbols() const {
@@ -91,22 +113,34 @@ void ContractPairTrade::initWindowByHistory(WinDiffDataType &&winDiff) {
     m_log->debug("[{}]:Set m_winDiff.size:{}",m_name, m_winDiff.size());
     auto i = 0;
     auto totalCnt = m_winDiff.size();
-    for(auto & d:m_winDiff) { 
+    for_each(m_winDiff.begin(),m_winDiff.end(), [&](auto &d){
         d.debug(m_log, i++, totalCnt,m_name); 
-    }
+    });
 }
-void ContractPairTrade::updateWindowBySnap(DiffData &diffData,std::ostream *pOut ) {
+WinDiffDataType &  ContractPairTrade::updateWindowBySnap(DiffData &diffData,std::ostream *pOut ) {
     if (m_winDiff.size() >  hl_bars_0 ) {
         m_winDiff.pop_front();
     }
     //cal mean & std
-    m_winDiff.push_back(diffData);
-    auto sum = std::accumulate(m_winDiff.begin(),m_winDiff.end(), 0.0, [&](float  a, auto &b) -> float {
-        return a + b.diff;
+    m_winDiff.push_back(diffData,true);
+    using SumPair=pair<float,float>;
+    SumPair  sumPair {0., 0.};
+    int cnt = 0;
+    int sizeHalf = m_winDiff.size()/2;
+    //reverse sum and sum half.
+    sumPair = std::accumulate(m_winDiff.rbegin(),m_winDiff.rend(), sumPair, [&](SumPair  & a, auto &b) -> SumPair {
+        auto [s0,s1] = a;
+        s0 += b.diff;
+        cnt++;
+        if(cnt <= sizeHalf) {
+            s1 += b.diff;
+        }
+        return make_pair(s0,s1);
     });
-    auto mean = sum/m_winDiff.size();
+    auto mean = sumPair.first/m_winDiff.size();
     auto last = m_winDiff.rbegin();
     last->mean = mean;
+    last->mean_half = sumPair.second/sizeHalf;
     //std_s
     auto std2 = std::accumulate(m_winDiff.begin(),m_winDiff.end(), 0.0, [&](float  a, auto &b) -> float {
         auto d = b.diff - mean;
@@ -116,13 +150,42 @@ void ContractPairTrade::updateWindowBySnap(DiffData &diffData,std::ostream *pOut
     std2 = std::sqrt(std2);
     last->std = std2;
     last->z   = (diffData.diff - mean)/std2;
+    using SumTuple=tuple<float,float,float>;
+    SumTuple  sumTuple {0., 0., 0.};
+    cnt = 0;
+    int cnt5 = 0;
+    int cnt10 = 0;
+    int cnt20 = 0;
+    sumTuple = std::accumulate(m_winDiff.rbegin(),m_winDiff.rend(), sumTuple, [&](SumTuple  & a, auto &b) -> SumTuple {
+        auto [s5,s10,s20] = a;
+        cnt++;
+        if (b.std > 0) {
+            if(cnt <= 5) {
+                s5 += b.std;
+                cnt5++;
+            }
+            if(cnt <= 10) {
+                s10 += b.std;
+                cnt10++;
+            }
+            if(cnt <= 20) {
+                s20 += b.std;
+                cnt20++;
+            }
+        }
+        return make_tuple(s5,s10,s20);
+    });
+    last->sm_std_5   = std::get<0>(sumTuple)/cnt5;
+    last->sm_std_10   = std::get<1>(sumTuple)/cnt10;
+    last->sm_std_20   = std::get<2>(sumTuple)/cnt20;
     // last->debug(m_log, m_cntWinDiff,m_cntWinDiff , m_name);
     m_cntWinDiff++;
     if (pOut != nullptr) {
-        *pOut << m_name << ",";
+        *pOut << m_n1 << "*" << m_slope << '-' << m_n2 << ',' ;
         last->outValues(*pOut);
         *pOut << endl;
     }
+    return m_winDiff;
 #if 0
     auto add = [](float a, float b) -> float {
         return a +b;
@@ -136,8 +199,6 @@ void ContractPairTrade::updateWindowBySnap(DiffData &diffData,std::ostream *pOut
     //FIXME generate signal
     m_log->debug("std: {} ,std2: {}, (std1-std2)/std2 rate: {} ", last->std, std2, (last->std-std2)/std2 * 100);
 #endif
-
-    return;
 }
 std::ostream & ContractPairTrade::outWinDiffDataValues(std::ostream & out) {
     for(auto & d: m_winDiff) {
