@@ -4,7 +4,9 @@ CXXFLAGS=-g  -std=c++17  -I3rd-party/spdlog/include
 
 test:main_bt
 	#SPDLOG_LEVEL=err,RunnerBT=trace,s_0=warn,s_dayslr=debug,bt=info,stdout=trace,ContractPairTrade=debug ./$<  --m_src /Users/henry/stock/env_study/2022-01-19.cn/bigcsv.csv:/Users/henry/stock/env_study/2022-01-19.cn/js_coint.json #--includes BIDU,JD
-	SPDLOG_LEVEL=err,RunnerBT=trace,s_0=trace,s_dayslr=debug,bt=info,stdout=trace,ContractPairTrade=warn ./$<  --m_src /Users/henry/stock/env_study/2022-01-19.cn/bigcsv.csv:/Users/henry/stock/env_study/2022-01-19.cn/js_coint.json #--includes GDS,BIDU #VIPS,NTES
+	SPDLOG_LEVEL=err,RunnerBT=trace,s_0=trace,s_dayslr=debug,bt=info,stdout=trace,ContractPairTrade=info ./$<  --m_src /Users/henry/stock/env_study/2022-01-19.cn/bigcsv.csv:/Users/henry/stock/env_study/2022-01-19.cn/js_coint.json \
+				  --includes GDS,HUYA
+				  #--includes BZ,BZUN
 
 main_bt: main_bt.cpp Scenario_v1.cpp ContractPairTrade.cpp
 	clang++  -include  common.h  -o $@ $(CXXFLAGS)  $^  3rd-party/JohansenCointegration/JohansenHelper.cpp -I./3rd-party/JohansenCointegration/  -lgsl -lgslcblas   #$<

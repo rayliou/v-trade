@@ -13,6 +13,7 @@ LogType Money::m_log = spdlog::stderr_color_mt("Money");
 LogType ContractPairTrade::m_log = spdlog::stderr_color_mt("ContractPairTrade");
 
 ContractPairTrade::ContractPairTrade (json &j ,  Money &m, std::string &slopeName) : m_money(&m),m_slopeName(slopeName) {
+    float MAX_SLOPE_DIFF_RATE = 0.2;
 // ~/stock/env_study/2022-01-12.cn/js_coint.json
 // {"pair":"BZUN_GDS","s_0":10.19418,"s_dayslr":4.71023,"s_daysfast":3.20328,
 // "s_hllr":2.08931,"s_hlfast":3.24254,"std_rate":1.59872,"coint_days":14,
@@ -23,7 +24,6 @@ ContractPairTrade::ContractPairTrade (json &j ,  Money &m, std::string &slopeNam
 #if 0
     try {
         j[m_slopeName].get_to(m_slope);
-#endif
         list<float> slopes;
         float s;
         j["s_0"].get_to(s);
@@ -40,6 +40,14 @@ ContractPairTrade::ContractPairTrade (json &j ,  Money &m, std::string &slopeNam
         slopes.pop_back();
         slopes.pop_front();
         m_slope = std::accumulate(slopes.begin(), slopes.end(), 0.0)/slopes.size();
+#endif
+        float s_0, s_dayslr;
+        j["s_0"].get_to(s_0);
+        j["s_dayslr"].get_to(s_dayslr);
+        m_slopeDiffRate = fabs( (s_0 - s_dayslr)/s_dayslr) ;
+        m_slope = m_slopeDiffRate <=  MAX_SLOPE_DIFF_RATE ? s_dayslr : 0.;
+
+
         j["coint_days"].get_to(coint_days);
 
 
@@ -178,6 +186,22 @@ WinDiffDataType &  ContractPairTrade::updateWindowBySnap(DiffData &diffData,std:
     last->sm_std_5   = std::get<0>(sumTuple)/cnt5;
     last->sm_std_10   = std::get<1>(sumTuple)/cnt10;
     last->sm_std_20   = std::get<2>(sumTuple)/cnt20;
+    auto last2 =  last;
+    last2 ++;
+    last->stdH   = std::max(last2->stdH,last->std);
+    last->stdL   = std::min(last2->stdL,last->std);
+    last->diffH   = std::max(last2->diffH,last->diff);
+    last->diffL   = std::min(last2->diffL,last->diff);
+    auto it  = m_winDiff.rbegin();
+    cnt = 0;
+    float diffPrev  = it->diff;
+    float sumDD = 0.;
+    //from N-1 to N-5
+    for (cnt=0, it++ ; cnt < 5 && it != m_winDiff.rend();cnt++, it++) {
+        sumDD += fabs(it->diff - diffPrev);
+        diffPrev = it->diff;
+    }
+    last->avg_diffdiff  = sumDD /cnt;
     // last->debug(m_log, m_cntWinDiff,m_cntWinDiff , m_name);
     m_cntWinDiff++;
     if (pOut != nullptr) {
@@ -208,7 +232,57 @@ std::ostream & ContractPairTrade::outWinDiffDataValues(std::ostream & out) {
     }
     return out;
 }
+void ContractPairTrade::newPosition(int direction, float stopDiff, float x, float y) {
+    m_hasCrossedMean = false;
+    m_hasCrossedMean_half = false;
+    m_diffFarest = 0.;
+    // -1 too low, buy n1 & sell n2
+    // 1 too high, buy n2 & sell n1
+    auto last = m_winDiff.rbegin();
+    m_openTime = last->tm;
+    //apply for $10000
+    double amount = 10000;
+    //use 100% margin rate
+    int pos_y = round ((x < y) ? (amount /y) : (amount /x / m_slope) );
+    int pos_x = round(pos_y * m_slope);
+    if(direction > 0) {
+        pos_x *= -1;
+    }
+    else {
+        pos_y *= -1;
+    }
+    auto cap_x = x * pos_x;
+    auto cap_y = y * pos_y;
+    auto totalCashPrev =  m_money->getTotalCash() ;
+    auto totalMarginPrev =   m_money->getTotalMarginFreezed();
+    if( !m_money->isMoneyAvailable(max(cap_x, cap_y), -min(cap_x, cap_y), 0.5,0.5)) {
+        m_log->warn("C[{}];M[{}] Money is not enough. cap_x:{}, cap_y:{}"
+        , totalCashPrev, totalMarginPrev
+        ,cap_x, cap_y
+        );
+        return;
+    }
+    m_position1.m_position = pos_x;
+    m_position2.m_position = pos_y;
+    m_position1.m_avgprice = x;
+    m_position2.m_avgprice = y;
+    m_money->withdraw(max(cap_x, cap_y), -min(cap_x, cap_y));
+
+    auto totalCash =  m_money->getTotalCash() ;
+    auto totalMargin =   m_money->getTotalMarginFreezed();
+    m_stopDiff = stopDiff;
+    m_log->warn("C:[{},{}];M:[{},{}]\t[{}_{}]:newPosition: x({}x{}={}),y({}x{}={}), slope:{},diff~stop: [{}~{}]"
+        ,totalCashPrev,totalCash,totalMarginPrev, totalMargin
+        ,m_n1, m_n2
+        ,x,pos_x,cap_x
+        ,y,pos_y,cap_y
+        ,m_slope
+        ,last->diff,m_stopDiff
+    );
+
+}
 void ContractPairTrade::newPosition(float x, float y,bool buyN1, float z0, const time_t &t, const std::map<std::string, std::any> & ext) {
+#if 0
     m_openTime = t;
     //apply for $10000
     double amount = 10000;
@@ -248,9 +322,53 @@ void ContractPairTrade::newPosition(float x, float y,bool buyN1, float z0, const
         ,y,pos_y,cap_y
         ,m_slope
     );
+#endif
 
 }
+float ContractPairTrade::closePosition(float x, float y) {
+    // -1 too low, buy n1 & sell n2
+    // 1 too high, buy n2 & sell n1
+    auto last = m_winDiff.rbegin();
+    m_closeTime = last->tm;
+    auto pos_x = m_position1.m_position;
+    auto pos_y = m_position2.m_position;
+    auto x0 = m_position1.m_avgprice ;
+    auto y0 = m_position2.m_avgprice ;
+    auto dx = x - x0;
+    auto dy = y - y0;
+    auto cap_x = x * pos_x;
+    auto cap_y = y * pos_y;
+    auto cap_x_d = dx * pos_x;
+    auto cap_y_d = dy * pos_y;
+
+    auto profit = dx * pos_x + dy * pos_y;
+
+    auto totalCashPrev =  m_money->getTotalCash() ;
+    auto totalMarginPrev =   m_money->getTotalMarginFreezed();
+
+    auto commission = (abs(pos_x) + abs(pos_y)) * 0.01;
+    if(pos_x >0){
+        m_money->deposit(-commission + cap_x +cap_y_d, -pos_y *y0);
+    }
+    else {
+        m_money->deposit(-commission +cap_y + cap_x_d, -pos_x *x0);
+    }
+    auto totalCash =  m_money->getTotalCash() ;
+    auto totalMargin =   m_money->getTotalMarginFreezed();
+    profit -= commission;
+    addProfit( profit);
+    m_log->warn("C:[{},{}];M:[{},{}]\t[{}_{}]:closePosition: (x:{} - x0:{}) * pos_x:{} = cap_x_d:{}; (y:{} - y0:{}) * pos_y:{} = cap_y_d:{}; slope:{},profit:{} "
+        ,totalCashPrev,totalCash,totalMarginPrev, totalMargin
+        ,m_n1, m_n2
+        ,x,x0,pos_x, cap_x_d
+        ,y,y0,pos_y, cap_y_d
+        ,m_slope,profit
+    );
+    m_position1.m_position  = m_position2.m_position = 0;
+    return profit;
+}
 float ContractPairTrade::closePosition(float x, float y, const time_t &t, const std::map<std::string, std::any> & ext) {
+#if 0
     m_closeTime = t;
     auto pos_x = m_position1.m_position;
     auto pos_y = m_position2.m_position;
@@ -291,6 +409,9 @@ float ContractPairTrade::closePosition(float x, float y, const time_t &t, const 
     );
     m_position1.m_position  = m_position2.m_position = 0;
     return profit;
+#endif
+    return 0;
+
 }
 
 #if 0

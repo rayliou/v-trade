@@ -4,6 +4,7 @@
 #include <sstream> // std::stringstream
 #include <regex>
 #include "contract.h"
+#include <limits>
 #include "BigTable.h"
 
 class SnapData;
@@ -38,24 +39,36 @@ private:
 };
 
 struct DiffData {
+    float p1 {0.}, p2 {0.};
     float diff;
+    float avg_diffdiff {0.};
     float mean {0.};
     float mean_half {0.};
     float std {-1.};
     float sm_std_5 {0.};
     float sm_std_10 {0.};
     float sm_std_20 {0.};
+    float diffH {- std::numeric_limits<float>::infinity()  };
+    float diffL {std::numeric_limits<float>::infinity() };
+    float stdH {- std::numeric_limits<float>::infinity() };
+    float stdL {std::numeric_limits<float>::infinity() };
     float z {0.};
     time_t tm;
     std::ostream & outFieldsNames(std::ostream &out) const {
         out << "std,mean,mean_half,tm,diff,z";
         out << ",sm_std_5,sm_std_10,sm_std_20";
+        out << ",stdH,stdL";
+        out << ",diffH,diffL";
+        out << ",avg_diffdiff";
         return out;
     }
     std::ostream & outValues(std::ostream &out) const {
         out << std << "," << mean << "," << mean_half << "," ;
         out << tm << "," << diff << "," << z;
         out << "," << sm_std_5 << "," << sm_std_10<< "," << sm_std_20;
+        out << "," << stdH << "," << stdL;
+        out << "," << diffH << "," << diffL;
+        out << "," << avg_diffdiff;
         return out;
     }
     std::string  toString() const {
@@ -78,9 +91,6 @@ class WinDiffDataType :public std::list<DiffData> {
 public:
     int getTickCnt() const { return cntTick;}
     void push_back( DiffData &d, bool incTickCnt) { L::push_back(d); if(incTickCnt) {cntTick++;}}
-public:
-    float stdH {0.};
-    float stdL {0.};
 private:
     int cntTick {0};
 };
@@ -95,11 +105,19 @@ public:
     time_t getOpenTime() const { return m_openTime;}
 
     void  setAvailable(bool available) { m_isAvailable = available; }
-    bool  isAvailable() { return  m_isAvailable;} 
+    bool  isAvailable() { return  m_isAvailable && m_slope != 0.;} 
 
     void debug(LogType log) ;
-    bool existPosition() const {return m_position1.m_position != 0;}
+    int curPositionDirection() const {
+        auto pos =  m_position1.m_position ;
+        // pos_x <0 -> n1 is too high, need to be reversed to low
+        return pos < 0 ? 1 :(
+            pos > 0? -1:0
+        );
+    }
+    void newPosition(int direction, float stopDiff,float x, float y);
     void newPosition(float x, float y, bool buyN1,float z0, const time_t &t, const std::map<std::string, std::any> &ext);
+    float  closePosition(float x, float y);
     float  closePosition(float x, float y,const time_t &t, const std::map<std::string, std::any> & ext);
     virtual string getName() const { return m_name; }
     virtual void setRank(float rank)  {m_rank = rank;}
@@ -112,9 +130,10 @@ public:
     int getHalfLifeBars() const { return int(hl_bars_0) +1; }
     std::string getWinDiffDataFields() const {std::ostringstream out; m_winDiff.begin()->outFieldsNames(out); return out.str(); }
     std::ostream & outWinDiffDataValues(std::ostream & out);
+    float getStopDiff () const { return m_stopDiff;}
 
 public:
-    float m_slope,m_intercept ,m_mean, m_std,  m_p,m_pmin;
+    float m_slope {0.} ,m_intercept ,m_mean, m_std,  m_p,m_pmin;
     int coint_days;
     float std_rate, interval_secs, he_0, hl_bars_0;
     time_t m_start,m_end;
@@ -130,6 +149,10 @@ public:
     SnapData *  m_snap2;;
     Position m_position1;
     Position m_position2;
+
+    bool m_hasCrossedMean {false};
+    bool m_hasCrossedMean_half {false};
+    float m_diffFarest {0.};
 private:
     //ContractPairTrade () = delete;
    // ContractPairTrade (const ContractPairTrade &c) = delete;
@@ -144,5 +167,7 @@ private:
     float m_rank {-1.};
     WinDiffDataType m_winDiff;
     int m_cntWinDiff {0};
+    float m_slopeDiffRate {100.};
+    float m_stopDiff {0.};
 };
 

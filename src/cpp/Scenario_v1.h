@@ -48,5 +48,6 @@ private:
     static LogType  m_out;
     BigTable &m_bigtable;
     time_t m_modelTime;
+    time_t m_startTime;;
     std::ostream * m_pOutWinDiff {nullptr};
 };

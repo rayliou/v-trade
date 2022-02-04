@@ -271,6 +271,7 @@ void Scenario_v1::runBT() {
         m_log->critical("Big table error, cannot find index time gt {}", m_modelTime);
         exit(1);
     }
+    m_startTime = itStart->second;
     int intervalSecs = (m_bigtable.m_index.begin() +1)->second - m_bigtable.m_index.begin()->second;
     auto maxBasrs = 1 + maxBTdays * 6.5 * 3600 / intervalSecs;
     int pos = itStart - m_bigtable.m_index.begin();
@@ -331,26 +332,143 @@ void Scenario_v1::runBT() {
 void Scenario_v1::calContractDiffData(ContractPairTrade &c, DiffData &d) {
     auto tm = std::max(c.m_snap1->tm,c.m_snap2->tm );
     auto slope = c.m_slope;
-    auto close1 = c.m_snap1->close;
-    auto close2 = c.m_snap2->close;
+    auto C1 = c.m_snap1->close;
+    auto C2 = c.m_snap2->close;
+    auto H1 = c.m_snap1->high;
+    auto H2 = c.m_snap2->high;
+    auto L1 = c.m_snap1->low;
+    auto L2 = c.m_snap2->low;
+
+    float p1 = (C1 + H1 +L1)/3.;
+    float p2 = (C2 + H2 +L2)/3.;
+
     auto v1 = c.m_snap1->volume;
     auto v2 = c.m_snap2->volume;
-    d.diff =  slope * close1 - close2;
+    d.diff =  slope * p1 - p2;
     d.tm = tm;
+    d.p1 = p1;
+    d.p2 = p2;
 }
 void Scenario_v1::strategy(ContractPairTrade &c) {
+    /*
+     *
+    //m_slopeDiffRate
+     *
+     *
+     */
+    const float THRESHOLD_STD_PERCENT = 0.25;
     const int MAXBARS_STD_CHECK = 1;
-    const float THRESHOLD_Z = 2.0;
+    const float RATE_STOPDIFF = 1.1;
+    const float THRESHOLD_Z = 2.1;
     DiffData d;
     calContractDiffData(c, d);
     //cal Z
     WinDiffDataType & winDiff = c.updateWindowBySnap(d,m_pOutWinDiff);
     WinDiffDataType::reverse_iterator rbegin = winDiff.rbegin();
     WinDiffDataType::reverse_iterator it = rbegin;
-    if(c.existPosition() ) { // there existes position.
+    // to 15:30
+    auto leftTime =   m_startTime + 3600 * 5 -  rbegin->tm ;
+    int intervalSecs = (m_bigtable.m_index.begin() +1)->second - m_bigtable.m_index.begin()->second;
+    int halfLifeSeconds = c.hl_bars_0 * intervalSecs;
+
+    int curPosition = c.curPositionDirection() ;
+    if(curPosition !=0 ) { // 1 -> n1 is - , n2 is +
+        //////////// Stop 0
+        // 1 n1 too high, sell n1 & buy n1
+        // -1 n1 too low, buy n1 & sell n2
+        float stopDiff = c.getStopDiff();
+        if ((rbegin->diff -stopDiff ) *curPosition > 0) {
+            m_log->warn("S-[{}]:{}\t{}\t[Stop diff reached] diff~stopDiff:[{}-{}]",winDiff.getTickCnt(), c.getName(), rbegin->toString(), rbegin->diff, stopDiff);
+            c.closePosition(rbegin->p1, rbegin->p2);
+            return;
+        }
+        //////////// Trailing...
+        auto it = rbegin;
+        float d0 = it->diff;
+        float d1 = (++it)->diff;
+        if ((d0 -d1) *curPosition < 0) {
+            m_log->trace("TR-[{}]:{}\t{}\t[Trailing diff] diff~stopDiff:[{}-{}]",winDiff.getTickCnt(), c.getName(), rbegin->toString(), rbegin->diff, stopDiff);
+            if (c.m_diffFarest == 0 || (d0 - c.m_diffFarest  ) *curPosition < 0) {
+                c.m_diffFarest = d0;
+            }
+            // 3,2,1 std.
+            //FIXME
+            //c.m_hasCrossedStd3 |= (it->diff - it->mean) *curPosition < 0;
+            //c.m_hasCrossedStd2 |= (it->diff - it->mean) *curPosition < 0;
+            //c.m_hasCrossedStd1 |= (it->diff - it->mean) *curPosition < 0;
+            c.m_hasCrossedMean |= (it->diff - it->mean) *curPosition < 0;
+            c.m_hasCrossedMean_half |= (it->diff - it->mean_half) *curPosition < 0;
+            return;
+        }
+        //////////// Time out
+        auto hold = rbegin->tm - c.getOpenTime();
+        if (halfLifeSeconds < hold ) {
+            m_log->warn("T-[{}]:{}\t{}\t[Timeout ] HL,holdTime:{},{} secs  ",winDiff.getTickCnt(), c.getName(), rbegin->toString(),halfLifeSeconds,hold);
+            c.closePosition(rbegin->p1, rbegin->p2);
+            return;
+        }
+        //reverse . touch any condition or line.
+        it = rbegin;
+        if (c.m_hasCrossedMean && (it->diff - it->mean) *curPosition > 0) {
+            m_log->warn("P-[{}]:{}\t{}\t[Profit with mean] diff~stopDiff:[{}-{}]",winDiff.getTickCnt(), c.getName(), rbegin->toString(), rbegin->diff, stopDiff);
+            c.closePosition(rbegin->p1, rbegin->p2);
+            return;
+        }
+        it = rbegin;
+        if (c.m_hasCrossedMean_half && (it->diff - it->mean_half) *curPosition > 0) {
+            m_log->warn("P-[{}]:{}\t{}\t[Profit with mean_half] diff~stopDiff:[{}-{}]",winDiff.getTickCnt(), c.getName(), rbegin->toString(), rbegin->diff, stopDiff);
+            c.closePosition(rbegin->p1, rbegin->p2);
+            return;
+        }
+        it = rbegin;
+        float ddLimit = 2 *rbegin->avg_diffdiff;
+        if (c.m_hasCrossedMean && (d0 -c.m_diffFarest) *curPosition > ddLimit) {
+            m_log->warn("P-[{}]:{}\t{}\t[Profit.move is too fast] d0~d1~avgDD:{}~{}~{}",winDiff.getTickCnt(), c.getName(), rbegin->toString(),d0,d1, ddLimit);
+            c.closePosition(rbegin->p1, rbegin->p2);
+            return;
+        }
+        m_log->trace("W-[{}]:{}\t{}\t[do nothing] diff~stopDiff:[{}-{}]",winDiff.getTickCnt(), c.getName(), rbegin->toString(), rbegin->diff, stopDiff);
     }
     else { //0 position
+        if (halfLifeSeconds > leftTime ) {
+            m_log->trace("I-[{}]:{}\t{}\t[max trade time has reached] halfLifeSeconds,lefttime {},{} mins",winDiff.getTickCnt(), c.getName(), rbegin->toString(), halfLifeSeconds/60,leftTime/60);
+            return ;
+        }
         // std decrease.
+        // narrow std band. do nothing.
+        float stdPercent =  (rbegin->std - rbegin->stdL) /(rbegin->stdH - rbegin->stdL) ;
+        if ( stdPercent < THRESHOLD_STD_PERCENT) {
+            m_log->trace("W-[{}]:{}\t{}\t[Wait for std increase] stdPercent:{}",winDiff.getTickCnt(), c.getName(), rbegin->toString(), stdPercent);
+            return;
+        }
+        m_log->debug("R-[{}]:{}\t{}\t[Std ready] stdPercent:{}",winDiff.getTickCnt(), c.getName(), rbegin->toString(), stdPercent);
+        it = rbegin;
+        //cross
+        auto crossIn = [&] () -> int {
+            // -1, 0, 1
+            int ret = 0;
+            auto it = rbegin;
+            float z0 = it->z;
+            float z1 = (++it)->z;
+            // positive cross in
+            ret = (z0 <= THRESHOLD_Z  && z1 > THRESHOLD_Z) ? 1 : (
+                    //negative cross in check
+                    (z0 >= -THRESHOLD_Z  && z1< -THRESHOLD_Z)? -1:0
+                    );
+            m_log->trace("\t[{}]:{}\t{}\t[Cross in check] z0:{},z1:{}, ret:{}",winDiff.getTickCnt(), c.getName(), rbegin->toString(), z0,z1,ret);
+            return ret;
+        };
+        int retCross = crossIn();
+        // 1 n1 too high, sell n1 & buy n1
+        // -1 n1 too low, buy n1 & sell n2
+        if (retCross != 0) {
+            m_log->warn("\t[{}]:{}\t{}\t[Z cross in]",winDiff.getTickCnt(), c.getName(), rbegin->toString());
+            // stop diff. direction
+            float stopDiff  = rbegin->diff + RATE_STOPDIFF * rbegin->std *retCross;
+            c.newPosition(retCross,stopDiff, rbegin->p1, rbegin->p2);
+            return;
+        }
+#if 0
         auto std  = rbegin->std;
         for(int i =0; ++it,i< MAXBARS_STD_CHECK; i++) {
             if (std > it->std) {
@@ -358,15 +476,9 @@ void Scenario_v1::strategy(ContractPairTrade &c) {
                 return;
             }
         }
-        m_log->debug("[{}]:{}\t{}\t[Std ready]",winDiff.getTickCnt(), c.getName(), rbegin->toString());
+#endif
+        //m_log->debug("[{}]:{}\t{}\t[Std ready]",winDiff.getTickCnt(), c.getName(), rbegin->toString());
         //check cross into.
-        it = rbegin;
-        if ( fabs(it->z) >= THRESHOLD_Z 
-            //&& fabs((it++)->z) >= THRESHOLD_Z
-           ) {
-            m_log->warn("[{}]:{}\t{}\t[Z cross]",winDiff.getTickCnt(), c.getName(), rbegin->toString());
-            return;
-        }
     }
     c.setRank(3);
 }
