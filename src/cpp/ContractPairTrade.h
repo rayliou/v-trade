@@ -128,6 +128,7 @@ public:
     virtual void initWindowByHistory(WinDiffDataType &&winDiff);
     virtual  WinDiffDataType & updateWindowBySnap(DiffData &diffData, std::ostream *pOut = nullptr);
     int getHalfLifeBars() const { return int(hl_bars_0) +1; }
+    int getHalfLifeSecs() const { return halflifeSecs; }
     std::string getWinDiffDataFields() const {std::ostringstream out; m_winDiff.begin()->outFieldsNames(out); return out.str(); }
     std::ostream & outWinDiffDataValues(std::ostream & out);
     float getStopDiff () const { return m_stopDiff;}
@@ -144,7 +145,7 @@ public:
     float m_z0 {0};
     std::string m_ext, m_n1,m_n2;
     std::pair<std::string, std::string> m_symbolsPair;
-    // s,i,m,st,halflife,pair,p,pmin,ext
+    // s,i,m,st,pair,p,pmin,ext
     SnapData * m_snap1;;
     SnapData *  m_snap2;;
     Position m_position1;
@@ -169,5 +170,6 @@ private:
     int m_cntWinDiff {0};
     float m_slopeDiffRate {100.};
     float m_stopDiff {0.};
+    int halflifeSecs {-1};
 };
 

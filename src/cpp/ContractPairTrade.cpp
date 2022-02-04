@@ -58,6 +58,7 @@ ContractPairTrade::ContractPairTrade (json &j ,  Money &m, std::string &slopeNam
         j["he_0"].get_to(he_0);
         //cout << he_0 << endl;
         j["hl_bars_0"].get_to(hl_bars_0);
+        halflifeSecs =  hl_bars_0 * interval_secs;
         //cout << hl_bars_0 << endl;
         //https://github.com/nlohmann/json/blob/develop/doc/examples/get_to.cpp
         string var;

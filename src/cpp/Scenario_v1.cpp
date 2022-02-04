@@ -233,7 +233,7 @@ void Scenario_v1::postRunBT() {
     for (auto c :contracts ) {
         ContractPairTrade *p = dynamic_cast<ContractPairTrade *>(c);
         int duration = p->getTransDuration();
-        int halflife = p->getHalfLifeBars();
+        int halflife = p->getHalfLifeSecs();
         m_out->info("[{}]\tTrans:{},profit:{:.2f}\tP:{:04.2f},Pmin:{:04.2f},HE:{:04.2f}\tduration: {:1d} mins, halflife:{:1d} mins", p->getName(),p->getTransactionNum(), p->getProfit()
         ,p->m_p,p->m_pmin, p->m_he
         , duration/60, halflife/60
@@ -368,8 +368,7 @@ void Scenario_v1::strategy(ContractPairTrade &c) {
     WinDiffDataType::reverse_iterator it = rbegin;
     // to 15:30
     auto leftTime =   m_startTime + 3600 * 5 -  rbegin->tm ;
-    int intervalSecs = (m_bigtable.m_index.begin() +1)->second - m_bigtable.m_index.begin()->second;
-    int halfLifeSeconds = c.hl_bars_0 * intervalSecs;
+    int halfLifeSeconds = c.getHalfLifeSecs();
 
     int curPosition = c.curPositionDirection() ;
     if(curPosition !=0 ) { // 1 -> n1 is - , n2 is +
