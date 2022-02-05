@@ -513,8 +513,8 @@ void Scenario_v1::strategy(ContractPairTrade &c) {
             float z2 = (++it)->z;
             float z3 = (++it)->z;
             float z4 = (++it)->z;
-            bool z_down = z1 <= z2 && z2 <= z3 && z3 <= z4;
-            bool z_up = z1 >= z2 && z2 >= z3 && z3 >= z4;
+            bool z_down = z1 <= z2 && z2 <= z3 ; // && z3 <= z4;
+            bool z_up = z1 >= z2 && z2 >= z3; // && z3 >= z4;
 
             // positive cross in
             ret = (z0 >= THRESHOLD_Z_L  &&  z0 <= THRESHOLD_Z_H  && z1 > THRESHOLD_Z_H &&  z_down) ? 1 : (

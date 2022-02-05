@@ -255,8 +255,13 @@ void ContractPairTrade::newPosition(int direction, float stopDiff, float x, floa
     double amount = 10000;
     amount *= (m_moneyCoeff/std_rate);
     //use 100% margin rate
-    int pos_y = round ((x < y) ? (amount /y) : (amount /x / m_slope) );
+    //base on y
+    int pos_y = round(amount /y);
     int pos_x = round(pos_y * m_slope);
+    if (pos_x *x  > amount) {
+        pos_x = round(amount /x);
+        pos_y = round(pos_x/m_slope);
+    }
     if(direction > 0) {
         pos_x *= -1;
     }

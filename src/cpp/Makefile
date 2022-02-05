@@ -1,6 +1,7 @@
 
 CXXFLAGS=-g  -std=c++17  -I3rd-party/spdlog/include
 
+GROUP=cn
 GROUP=topV100_MC200
 
 M=/Users/henry/stock/env_study/2022-01-19.$(GROUP)/js_coint.json
@@ -9,10 +10,10 @@ M=/Users/henry/stock/env_study/2022-01-19.$(GROUP)/js_coint.json
 LOG_ENV=SPDLOG_LEVEL=err,RunnerBT=trace,s_0=warn,s_dayslr=debug,bt=info,stdout=trace,ContractPairTrade=info 
 M=/Users/henry/stock/env_study/2021-12-16./js_coint.json
 M=/Users/henry/stock/env_study/2022-01-05.$(GROUP)/js_coint.json
-M=/Users/henry/stock/env_study/2022-01-22.topV100_MC200/js_coint.json
+M=/Users/henry/stock/env_study/2022-01-01.cn/js_coint.json
 #OUT_TRACE_DATA=--out_trace_data  ./xxx.csv
 INCLUES=
-INCLUES=--out_trace_data  ./xxx.csv --includes BAC_BNTX
+INCLUES=--out_trace_data  ./xxx.csv --includes VIPS_GTEC
 
 test:main_bt
 	$(LOG_ENV) ./$<  $(OUT_TRACE_DATA) --m_src /Users/henry/stock/env_study/2022-01-19.$(GROUP)/bigcsv.csv:$(M) $(INCLUES)
