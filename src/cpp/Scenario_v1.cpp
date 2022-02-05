@@ -24,8 +24,9 @@ T slope(const std::vector<T>& x, const std::vector<T>& y) {
 }
 
 Scenario_v1::Scenario_v1(std::string name, CmdOption &cmd,SnapDataMap & snapDataMap,const char * modelFilePath, BigTable & bigtable)
-    : IScenario(name,cmd, snapDataMap),m_bigtable(bigtable) {
+    : IScenario(name,cmd, snapDataMap),m_bigtable(bigtable),m_modelFilePath(modelFilePath) {
     //m_log = spdlog::stderr_color_mt(typeid(*this).name());
+    m_outTraceDataPath = cmd.get("--out_trace_data");
     std::ifstream is(modelFilePath);
     for(string line; std::getline(is,line); ) {
         json j = json::parse(line);
@@ -111,6 +112,16 @@ void Scenario_v1::postSetup() {
         return a + b.getName() + ",";
     });
     m_log->info("All pairs:{}", allPairs);
+
+    float stdRateH {0.} ,stdRateL { std::numeric_limits<float>::infinity() };
+    for (ContractPairTrade & c :  m_contracts) {
+        stdRateH = std::max(stdRateH, c.std_rate);
+        stdRateL = std::min(stdRateL, c.std_rate);
+    }
+    float coeff = std::sqrt(stdRateH*stdRateL) ;
+    for (ContractPairTrade & c :  m_contracts) {
+        c.setMoneyCoeff(coeff);
+    }
 }
 void Scenario_v1::debug(LogType *log) {
     if (nullptr == log) {
@@ -234,8 +245,9 @@ void Scenario_v1::postRunBT() {
         ContractPairTrade *p = dynamic_cast<ContractPairTrade *>(c);
         int duration = p->getTransDuration();
         int halflife = p->getHalfLifeSecs();
-        m_out->info("[{}]\tTrans:{},profit:{:.2f}\tP:{:04.2f},Pmin:{:04.2f},HE:{:04.2f}\tduration: {:1d} mins, halflife:{:1d} mins", p->getName(),p->getTransactionNum(), p->getProfit()
-        ,p->m_p,p->m_pmin, p->m_he
+        m_out->info("[{}]\tTrans:{},profit:{:.2f}\tP:{:04.2f},Pmin:{:04.2f},HE:{:04.2f},std_rate:{:04.2f},slopeDiffRate:{:04.2f}\tduration: {:1d} mins, halflife:{:1d} mins", p->getName(),p->getTransactionNum(), p->getProfit()
+        ,p->m_p,p->m_pmin, p->getHurstExponent(),p->std_rate
+        , p->getSlopeDiffRate()
         , duration/60, halflife/60
         //, p->m_ext
         );
@@ -251,7 +263,8 @@ void Scenario_v1::postRunBT() {
     auto mean = sum / v.size();
     auto sq_sum = std::inner_product(v.begin(), v.end(), v.begin(), 0.0);
     auto stdev = std::sqrt(sq_sum / v.size() - mean * mean);
-    m_out->info("Total:{}, mean: {}, std:{},sum:{}", v.size(),mean, stdev, sum);
+    m_out->warn("sum\t{}\tTotal:{}, mean: {}\tstd:{},{}"
+            ,sum,  v.size(),mean, stdev, m_modelFilePath);
 
     m_log->info("End:{}", __PRETTY_FUNCTION__ );
 }
@@ -273,7 +286,9 @@ void Scenario_v1::runBT() {
     }
     m_startTime = itStart->second;
     int intervalSecs = (m_bigtable.m_index.begin() +1)->second - m_bigtable.m_index.begin()->second;
-    auto maxBasrs = 1 + maxBTdays * 6.5 * 3600 / intervalSecs;
+    int maxBasrs = 1 + maxBTdays * 6.5 * 3600 / intervalSecs;
+    int leftBars = m_bigtable.m_index.end() - itStart;
+    maxBasrs = std::min(maxBasrs, leftBars);
     int pos = itStart - m_bigtable.m_index.begin();
     int end = pos + maxBasrs;
     m_log->info("BT time range: {} to {}",m_bigtable.m_index[pos].first, m_bigtable.m_index[end-1].first);
@@ -283,10 +298,14 @@ void Scenario_v1::runBT() {
     auto tm = m_bigtable.m_index[pos].second;
     auto tmPrev = tm;
 
-    m_pOutWinDiff  = nullptr;
     m_pOutWinDiff = &cout;
-    //FIXME ofstream of("./xxx.csv"); m_pOutWinDiff = &of; *m_pOutWinDiff << "pair," << m_contracts.begin()->getWinDiffDataFields() << endl;
-    ofstream of("./xxx.csv"); m_pOutWinDiff = &of; *m_pOutWinDiff << "pair," << m_contracts.begin()->getWinDiffDataFields() << endl;
+    m_pOutWinDiff  = nullptr;
+    ofstream of;
+    if ( nullptr != m_outTraceDataPath &&  m_outTraceDataPath[0] != 0 ) {
+        of.open(m_outTraceDataPath); 
+        m_pOutWinDiff = &of; 
+        *m_pOutWinDiff << "pair," << m_contracts.begin()->getWinDiffDataFields() << endl;
+    }
 
     for (; pos < end; pos++) {
         updateSnapDataByBigTable(pos);
@@ -356,10 +375,6 @@ void Scenario_v1::strategy(ContractPairTrade &c) {
      *
      *
      */
-    const float THRESHOLD_STD_PERCENT = 0.25;
-    const int MAXBARS_STD_CHECK = 1;
-    const float RATE_STOPDIFF = 1.1;
-    const float THRESHOLD_Z = 2.1;
     DiffData d;
     calContractDiffData(c, d);
     //cal Z
@@ -367,24 +382,28 @@ void Scenario_v1::strategy(ContractPairTrade &c) {
     WinDiffDataType::reverse_iterator rbegin = winDiff.rbegin();
     WinDiffDataType::reverse_iterator it = rbegin;
     // to 15:30
-    auto leftTime =   m_startTime + 3600 * 5 -  rbegin->tm ;
+    time_t curTime  = rbegin->tm;
+    auto leftTime =   m_startTime + 3600 * 5 -  curTime;
     int halfLifeSeconds = c.getHalfLifeSecs();
 
     int curPosition = c.curPositionDirection() ;
     if(curPosition !=0 ) { // 1 -> n1 is - , n2 is +
-        //////////// Stop 0
         // 1 n1 too high, sell n1 & buy n1
         // -1 n1 too low, buy n1 & sell n2
+        //////////// Trailing make the profit run..........
         float stopDiff = c.getStopDiff();
-        if ((rbegin->diff -stopDiff ) *curPosition > 0) {
-            m_log->warn("S-[{}]:{}\t{}\t[Stop diff reached] diff~stopDiff:[{}-{}]",winDiff.getTickCnt(), c.getName(), rbegin->toString(), rbegin->diff, stopDiff);
-            c.closePosition(rbegin->p1, rbegin->p2);
-            return;
-        }
-        //////////// Trailing...
         auto it = rbegin;
         float d0 = it->diff;
         float d1 = (++it)->diff;
+
+        float d_stN =  (it->diff - (it->mean + curPosition * it->std)) *curPosition;
+        float d_stF = (it->diff - (it->mean - curPosition * it->std)) *curPosition ;
+        float d_stF2 = (it->diff - (it->mean - 2* curPosition * it->std)) *curPosition ;
+        float d_stF3 = (it->diff - (it->mean - 3 *curPosition * it->std)) *curPosition ;
+        float d_m = (it->diff - it->mean) *curPosition ;
+        float d_mH = (it->diff - it->mean_half) *curPosition ;
+
+
         if ((d0 -d1) *curPosition < 0) {
             m_log->trace("TR-[{}]:{}\t{}\t[Trailing diff] diff~stopDiff:[{}-{}]",winDiff.getTickCnt(), c.getName(), rbegin->toString(), rbegin->diff, stopDiff);
             if (c.m_diffFarest == 0 || (d0 - c.m_diffFarest  ) *curPosition < 0) {
@@ -392,11 +411,18 @@ void Scenario_v1::strategy(ContractPairTrade &c) {
             }
             // 3,2,1 std.
             //FIXME
-            //c.m_hasCrossedStd3 |= (it->diff - it->mean) *curPosition < 0;
-            //c.m_hasCrossedStd2 |= (it->diff - it->mean) *curPosition < 0;
-            //c.m_hasCrossedStd1 |= (it->diff - it->mean) *curPosition < 0;
-            c.m_hasCrossedMean |= (it->diff - it->mean) *curPosition < 0;
-            c.m_hasCrossedMean_half |= (it->diff - it->mean_half) *curPosition < 0;
+            c.m_hasCrossedStd_near  |=  d_stN < 0;
+            c.m_hasCrossedStd_far   |=  d_stF < 0;
+            c.m_hasCrossedStd_far2  |=  d_stF2 < 0;
+            c.m_hasCrossedStd_far3  |=  d_stF3 < 0;
+            c.m_hasCrossedMean |=  d_m < 0;
+            c.m_hasCrossedMean_half  |= d_mH < 0;
+            return;
+        }
+        //////////// Stop 0
+        if ((rbegin->diff -stopDiff ) *curPosition > 0) {
+            m_log->warn("S-[{}]:{}\t{}\t[Stop diff reached] diff~stopDiff:[{}-{}]",winDiff.getTickCnt(), c.getName(), rbegin->toString(), rbegin->diff, stopDiff);
+            c.closePosition(rbegin->p1, rbegin->p2);
             return;
         }
         //////////// Time out
@@ -408,23 +434,39 @@ void Scenario_v1::strategy(ContractPairTrade &c) {
         }
         //reverse . touch any condition or line.
         it = rbegin;
-        if (c.m_hasCrossedMean && (it->diff - it->mean) *curPosition > 0) {
-            m_log->warn("P-[{}]:{}\t{}\t[Profit with mean] diff~stopDiff:[{}-{}]",winDiff.getTickCnt(), c.getName(), rbegin->toString(), rbegin->diff, stopDiff);
-            c.closePosition(rbegin->p1, rbegin->p2);
-            return;
-        }
-        it = rbegin;
-        if (c.m_hasCrossedMean_half && (it->diff - it->mean_half) *curPosition > 0) {
-            m_log->warn("P-[{}]:{}\t{}\t[Profit with mean_half] diff~stopDiff:[{}-{}]",winDiff.getTickCnt(), c.getName(), rbegin->toString(), rbegin->diff, stopDiff);
-            c.closePosition(rbegin->p1, rbegin->p2);
-            return;
+        list <pair<bool, float>> lines  { 
+                {c.m_hasCrossedStd_far3, d_stF3}
+                ,{c.m_hasCrossedStd_far2, d_stF2}
+                ,{c.m_hasCrossedStd_far, d_stF}
+                ,{c.m_hasCrossedMean, d_m}
+                 };
+        for ( auto & [touch, diff2] : lines ) {
+            if(touch && diff2 > 0) {
+                m_log->warn("P-[{}]:{}\t{}\t[Profit with far std or mean] diff~stopDiff:[{}-{}]",winDiff.getTickCnt(), c.getName(), rbegin->toString(), rbegin->diff, stopDiff);
+                c.closePosition(rbegin->p1, rbegin->p2);
+                return;
+            }
         }
         it = rbegin;
         float ddLimit = 2 *rbegin->avg_diffdiff;
-        if (c.m_hasCrossedMean && (d0 -c.m_diffFarest) *curPosition > ddLimit) {
-            m_log->warn("P-[{}]:{}\t{}\t[Profit.move is too fast] d0~d1~avgDD:{}~{}~{}",winDiff.getTickCnt(), c.getName(), rbegin->toString(),d0,d1, ddLimit);
-            c.closePosition(rbegin->p1, rbegin->p2);
-            return;
+        // if (c.m_hasCrossedMean_half && (d0 -c.m_diffFarest) *curPosition > ddLimit) {
+        if (true) {
+            // m_log->warn("P-[{}]:{}\t{}\t[Profit.move is too fast] d0~d1~avgDD:{}~{}~{}",winDiff.getTickCnt(), c.getName(), rbegin->toString(),d0,d1, ddLimit);
+            // c.closePosition(rbegin->p1, rbegin->p2);
+            ///////////////////// d_m vs d_mH.
+            list <pair<bool, float>> lines2  { 
+                    {c.m_hasCrossedStd_near, d_stN}
+                    ,{c.m_hasCrossedMean_half, d_mH}
+                    };
+            lines2.sort();
+            for ( auto & [touch, diff2] : lines2 ) {
+                if(touch && diff2 > 0) {
+                    m_log->warn("P-[{}]:{}\t{}\t[Profit with mean half or near std] diff~stopDiff:[{}-{}]",winDiff.getTickCnt(), c.getName(), rbegin->toString(), rbegin->diff, stopDiff);
+                    c.closePosition(rbegin->p1, rbegin->p2);
+                    return;
+                }
+            }
+            // return;
         }
         m_log->trace("W-[{}]:{}\t{}\t[do nothing] diff~stopDiff:[{}-{}]",winDiff.getTickCnt(), c.getName(), rbegin->toString(), rbegin->diff, stopDiff);
     }
@@ -433,9 +475,28 @@ void Scenario_v1::strategy(ContractPairTrade &c) {
             m_log->trace("I-[{}]:{}\t{}\t[max trade time has reached] halfLifeSeconds,lefttime {},{} mins",winDiff.getTickCnt(), c.getName(), rbegin->toString(), halfLifeSeconds/60,leftTime/60);
             return ;
         }
+        if (curTime - m_startTime <  SKIP_1ST_SECS) {
+            m_log->trace("I-[{}]:{}\t{}\t[Skipe 1st time range {} secs ] ",winDiff.getTickCnt(), c.getName(), rbegin->toString(), SKIP_1ST_SECS);
+            return ;
+        }
+        it = rbegin;
+        float d0 = it->std - it->sm_std_20 ;
+        float d1 = (++it)->std - it->sm_std_20 ;
         // std decrease.
         // narrow std band. do nothing.
+        #if 0
+        if (d0 <0 && d1 > 0) {
+            c.m_cntCrsDwn_sm_std_20 ++;
+            return;
+        }
+        if (c.m_cntCrsDwn_sm_std_20 ==0) {
+            m_log->trace("W-[{}]:{}\t{}\t[Wait for std decrease]",winDiff.getTickCnt(), c.getName(), rbegin->toString() );
+            return;
+        }
+        #endif
+
         float stdPercent =  (rbegin->std - rbegin->stdL) /(rbegin->stdH - rbegin->stdL) ;
+        /////// on create on the top
         if ( stdPercent < THRESHOLD_STD_PERCENT) {
             m_log->trace("W-[{}]:{}\t{}\t[Wait for std increase] stdPercent:{}",winDiff.getTickCnt(), c.getName(), rbegin->toString(), stdPercent);
             return;
@@ -449,12 +510,19 @@ void Scenario_v1::strategy(ContractPairTrade &c) {
             auto it = rbegin;
             float z0 = it->z;
             float z1 = (++it)->z;
+            float z2 = (++it)->z;
+            float z3 = (++it)->z;
+            float z4 = (++it)->z;
+            bool z_down = z1 <= z2 && z2 <= z3 && z3 <= z4;
+            bool z_up = z1 >= z2 && z2 >= z3 && z3 >= z4;
+
             // positive cross in
-            ret = (z0 <= THRESHOLD_Z  && z1 > THRESHOLD_Z) ? 1 : (
+            ret = (z0 >= THRESHOLD_Z_L  &&  z0 <= THRESHOLD_Z_H  && z1 > THRESHOLD_Z_H &&  z_down) ? 1 : (
                     //negative cross in check
-                    (z0 >= -THRESHOLD_Z  && z1< -THRESHOLD_Z)? -1:0
+                    (z0 <= -THRESHOLD_Z_L  &&  z0 >= -THRESHOLD_Z_H  && z1< -THRESHOLD_Z_H &&  z_up)? -1:0
                     );
             m_log->trace("\t[{}]:{}\t{}\t[Cross in check] z0:{},z1:{}, ret:{}",winDiff.getTickCnt(), c.getName(), rbegin->toString(), z0,z1,ret);
+             
             return ret;
         };
         int retCross = crossIn();
@@ -463,7 +531,7 @@ void Scenario_v1::strategy(ContractPairTrade &c) {
         if (retCross != 0) {
             m_log->warn("\t[{}]:{}\t{}\t[Z cross in]",winDiff.getTickCnt(), c.getName(), rbegin->toString());
             // stop diff. direction
-            float stopDiff  = rbegin->diff + RATE_STOPDIFF * rbegin->std *retCross;
+            float stopDiff  = rbegin->diff + STD_RATE_STOPDIFF * rbegin->std *retCross;
             c.newPosition(retCross,stopDiff, rbegin->p1, rbegin->p2);
             return;
         }

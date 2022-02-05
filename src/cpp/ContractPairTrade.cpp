@@ -14,6 +14,7 @@ LogType ContractPairTrade::m_log = spdlog::stderr_color_mt("ContractPairTrade");
 
 ContractPairTrade::ContractPairTrade (json &j ,  Money &m, std::string &slopeName) : m_money(&m),m_slopeName(slopeName) {
     float MAX_SLOPE_DIFF_RATE = 0.2;
+    const int MIN_HALFLIFE_SECS = 34 *60;
 // ~/stock/env_study/2022-01-12.cn/js_coint.json
 // {"pair":"BZUN_GDS","s_0":10.19418,"s_dayslr":4.71023,"s_daysfast":3.20328,
 // "s_hllr":2.08931,"s_hlfast":3.24254,"std_rate":1.59872,"coint_days":14,
@@ -59,6 +60,10 @@ ContractPairTrade::ContractPairTrade (json &j ,  Money &m, std::string &slopeNam
         //cout << he_0 << endl;
         j["hl_bars_0"].get_to(hl_bars_0);
         halflifeSecs =  hl_bars_0 * interval_secs;
+        if (halflifeSecs < MIN_HALFLIFE_SECS) {
+            m_slope = 0;
+        }
+
         //cout << hl_bars_0 << endl;
         //https://github.com/nlohmann/json/blob/develop/doc/examples/get_to.cpp
         string var;
@@ -234,6 +239,11 @@ std::ostream & ContractPairTrade::outWinDiffDataValues(std::ostream & out) {
     return out;
 }
 void ContractPairTrade::newPosition(int direction, float stopDiff, float x, float y) {
+    m_hasCrossedStd_near =false;
+    m_hasCrossedStd_far =false;
+    m_hasCrossedStd_far2 =false;
+    m_hasCrossedStd_far3 =false;
+
     m_hasCrossedMean = false;
     m_hasCrossedMean_half = false;
     m_diffFarest = 0.;
@@ -243,6 +253,7 @@ void ContractPairTrade::newPosition(int direction, float stopDiff, float x, floa
     m_openTime = last->tm;
     //apply for $10000
     double amount = 10000;
+    amount *= (m_moneyCoeff/std_rate);
     //use 100% margin rate
     int pos_y = round ((x < y) ? (amount /y) : (amount /x / m_slope) );
     int pos_x = round(pos_y * m_slope);

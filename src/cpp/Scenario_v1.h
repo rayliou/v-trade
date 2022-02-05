@@ -28,7 +28,6 @@ public:
     virtual void runBT();
     virtual ~Scenario_v1() {}
     virtual void debug(LogType *log = nullptr);
-    //virtual std::string getConfPath() const { return m_pairCsv; }
 private:
     void preRunBT();
     void postRunBT();
@@ -43,11 +42,24 @@ private:
 
     //std::vector<std::pair<SnapData*, ContractPairTrade* >   > m_snapAsN1;
     //std::vector<std::pair<SnapData*, ContractPairTrade* >   > m_snapAsN2;
-    std::string m_pairCsv;
+    std::string m_modelFilePath;
     Money m_money;
     static LogType  m_out;
     BigTable &m_bigtable;
     time_t m_modelTime;
     time_t m_startTime;;
     std::ostream * m_pOutWinDiff {nullptr};
+    const char * m_outTraceDataPath  {nullptr};
+private:
+
+    //85-, 92
+    const int SKIP_1ST_SECS = 15 * 60;
+    //vs
+    const float STD_RATE_STOPDIFF = 0.4;  //2.5; //1.3; //1.9;
+
+    const float THRESHOLD_STD_PERCENT = 0.5;
+    // const int MAXBARS_STD_CHECK = 1;
+
+    const float THRESHOLD_Z_L = 1.98;
+    const float THRESHOLD_Z_H = 2.3;
 };

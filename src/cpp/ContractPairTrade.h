@@ -132,14 +132,16 @@ public:
     std::string getWinDiffDataFields() const {std::ostringstream out; m_winDiff.begin()->outFieldsNames(out); return out.str(); }
     std::ostream & outWinDiffDataValues(std::ostream & out);
     float getStopDiff () const { return m_stopDiff;}
+    float getHurstExponent () const { return he_0;;}
+    float getSlopeDiffRate () const { return m_slopeDiffRate;}
+    void setMoneyCoeff (float coeff) {m_moneyCoeff = coeff;}
 
 public:
-    float m_slope {0.} ,m_intercept ,m_mean, m_std,  m_p,m_pmin;
+    float m_slope {0.} ,m_intercept ,m_mean, m_std,  m_p {-1}  ,m_pmin {-1};
     int coint_days;
-    float std_rate, interval_secs, he_0, hl_bars_0;
+    float std_rate, interval_secs,  hl_bars_0;
     time_t m_start,m_end;
 
-    float m_he {1.0};
     float m_z {0};
     float m_zPrev {0};
     float m_z0 {0};
@@ -151,9 +153,15 @@ public:
     Position m_position1;
     Position m_position2;
 
+    bool m_hasCrossedStd_near {false};
+    bool m_hasCrossedStd_far {false};
+    bool m_hasCrossedStd_far2 {false};
+    bool m_hasCrossedStd_far3 {false};
+
     bool m_hasCrossedMean {false};
     bool m_hasCrossedMean_half {false};
     float m_diffFarest {0.};
+    int m_cntCrsDwn_sm_std_20 {0};
 private:
     //ContractPairTrade () = delete;
    // ContractPairTrade (const ContractPairTrade &c) = delete;
@@ -171,5 +179,8 @@ private:
     float m_slopeDiffRate {100.};
     float m_stopDiff {0.};
     int halflifeSecs {-1};
+    float he_0 {1.};
+    float  m_moneyCoeff {1};
+
 };
 

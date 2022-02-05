@@ -24,7 +24,7 @@ public:
         :m_name(name),m_cmdOption(cmd),m_snapDataMap(snapDataMap)  {
         auto var = m_cmdOption.get("--includes");
         if (nullptr != var) {
-            auto symbols = strSplit(var,',');
+            auto symbols = strSplit(var,'_');
             std::for_each(symbols.begin(), symbols.end(), [&] (auto &s) {  m_includes.insert(s);} );
         }
         var  = m_cmdOption.get("--excludes");
