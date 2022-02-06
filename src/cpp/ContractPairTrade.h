@@ -42,8 +42,10 @@ struct DiffData {
     float p1 {0.}, p2 {0.};
     float diff;
     float avg_diffdiff {0.};
+    float mean0 {0.};
     float mean {0.};
     float mean_half {0.};
+    float std0 {-1.};
     float std {-1.};
     float sm_std_5 {0.};
     float sm_std_10 {0.};
@@ -55,7 +57,7 @@ struct DiffData {
     float z {0.};
     time_t tm;
     std::ostream & outFieldsNames(std::ostream &out) const {
-        out << "std,mean,mean_half,tm,diff,z";
+        out << "std0,std,mean0,mean,mean_half,tm,diff,z";
         out << ",sm_std_5,sm_std_10,sm_std_20";
         out << ",stdH,stdL";
         out << ",diffH,diffL";
@@ -63,7 +65,7 @@ struct DiffData {
         return out;
     }
     std::ostream & outValues(std::ostream &out) const {
-        out << std << "," << mean << "," << mean_half << "," ;
+        out << std0 << ',' << std << "," << mean0 << ',' << mean << "," << mean_half << "," ;
         out << tm << "," << diff << "," << z;
         out << "," << sm_std_5 << "," << sm_std_10<< "," << sm_std_20;
         out << "," << stdH << "," << stdL;
@@ -137,7 +139,8 @@ public:
     void setMoneyCoeff (float coeff) {m_moneyCoeff = coeff;}
 
 public:
-    float m_slope {0.} ,m_intercept ,m_mean, m_std,  m_p {-1}  ,m_pmin {-1};
+    float m_slope {0.} ,m_intercept ,m_mean, m_std,  m_pxy {-1}  ,m_pyx {-1};
+    float m_mean0 {0.}, m_std0 {0.};
     int coint_days;
     float std_rate, interval_secs,  hl_bars_0;
     time_t m_start,m_end;

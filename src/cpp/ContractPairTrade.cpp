@@ -63,6 +63,13 @@ ContractPairTrade::ContractPairTrade (json &j ,  Money &m, std::string &slopeNam
         if (halflifeSecs < MIN_HALFLIFE_SECS) {
             m_slope = 0;
         }
+        j["pxy"].get_to(m_pxy);
+        j["pyx"].get_to(m_pyx);
+        j["mean0"].get_to(m_mean0);
+        j["std0"].get_to(m_std0);
+        if(m_pxy > 0.05 || m_pyx > 0.05) {
+            m_slope = 0;
+        }
 
         //cout << hl_bars_0 << endl;
         //https://github.com/nlohmann/json/blob/develop/doc/examples/get_to.cpp
@@ -116,9 +123,9 @@ std::vector<std::string>  ContractPairTrade::getSymbols() const {
     return p;
 }
 void ContractPairTrade::debug(LogType log) {
-    log->debug("available:{}; {}_{}:slope:{},intercept:{},mean:{},std:{},p:{},pmin:{},ext:{}",
+    log->debug("available:{}; {}_{}:slope:{},intercept:{},mean:{},std:{},pxy:{},pyx:{},ext:{}",
         m_isAvailable,
-        m_symbolsPair.first,m_symbolsPair.second, m_slope,m_intercept ,m_mean, m_std,m_p, m_pmin, m_ext); 
+        m_symbolsPair.first,m_symbolsPair.second, m_slope,m_intercept ,m_mean, m_std,m_pxy, m_pyx, m_ext); 
 }
 
 void ContractPairTrade::initWindowByHistory(WinDiffDataType &&winDiff) {
@@ -128,6 +135,8 @@ void ContractPairTrade::initWindowByHistory(WinDiffDataType &&winDiff) {
     auto i = 0;
     auto totalCnt = m_winDiff.size();
     for_each(m_winDiff.begin(),m_winDiff.end(), [&](auto &d){
+        d.mean0 = m_mean0;
+        d.std0 = m_std0;
         d.debug(m_log, i++, totalCnt,m_name); 
     });
 }
@@ -208,6 +217,9 @@ WinDiffDataType &  ContractPairTrade::updateWindowBySnap(DiffData &diffData,std:
         diffPrev = it->diff;
     }
     last->avg_diffdiff  = sumDD /cnt;
+    //FIXME
+    last->mean0 = m_mean0;
+    last->std0 = m_std0;
     // last->debug(m_log, m_cntWinDiff,m_cntWinDiff , m_name);
     m_cntWinDiff++;
     if (pOut != nullptr) {

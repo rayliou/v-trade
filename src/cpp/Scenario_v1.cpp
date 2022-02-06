@@ -55,7 +55,7 @@ Scenario_v1::Scenario_v1(std::string name, CmdOption &cmd,SnapDataMap & snapData
 
     }
     //get group & model time
-    auto strRe =".*(20\\d\\d-\\d+-\\d+)\\.(.*)/js_coint.json";
+    auto strRe =".*(20\\d\\d-\\d+-\\d+)\\.(.*)/js_coint_v2.json";
     std::regex re(strRe);
     std::smatch pieces_match;
     string var {modelFilePath} ;
@@ -245,8 +245,8 @@ void Scenario_v1::postRunBT() {
         ContractPairTrade *p = dynamic_cast<ContractPairTrade *>(c);
         int duration = p->getTransDuration();
         int halflife = p->getHalfLifeSecs();
-        m_out->info("[{}]\tTrans:{},profit:{:.2f}\tP:{:04.2f},Pmin:{:04.2f},HE:{:04.2f},std_rate:{:04.2f},slopeDiffRate:{:04.2f}\tduration: {:1d} mins, halflife:{:1d} mins", p->getName(),p->getTransactionNum(), p->getProfit()
-        ,p->m_p,p->m_pmin, p->getHurstExponent(),p->std_rate
+        m_out->info("[{}]\tTrans:{},profit:{:.2f}\tPxy:{:04.2f},Pyx:{:04.2f},HE:{:04.2f},std_rate:{:04.2f},slopeDiffRate:{:04.2f}\tduration: {:1d} mins, halflife:{:1d} mins", p->getName(),p->getTransactionNum(), p->getProfit()
+        ,p->m_pxy,p->m_pyx, p->getHurstExponent(),p->std_rate
         , p->getSlopeDiffRate()
         , duration/60, halflife/60
         //, p->m_ext
@@ -448,9 +448,9 @@ void Scenario_v1::strategy(ContractPairTrade &c) {
             }
         }
         it = rbegin;
-        float ddLimit = 2 *rbegin->avg_diffdiff;
-        // if (c.m_hasCrossedMean_half && (d0 -c.m_diffFarest) *curPosition > ddLimit) {
-        if (true) {
+        float ddLimit = 4 *rbegin->avg_diffdiff;
+         if (c.m_hasCrossedMean_half && (d0 -c.m_diffFarest) *curPosition > ddLimit) {
+        //if (true) {
             // m_log->warn("P-[{}]:{}\t{}\t[Profit.move is too fast] d0~d1~avgDD:{}~{}~{}",winDiff.getTickCnt(), c.getName(), rbegin->toString(),d0,d1, ddLimit);
             // c.closePosition(rbegin->p1, rbegin->p2);
             ///////////////////// d_m vs d_mH.
@@ -513,8 +513,8 @@ void Scenario_v1::strategy(ContractPairTrade &c) {
             float z2 = (++it)->z;
             float z3 = (++it)->z;
             float z4 = (++it)->z;
-            bool z_down = z1 <= z2 && z2 <= z3 ; // && z3 <= z4;
-            bool z_up = z1 >= z2 && z2 >= z3; // && z3 >= z4;
+            bool z_down = z1 <= z2 ;//&& z2 <= z3 ; // && z3 <= z4;
+            bool z_up = z1 >= z2;// && z2 >= z3; // && z3 >= z4;
 
             // positive cross in
             ret = (z0 >= THRESHOLD_Z_L  &&  z0 <= THRESHOLD_Z_H  && z1 > THRESHOLD_Z_H &&  z_down) ? 1 : (
