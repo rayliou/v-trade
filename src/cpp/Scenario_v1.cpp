@@ -5,6 +5,7 @@
 #include "Scenario_v1.h"
 #include <fstream>
 #include <numeric>
+#include <execution>
 
 
 using namespace std;
@@ -22,6 +23,29 @@ T slope(const std::vector<T>& x, const std::vector<T>& y) {
     const auto a    = (n * s_xy - s_x * s_y) / (n * s_xx - s_x * s_x);
     return a;
 }
+
+
+
+/***********
+ https://en.wikipedia.org/wiki/Algorithms_for_calculating_variance#Weighted_incremental_algorithm
+def weighted_incremental_variance(data_weight_pairs):
+    w_sum = w_sum2 = mean = S = 0
+
+    for x, w in data_weight_pairs:
+        w_sum = w_sum + w
+        w_sum2 = w_sum2 + w * w
+        mean_old = mean
+        mean = mean_old + (w / w_sum) * (x - mean_old)
+        S = S + w * (x - mean_old) * (x - mean)
+
+    population_variance = S / w_sum
+    # Bessel's correction for weighted samples
+    # Frequency weights
+    sample_frequency_variance = S / (w_sum - 1)
+    # Reliability weights
+    sample_reliability_variance = S / (w_sum - w_sum2 / w_sum)
+
+ **********/
 
 Scenario_v1::Scenario_v1(std::string name, CmdOption &cmd,SnapDataMap & snapDataMap,const char * modelFilePath, BigTable & bigtable)
     : IScenario(name,cmd, snapDataMap),m_bigtable(bigtable),m_modelFilePath(modelFilePath) {
@@ -151,12 +175,13 @@ void Scenario_v1::updateSnapDataByBigTable(int pos, SnapData &snap) {
     snap.update(o,h,l,c,v,tm);
 }
 void Scenario_v1::updateSnapDataByBigTable(int pos) {
-    for (auto &[symbol, snap]:m_snapDataMap) {
+    for_each(std::execution::par,m_snapDataMap.begin(),m_snapDataMap.end(),[&](auto &pair){
+        auto &[symbol, snap] = pair;
         if( !snap.isAvailable()) {
-            continue;
+            return;
         }
         updateSnapDataByBigTable(pos,snap);
-    }
+    });
 }
 void Scenario_v1::rank(std::vector<ContractPairTrade *> &openCtrcts,std::vector<ContractPairTrade *> &closeCtrcts) {
     openCtrcts.clear();
@@ -513,8 +538,8 @@ void Scenario_v1::strategy(ContractPairTrade &c) {
             float z2 = (++it)->z;
             float z3 = (++it)->z;
             float z4 = (++it)->z;
-            bool z_down = z1 <= z2 ;//&& z2 <= z3 ; // && z3 <= z4;
-            bool z_up = z1 >= z2;// && z2 >= z3; // && z3 >= z4;
+            bool z_down = z1 <= z2 && z2 <= z3 ; // && z3 <= z4;
+            bool z_up = z1 >= z2 && z2 >= z3; // && z3 >= z4;
 
             // positive cross in
             ret = (z0 >= THRESHOLD_Z_L  &&  z0 <= THRESHOLD_Z_H  && z1 > THRESHOLD_Z_H &&  z_down) ? 1 : (

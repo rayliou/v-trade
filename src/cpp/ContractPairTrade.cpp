@@ -151,7 +151,7 @@ WinDiffDataType &  ContractPairTrade::updateWindowBySnap(DiffData &diffData,std:
     int cnt = 0;
     int sizeHalf = m_winDiff.size()/2;
     //reverse sum and sum half.
-    sumPair = std::accumulate(m_winDiff.rbegin(),m_winDiff.rend(), sumPair, [&](SumPair  & a, auto &b) -> SumPair {
+    sumPair = std::accumulate(m_winDiff.rbegin(),m_winDiff.rend(), sumPair, [&](const SumPair  & a, const auto &b) -> SumPair {
         auto [s0,s1] = a;
         s0 += b.diff;
         cnt++;
@@ -179,7 +179,7 @@ WinDiffDataType &  ContractPairTrade::updateWindowBySnap(DiffData &diffData,std:
     int cnt5 = 0;
     int cnt10 = 0;
     int cnt20 = 0;
-    sumTuple = std::accumulate(m_winDiff.rbegin(),m_winDiff.rend(), sumTuple, [&](SumTuple  & a, auto &b) -> SumTuple {
+    sumTuple = std::accumulate(m_winDiff.rbegin(),m_winDiff.rend(), sumTuple, [&](const SumTuple  & a, const auto &b) -> SumTuple {
         auto [s5,s10,s20] = a;
         cnt++;
         if (b.std > 0) {

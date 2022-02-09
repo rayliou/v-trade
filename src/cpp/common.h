@@ -1,11 +1,16 @@
-//g++ -g  -std=c++17  ./bigcsv.cpp -o b && ./b
-#pragma once
+// /usr/local/Cellar/gcc/11.2.0_3/bin/g++-11 -g  -std=gnu++20 -I/usr/local/Cellar/gcc/11.2.0_3/include  -I3rd-party/spdlog/include    common.h
+#ifndef __common_h__
+#define  __common_h__
+
+//#pragma once
 
 #include <map>
 #include <string>
 #include <vector>
 #include <list>
 #include <sstream>
+
+#include "./3rd-party/JohansenCointegration/JohansenHelper.h"
 
 //https://github.com/gabime/spdlog
 #include "3rd-party/spdlog/include/spdlog/spdlog.h"
@@ -81,3 +86,4 @@ private:
     int m_argc;
     char ** m_argv;
 };
+#endif  //__common_h__

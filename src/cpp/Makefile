@@ -1,5 +1,10 @@
+CC=/usr/local/Cellar/gcc/11.2.0_3/bin/gcc-11
+GCC=/usr/local/Cellar/gcc/11.2.0_3/bin/gcc-11
+GXX=/usr/local/Cellar/gcc/11.2.0_3/bin/g++-11
 
-CXXFLAGS=-g  -std=c++17  -I3rd-party/spdlog/include
+#CXXFLAGS=-g  -std=c++17  -I3rd-party/spdlog/include
+CXXFLAGS=-g  -std=gnu++20 -I/usr/local/Cellar/gcc/11.2.0_3/include  -I3rd-party/spdlog/include
+LDFLAGS=-L/usr/local/Cellar/gcc/11.2.0_3/lib -lgsl -lgslcblas
 
 GROUP=topV100_MC200
 GROUP=cn
@@ -22,10 +27,10 @@ m:main_bt
 
 
 main_bt: main_bt.cpp Scenario_v1.cpp ContractPairTrade.cpp
-	clang++  -include  common.h  -o $@ $(CXXFLAGS)  $^  3rd-party/JohansenCointegration/JohansenHelper.cpp -I./3rd-party/JohansenCointegration/  -lgsl -lgslcblas   #$<
+	$(GXX)  -o $@ $(CXXFLAGS) $(LDFLAGS) $^  3rd-party/JohansenCointegration/JohansenHelper.cpp -I./3rd-party/JohansenCointegration/  #$<
 
 Scenario_v1: Scenario_v1.cpp common.h.pch  Scenario_v1.h   contract.h  scenario.h  strategy.h
-	clang++  -include  common.h  -o $@ $(CXXFLAGS)  $< #$^
+	$(GXX)  -include  common.h  -o $@ $(CXXFLAGS)  $< #$^
 
 
 Cointegrate:Cointegrate.cpp
@@ -35,18 +40,26 @@ xtest:Cointegrate
 	./$^  ~/stock/env_study/2022-01-01.$(GROUP)/bigcsv.csv  '2022-1-14 0:0:0'
 
 t:t.o
+#common.gch:common.h
 
-%.h.pch:%.h
-	clang++ $(CXXFLAGS) -stdlib=libc++ -x c++-header $^ -o $@
-	#clang++ $(CXXFLAGS) -cc1 $^ -emit-pch -o $@
+%.h.gch:%.h
+	$(GXX) $(CXXFLAGS)    $^
+
+
+#%.h.pch:%.h
+# 	#$(GXX) $(CXXFLAGS) -stdlib=libc++ -x c++-header $^ -o $@
 
 main_bt.cpp: Scenario_v1.cpp BigTable.h scenario.h
-Scenario_v1.cpp: common.h.pch  Scenario_v1.h   contract.h  scenario.h  strategy.h
+Scenario_v1.cpp: common.h.gch  Scenario_v1.h   contract.h  scenario.h  strategy.h
 
 
 clean:
-	rm -vfr *.pch *.o main_bt
-.PHONY : clean
+	rm -vfr *.gch *.pch *.o main_bt
+g:
+	git add *.cpp *.h Makefile
+	git ci -am 'xxxxxx'
+	git push
+.PHONY : clean g
 
 
 

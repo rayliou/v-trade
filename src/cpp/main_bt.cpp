@@ -6,7 +6,6 @@
 #include "scenario.h"
 //#include "Scenario_v0.h"
 #include "Scenario_v1.h"
-#include "./3rd-party/JohansenCointegration/JohansenHelper.h"
 
 // https://github.com/gabime/spdlog
 
