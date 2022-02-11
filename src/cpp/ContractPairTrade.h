@@ -38,9 +38,12 @@ private:
     static LogType  m_log;
 };
 
-struct DiffData {
+struct DiffDataBase {
+    time_t tm;
     float p1 {0.}, p2 {0.};
     float diff;
+};
+struct DiffData : public DiffDataBase{
     float avg_diffdiff {0.};
     float mean0 {0.};
     float mean {0.};
@@ -55,7 +58,6 @@ struct DiffData {
     float stdH {- std::numeric_limits<float>::infinity() };
     float stdL {std::numeric_limits<float>::infinity() };
     float z {0.};
-    time_t tm;
     std::ostream & outFieldsNames(std::ostream &out) const {
         out << "std0,std,mean0,mean,mean_half,tm,diff,z";
         out << ",sm_std_5,sm_std_10,sm_std_20";
@@ -117,7 +119,7 @@ public:
             pos > 0? -1:0
         );
     }
-    void newPosition(int direction, float stopDiff,float x, float y);
+    void newPosition(int direction, float profitCap,float x, float y);
     void newPosition(float x, float y, bool buyN1,float z0, const time_t &t, const std::map<std::string, std::any> &ext);
     float  closePosition(float x, float y);
     float  closePosition(float x, float y,const time_t &t, const std::map<std::string, std::any> & ext);
@@ -127,13 +129,21 @@ public:
     virtual int getHoldingTime(const time_t &now) const {return now - m_openTime;}
     virtual int getTransDuration() const {return m_closeTime - m_openTime;}
 public:
+    void addLongDiffItem(DiffDataBase &b);
     virtual void initWindowByHistory(WinDiffDataType &&winDiff);
+    void updateLongWindow(DiffData &diffData);
     virtual  WinDiffDataType & updateWindowBySnap(DiffData &diffData, std::ostream *pOut = nullptr);
+    time_t getCointegrateStart() const { return m_start ;}
+    time_t getCointegrateEnd() const { return m_end ;}
     int getHalfLifeBars() const { return int(hl_bars_0) +1; }
+    int getLookBackBars() const {
+        //return  getHalfLifeBars()/3.;
+        return  1.5 *3600 * 6.5 /interval_secs;  
+    }
     int getHalfLifeSecs() const { return halflifeSecs; }
     std::string getWinDiffDataFields() const {std::ostringstream out; m_winDiff.begin()->outFieldsNames(out); return out.str(); }
     std::ostream & outWinDiffDataValues(std::ostream & out);
-    float getStopDiff () const { return m_stopDiff;}
+    float getProfitCap () const { return m_profitCap;}
     float getHurstExponent () const { return he_0;;}
     float getSlopeDiffRate () const { return m_slopeDiffRate;}
     void setMoneyCoeff (float coeff) {m_moneyCoeff = coeff;}
@@ -178,9 +188,10 @@ private:
     std::string m_slopeName;
     float m_rank {-1.};
     WinDiffDataType m_winDiff;
+    std::list<DiffDataBase> m_longWindowDiff;
     int m_cntWinDiff {0};
     float m_slopeDiffRate {100.};
-    float m_stopDiff {0.};
+    float m_profitCap {0.};
     int halflifeSecs {-1};
     float he_0 {1.};
     float  m_moneyCoeff {1};

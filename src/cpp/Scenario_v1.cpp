@@ -228,14 +228,25 @@ void Scenario_v1::preRunBT() {
     //int end = pos + maxBasrs;
      //using WinDiffDataType=std::list<DiffData>;
     for ( auto & c: m_contracts) {
-        int pos = end - c.getHalfLifeBars();
+        auto start = c.getCointegrateStart();
+        auto itStart = find_if(m_bigtable.m_index.begin(),m_bigtable.m_index.end(),[&] (auto & i){ 
+                return i.second >= start;
+        });
+        int pos0 = itStart - m_bigtable.m_index.begin();
+        int pos1 = end - c.getLookBackBars();
+        int pos = pos0;
         WinDiffDataType winDiff;
         for(;pos != end ;pos++) {
-            DiffData d;
             updateSnapDataByBigTable(pos, *c.m_snap1);
             updateSnapDataByBigTable(pos, *c.m_snap2);
-            calContractDiffData(c,d);
-            winDiff.push_back(d,false);
+            DiffDataBase b;
+            calContractDiffData(c,b);
+            c.addLongDiffItem(b);
+            if ( pos >= pos1) {
+                DiffData d;
+                calContractDiffData(c,d);
+                winDiff.push_back(d,false);
+            }
         }
         c.initWindowByHistory(std::move(winDiff));
         //m_log->warn("windiff size:{}",winDiff.size()); exit(0);
@@ -270,8 +281,8 @@ void Scenario_v1::postRunBT() {
         ContractPairTrade *p = dynamic_cast<ContractPairTrade *>(c);
         int duration = p->getTransDuration();
         int halflife = p->getHalfLifeSecs();
-        m_out->info("[{}]\tTrans:{},profit:{:.2f}\tPxy:{:04.2f},Pyx:{:04.2f},HE:{:04.2f},std_rate:{:04.2f},slopeDiffRate:{:04.2f}\tduration: {:1d} mins, halflife:{:1d} mins", p->getName(),p->getTransactionNum(), p->getProfit()
-        ,p->m_pxy,p->m_pyx, p->getHurstExponent(),p->std_rate
+        m_out->info("[{}]\tTrans:{},profit:{:.2f}\tPxy:{:04.2f},Pyx:{:04.2f},HE:{:04.2f},std_rate:{:04.2f},slope:{:05.3f},slopeDiffRate:{:04.2f}\tduration: {:1d} mins, halflife:{:1d} mins", p->getName(),p->getTransactionNum(), p->getProfit()
+        ,p->m_pxy,p->m_pyx, p->getHurstExponent(),p->std_rate ,p->m_slope
         , p->getSlopeDiffRate()
         , duration/60, halflife/60
         //, p->m_ext
@@ -373,7 +384,7 @@ void Scenario_v1::runBT() {
 #endif
 
 }
-void Scenario_v1::calContractDiffData(ContractPairTrade &c, DiffData &d) {
+void Scenario_v1::calContractDiffData(ContractPairTrade &c, DiffDataBase &d) {
     auto tm = std::max(c.m_snap1->tm,c.m_snap2->tm );
     auto slope = c.m_slope;
     auto C1 = c.m_snap1->close;
@@ -416,7 +427,7 @@ void Scenario_v1::strategy(ContractPairTrade &c) {
         // 1 n1 too high, sell n1 & buy n1
         // -1 n1 too low, buy n1 & sell n2
         //////////// Trailing make the profit run..........
-        float stopDiff = c.getStopDiff();
+        float profitCap = c.getProfitCap();
         auto it = rbegin;
         float d0 = it->diff;
         float d1 = (++it)->diff;
@@ -430,7 +441,7 @@ void Scenario_v1::strategy(ContractPairTrade &c) {
 
 
         if ((d0 -d1) *curPosition < 0) {
-            m_log->trace("TR-[{}]:{}\t{}\t[Trailing diff] diff~stopDiff:[{}-{}]",winDiff.getTickCnt(), c.getName(), rbegin->toString(), rbegin->diff, stopDiff);
+            m_log->trace("TR-[{}]:{}\t{}\t[Trailing diff] diff~profitCap:[{}-{}]",winDiff.getTickCnt(), c.getName(), rbegin->toString(), rbegin->diff, profitCap);
             if (c.m_diffFarest == 0 || (d0 - c.m_diffFarest  ) *curPosition < 0) {
                 c.m_diffFarest = d0;
             }
@@ -444,15 +455,15 @@ void Scenario_v1::strategy(ContractPairTrade &c) {
             c.m_hasCrossedMean_half  |= d_mH < 0;
             return;
         }
-        //////////// Stop 0
-        if ((rbegin->diff -stopDiff ) *curPosition > 0) {
-            m_log->warn("S-[{}]:{}\t{}\t[Stop diff reached] diff~stopDiff:[{}-{}]",winDiff.getTickCnt(), c.getName(), rbegin->toString(), rbegin->diff, stopDiff);
+        //////////// profit Cap
+        if ((rbegin->diff -profitCap ) *curPosition <= 0) {
+            m_log->warn("S-[{}]:{}\t{}\t[profit cap reached] diff~profitCap:[{}-{}]",winDiff.getTickCnt(), c.getName(), rbegin->toString(), rbegin->diff, profitCap);
             c.closePosition(rbegin->p1, rbegin->p2);
             return;
         }
         //////////// Time out
         auto hold = rbegin->tm - c.getOpenTime();
-        if (halfLifeSeconds < hold ) {
+        if (halfLifeSeconds*2 < hold ) {
             m_log->warn("T-[{}]:{}\t{}\t[Timeout ] HL,holdTime:{},{} secs  ",winDiff.getTickCnt(), c.getName(), rbegin->toString(),halfLifeSeconds,hold);
             c.closePosition(rbegin->p1, rbegin->p2);
             return;
@@ -467,11 +478,12 @@ void Scenario_v1::strategy(ContractPairTrade &c) {
                  };
         for ( auto & [touch, diff2] : lines ) {
             if(touch && diff2 > 0) {
-                m_log->warn("P-[{}]:{}\t{}\t[Profit with far std or mean] diff~stopDiff:[{}-{}]",winDiff.getTickCnt(), c.getName(), rbegin->toString(), rbegin->diff, stopDiff);
+                m_log->warn("P-[{}]:{}\t{}\t[Profit with far std or mean] diff~profitCap:[{}-{}]",winDiff.getTickCnt(), c.getName(), rbegin->toString(), rbegin->diff, profitCap);
                 c.closePosition(rbegin->p1, rbegin->p2);
                 return;
             }
         }
+#if 0
         it = rbegin;
         float ddLimit = 4 *rbegin->avg_diffdiff;
          if (c.m_hasCrossedMean_half && (d0 -c.m_diffFarest) *curPosition > ddLimit) {
@@ -486,14 +498,15 @@ void Scenario_v1::strategy(ContractPairTrade &c) {
             lines2.sort();
             for ( auto & [touch, diff2] : lines2 ) {
                 if(touch && diff2 > 0) {
-                    m_log->warn("P-[{}]:{}\t{}\t[Profit with mean half or near std] diff~stopDiff:[{}-{}]",winDiff.getTickCnt(), c.getName(), rbegin->toString(), rbegin->diff, stopDiff);
+                    m_log->warn("P-[{}]:{}\t{}\t[Profit with mean half or near std] diff~profitCap:[{}-{}]",winDiff.getTickCnt(), c.getName(), rbegin->toString(), rbegin->diff, profitCap);
                     c.closePosition(rbegin->p1, rbegin->p2);
                     return;
                 }
             }
             // return;
         }
-        m_log->trace("W-[{}]:{}\t{}\t[do nothing] diff~stopDiff:[{}-{}]",winDiff.getTickCnt(), c.getName(), rbegin->toString(), rbegin->diff, stopDiff);
+#endif
+        m_log->trace("W-[{}]:{}\t{}\t[do nothing] diff~profitCap:[{}-{}]",winDiff.getTickCnt(), c.getName(), rbegin->toString(), rbegin->diff, profitCap);
     }
     else { //0 position
         if (halfLifeSeconds > leftTime ) {
@@ -541,6 +554,9 @@ void Scenario_v1::strategy(ContractPairTrade &c) {
             bool z_down = z1 <= z2 && z2 <= z3 ; // && z3 <= z4;
             bool z_up = z1 >= z2 && z2 >= z3; // && z3 >= z4;
 
+            //z_down &= rbegin->diff > rbegin->mean0;
+            //z_up &= rbegin->diff < rbegin->mean0;
+
             // positive cross in
             ret = (z0 >= THRESHOLD_Z_L  &&  z0 <= THRESHOLD_Z_H  && z1 > THRESHOLD_Z_H &&  z_down) ? 1 : (
                     //negative cross in check
@@ -556,8 +572,10 @@ void Scenario_v1::strategy(ContractPairTrade &c) {
         if (retCross != 0) {
             m_log->warn("\t[{}]:{}\t{}\t[Z cross in]",winDiff.getTickCnt(), c.getName(), rbegin->toString());
             // stop diff. direction
-            float stopDiff  = rbegin->diff + STD_RATE_STOPDIFF * rbegin->std *retCross;
-            c.newPosition(retCross,stopDiff, rbegin->p1, rbegin->p2);
+            //float stopDiff  = rbegin->diff + STD_RATE_STOPDIFF * rbegin->std *retCross;
+            float zProfit = rbegin->z * 0.25;
+            float profitCap  = rbegin->mean + zProfit* rbegin->std;
+            c.newPosition(retCross,profitCap, rbegin->p1, rbegin->p2);
             return;
         }
 #if 0

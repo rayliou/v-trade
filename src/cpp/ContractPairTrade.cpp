@@ -15,6 +15,7 @@ LogType ContractPairTrade::m_log = spdlog::stderr_color_mt("ContractPairTrade");
 ContractPairTrade::ContractPairTrade (json &j ,  Money &m, std::string &slopeName) : m_money(&m),m_slopeName(slopeName) {
     float MAX_SLOPE_DIFF_RATE = 0.2;
     const int MIN_HALFLIFE_SECS = 34 *60;
+    const float MAX_PVALUE = 0.1;
 // ~/stock/env_study/2022-01-12.cn/js_coint.json
 // {"pair":"BZUN_GDS","s_0":10.19418,"s_dayslr":4.71023,"s_daysfast":3.20328,
 // "s_hllr":2.08931,"s_hlfast":3.24254,"std_rate":1.59872,"coint_days":14,
@@ -67,9 +68,8 @@ ContractPairTrade::ContractPairTrade (json &j ,  Money &m, std::string &slopeNam
         j["pyx"].get_to(m_pyx);
         j["mean0"].get_to(m_mean0);
         j["std0"].get_to(m_std0);
-        if(m_pxy > 0.05 || m_pyx > 0.05) {
-            m_slope = 0;
-        }
+
+        if(m_pxy > MAX_PVALUE || m_pyx > MAX_PVALUE) { m_slope = 0; }
 
         //cout << hl_bars_0 << endl;
         //https://github.com/nlohmann/json/blob/develop/doc/examples/get_to.cpp
@@ -128,6 +128,9 @@ void ContractPairTrade::debug(LogType log) {
         m_symbolsPair.first,m_symbolsPair.second, m_slope,m_intercept ,m_mean, m_std,m_pxy, m_pyx, m_ext); 
 }
 
+void ContractPairTrade::addLongDiffItem(DiffDataBase &b) {
+    m_longWindowDiff.push_back(b);
+}
 void ContractPairTrade::initWindowByHistory(WinDiffDataType &&winDiff) {
     m_winDiff = winDiff;
     // m_winDiff.resize(int(hl_bars_0));
@@ -140,8 +143,33 @@ void ContractPairTrade::initWindowByHistory(WinDiffDataType &&winDiff) {
         d.debug(m_log, i++, totalCnt,m_name); 
     });
 }
+void  ContractPairTrade::updateLongWindow(DiffData &diffData) {
+    //cal mean0 & std0
+    this->addLongDiffItem(diffData);
+    auto start = diffData.tm - (m_end - m_start);
+    auto endIt = remove_if(m_longWindowDiff.begin(),m_longWindowDiff.end(), [&] (DiffDataBase & b ) {
+        return b.tm < start;
+    });
+    // items removed has benn moved after the main list.
+    m_longWindowDiff.erase(endIt,m_longWindowDiff.end());
+    // m_log->debug( "begin:{}, start:{}, cur:{}", m_longWindowDiff.begin()->tm, start, diffData.tm);
+    // using SumTuple=tuple<float,float>;
+    // SumTuple  sumTuple {0., 0.};
+    float sum = 0;
+    sum = std::accumulate(m_longWindowDiff.rbegin(),m_longWindowDiff.rend(), sum, [&](const auto & a, const auto &b) -> float {
+        return a+b.diff;
+    });
+    diffData.mean0 = sum/m_longWindowDiff.size();
+    sum = std::accumulate(m_longWindowDiff.rbegin(),m_longWindowDiff.rend(), 0, [&](const auto & a, const auto &b) -> float {
+        auto d = b.diff - diffData.mean0;
+        return a+ d * d;
+    });
+    diffData.std0 = std::sqrt(sum /(m_longWindowDiff.size()-1));
+    return;
+}
 WinDiffDataType &  ContractPairTrade::updateWindowBySnap(DiffData &diffData,std::ostream *pOut ) {
-    if (m_winDiff.size() >  hl_bars_0 ) {
+    updateLongWindow(diffData);
+    if (m_winDiff.size() >  getLookBackBars()) {
         m_winDiff.pop_front();
     }
     //cal mean & std
@@ -217,9 +245,6 @@ WinDiffDataType &  ContractPairTrade::updateWindowBySnap(DiffData &diffData,std:
         diffPrev = it->diff;
     }
     last->avg_diffdiff  = sumDD /cnt;
-    //FIXME
-    last->mean0 = m_mean0;
-    last->std0 = m_std0;
     // last->debug(m_log, m_cntWinDiff,m_cntWinDiff , m_name);
     m_cntWinDiff++;
     if (pOut != nullptr) {
@@ -250,7 +275,7 @@ std::ostream & ContractPairTrade::outWinDiffDataValues(std::ostream & out) {
     }
     return out;
 }
-void ContractPairTrade::newPosition(int direction, float stopDiff, float x, float y) {
+void ContractPairTrade::newPosition(int direction, float profitCap, float x, float y) {
     m_hasCrossedStd_near =false;
     m_hasCrossedStd_far =false;
     m_hasCrossedStd_far2 =false;
@@ -265,7 +290,9 @@ void ContractPairTrade::newPosition(int direction, float stopDiff, float x, floa
     m_openTime = last->tm;
     //apply for $10000
     double amount = 10000;
+#if 0
     amount *= (m_moneyCoeff/std_rate);
+#endif
     //use 100% margin rate
     //base on y
     int pos_y = round(amount /y);
@@ -299,14 +326,14 @@ void ContractPairTrade::newPosition(int direction, float stopDiff, float x, floa
 
     auto totalCash =  m_money->getTotalCash() ;
     auto totalMargin =   m_money->getTotalMarginFreezed();
-    m_stopDiff = stopDiff;
-    m_log->warn("C:[{},{}];M:[{},{}]\t[{}_{}]:newPosition: x({}x{}={}),y({}x{}={}), slope:{},diff~stop: [{}~{}]"
+    m_profitCap = profitCap;
+    m_log->warn("C:[{},{}];M:[{},{}]\t[{}_{}]:newPosition: x({}x{}={}),y({}x{}={}), slope:{},diff~cap: [{}~{}]"
         ,totalCashPrev,totalCash,totalMarginPrev, totalMargin
         ,m_n1, m_n2
         ,x,pos_x,cap_x
         ,y,pos_y,cap_y
         ,m_slope
-        ,last->diff,m_stopDiff
+        ,last->diff,m_profitCap
     );
 
 }
