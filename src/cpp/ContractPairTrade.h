@@ -48,6 +48,17 @@ struct DiffData : public DiffDataBase{
     float mean0 {0.};
     float mean {0.};
     float mean_half {0.};
+
+    float ema {0.};
+    float ema_half {0.};
+    float ema_quarter {0.};
+    float ema_5bars {0.};
+
+    float em_var {0.};
+    float em_var_half {0.};
+    float em_var_quarter {0.};
+    float em_var_5bars {0.};
+
     float std0 {-1.};
     float std {-1.};
     float sm_std_5 {0.};
@@ -64,6 +75,15 @@ struct DiffData : public DiffDataBase{
         out << ",stdH,stdL";
         out << ",diffH,diffL";
         out << ",avg_diffdiff";
+
+        out << ",ema";
+        out << ",ema_half";
+        out << ",ema_quarter";
+        out << ",ema_5bars";
+        out << ",em_var";
+        out << ",em_var_half";
+        out << ",em_var_quarter";
+        out << ",em_var_5bars";
         return out;
     }
     std::ostream & outValues(std::ostream &out) const {
@@ -73,6 +93,15 @@ struct DiffData : public DiffDataBase{
         out << "," << stdH << "," << stdL;
         out << "," << diffH << "," << diffL;
         out << "," << avg_diffdiff;
+
+        out << "," << ema;
+        out << "," << ema_half;
+        out << "," << ema_quarter;
+        out << "," << ema_5bars;
+        out << "," << em_var;
+        out << "," << em_var_half;
+        out << "," << em_var_quarter;
+        out << "," << em_var_5bars;
         return out;
     }
     std::string  toString() const {
@@ -132,7 +161,13 @@ public:
     void addLongDiffItem(DiffDataBase &b);
     virtual void initWindowByHistory(WinDiffDataType &&winDiff);
     void updateLongWindow(DiffData &diffData);
+    void updateEMA(DiffData &diffData);
     virtual  WinDiffDataType & updateWindowBySnap(DiffData &diffData, std::ostream *pOut = nullptr);
+
+    float getSpread () const { return m_winDiff.rbegin()->ema_5bars; }
+    float getSpreadMean () const { return m_winDiff.rbegin()->ema; }
+    float getSpreadStd () const { return std::sqrt(m_winDiff.rbegin()->em_var); }
+
     time_t getCointegrateStart() const { return m_start ;}
     time_t getCointegrateEnd() const { return m_end ;}
     int getHalfLifeBars() const { return int(hl_bars_0) +1; }

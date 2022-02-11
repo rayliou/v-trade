@@ -14,13 +14,14 @@ M=/Users/henry/stock/env_study/2022-01-19.$(G)/js_coint.json
 
 LOG_ENV=SPDLOG_LEVEL=err,RunnerBT=trace,s_0=warn,s_dayslr=debug,bt=info,stdout=trace,ContractPairTrade=info 
 LOG_ENV=SPDLOG_LEVEL=err,RunnerBT=trace,s_0=trace,s_dayslr=debug,bt=info,stdout=trace,ContractPairTrade=debug 
-LOG_ENV=SPDLOG_LEVEL=err,RunnerBT=trace,s_0=debug,s_dayslr=debug,bt=info,stdout=trace,ContractPairTrade=trace 
+LOG_ENV=SPDLOG_LEVEL=err,RunnerBT=trace,s_0=debug,s_dayslr=debug,bt=info,stdout=trace,ContractPairTrade=debug 
 #OUT_TRACE_DATA=--out_trace_data  ./xxx.csv
 
-I=--out_trace_data  ./xxx.csv --includes IMAB_API_ZLAB_XPEV_ATHM_API
 I=--out_trace_data  ./xxx.csv  --includes  INTC_MA
 M=/Users/henry/stock/env_study/2022-01-04.topV100_MC200/js_coint_v2.json
 I=
+I=--out_trace_data  ./xxx.csv --includes T_V
+I=--out_trace_data  ./xxx.csv 
 
 test:main_bt
 	$(LOG_ENV) ./$<  $(OUT_TRACE_DATA) --m_src /Users/henry/stock/env_study/2022-01-19.$(G)/bigcsv.csv:$(M) $(I)

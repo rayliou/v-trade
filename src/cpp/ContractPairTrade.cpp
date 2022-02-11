@@ -13,9 +13,9 @@ LogType Money::m_log = spdlog::stderr_color_mt("Money");
 LogType ContractPairTrade::m_log = spdlog::stderr_color_mt("ContractPairTrade");
 
 ContractPairTrade::ContractPairTrade (json &j ,  Money &m, std::string &slopeName) : m_money(&m),m_slopeName(slopeName) {
-    float MAX_SLOPE_DIFF_RATE = 0.2;
+    float MAX_SLOPE_DIFF_RATE = 0.3;
     const int MIN_HALFLIFE_SECS = 34 *60;
-    const float MAX_PVALUE = 0.05;
+    const float MAX_PVALUE = 0.1;
 // ~/stock/env_study/2022-01-12.cn/js_coint.json
 // {"pair":"BZUN_GDS","s_0":10.19418,"s_dayslr":4.71023,"s_daysfast":3.20328,
 // "s_hllr":2.08931,"s_hlfast":3.24254,"std_rate":1.59872,"coint_days":14,
@@ -132,16 +132,17 @@ void ContractPairTrade::addLongDiffItem(DiffDataBase &b) {
     m_longWindowDiff.push_back(b);
 }
 void ContractPairTrade::initWindowByHistory(WinDiffDataType &&winDiff) {
-    m_winDiff = winDiff;
-    // m_winDiff.resize(int(hl_bars_0));
-    m_log->debug("[{}]:Set m_winDiff.size:{}",m_name, m_winDiff.size());
     auto i = 0;
-    auto totalCnt = m_winDiff.size();
-    for_each(m_winDiff.begin(),m_winDiff.end(), [&](auto &d){
+    auto totalCnt = winDiff.size();
+    for(auto &d : winDiff) {
+        this->updateEMA(d);
         d.mean0 = m_mean0;
         d.std0 = m_std0;
         d.debug(m_log, i++, totalCnt,m_name); 
-    });
+        m_winDiff.push_back(d,false);
+
+    }
+    m_log->debug("[{}]:Set m_winDiff.size:{}",m_name, m_winDiff.size());
 }
 void  ContractPairTrade::updateLongWindow(DiffData &diffData) {
     //cal mean0 & std0
@@ -167,8 +168,52 @@ void  ContractPairTrade::updateLongWindow(DiffData &diffData) {
     diffData.std0 = std::sqrt(sum /(m_longWindowDiff.size()-1));
     return;
 }
+void  ContractPairTrade::updateEMA(DiffData &diffData) {
+    int size = m_winDiff.size();
+    int m_lookBackHalf = round(this->getLookBackBars() /2);
+    int m_lookBackQuarter = round(m_lookBackHalf /2);
+    int lookBack5Bars = 5;
+    m_lookBackQuarter  = m_lookBackQuarter <5  ? 5: m_lookBackQuarter ;
+    m_lookBackHalf     = m_lookBackHalf <5  ? 5: m_lookBackHalf ;
+    //FIXME weight.
+    if (m_winDiff.size() == 0) {
+        diffData.ema = diffData.diff;
+        diffData.ema_half = diffData.diff;
+        diffData.ema_quarter = diffData.diff;
+        diffData.ema_5bars = diffData.diff;
+        return;
+    }
+    auto calEMA = [&] (int lookBack, float spread, float ema, float var) -> pair<float, float> {
+        float L = 2.0/(1+lookBack);
+        float ema1 = L * spread + (1-L) * ema ;
+        float var1 = L * (spread - ema)*(spread - ema) + (1-L) * var;
+        m_log->trace("calEMA:L={},spread={},ema0={}, em1={}; var0:{}, var1:{} ", L, spread, ema, ema1, var, var1);
+        return make_pair(ema1, var1);
+    };
+    auto prev = m_winDiff.rbegin();
+    float v = diffData.diff - prev->diff;
+    v *= v;
+
+    auto ema_var = calEMA(getLookBackBars(), diffData.diff, prev->ema, prev->em_var);
+    diffData.ema = ema_var.first;
+    diffData.em_var = (1 == size) ? v : ema_var.second;
+
+    ema_var = calEMA(m_lookBackHalf, diffData.diff, prev->ema_half, prev->em_var_half);
+    diffData.ema_half = ema_var.first;
+    diffData.em_var_half = (1 == size) ? v : ema_var.second;
+
+    ema_var = calEMA(m_lookBackQuarter, diffData.diff, prev->ema_quarter, prev->em_var_quarter);
+    diffData.ema_quarter = ema_var.first;
+    diffData.em_var_quarter = (1 == size) ? v : ema_var.second;
+
+    ema_var = calEMA(lookBack5Bars, diffData.diff, prev->ema_5bars, prev->em_var_5bars);
+    diffData.ema_5bars = ema_var.first;
+    diffData.em_var_5bars = (1 == size) ? v : ema_var.second;
+    return;
+}
 WinDiffDataType &  ContractPairTrade::updateWindowBySnap(DiffData &diffData,std::ostream *pOut ) {
     updateLongWindow(diffData);
+    updateEMA(diffData);
     if (m_winDiff.size() >  getLookBackBars()) {
         m_winDiff.pop_front();
     }
@@ -200,7 +245,11 @@ WinDiffDataType &  ContractPairTrade::updateWindowBySnap(DiffData &diffData,std:
     std2 /= (m_winDiff.size() -1);
     std2 = std::sqrt(std2);
     last->std = std2;
+#if 0
     last->z   = (diffData.diff - mean)/std2;
+#endif
+    last->z   = (getSpread() -getSpreadMean())/getSpreadStd();
+
     using SumTuple=tuple<float,float,float>;
     SumTuple  sumTuple {0., 0., 0.};
     cnt = 0;

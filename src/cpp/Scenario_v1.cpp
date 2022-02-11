@@ -416,19 +416,19 @@ void Scenario_v1::strategy(ContractPairTrade &c) {
     //cal Z
     WinDiffDataType & winDiff = c.updateWindowBySnap(d,m_pOutWinDiff);
     WinDiffDataType::reverse_iterator rbegin = winDiff.rbegin();
-    WinDiffDataType::reverse_iterator it = rbegin;
+    // WinDiffDataType::reverse_iterator it = rbegin;
     // to 15:30
     time_t curTime  = rbegin->tm;
     auto leftTime =   m_startTime + 3600 * 5 -  curTime;
     int halfLifeSeconds = c.getHalfLifeSecs();
 
     int curPosition = c.curPositionDirection() ;
+    auto it = rbegin;
     if(curPosition !=0 ) { // 1 -> n1 is - , n2 is +
         // 1 n1 too high, sell n1 & buy n1
         // -1 n1 too low, buy n1 & sell n2
         //////////// Trailing make the profit run..........
         float profitCap = c.getProfitCap();
-        auto it = rbegin;
         float d0 = it->diff;
         float d1 = (++it)->diff;
 
@@ -509,12 +509,22 @@ void Scenario_v1::strategy(ContractPairTrade &c) {
         m_log->trace("W-[{}]:{}\t{}\t[do nothing] diff~profitCap:[{}-{}]",winDiff.getTickCnt(), c.getName(), rbegin->toString(), rbegin->diff, profitCap);
     }
     else { //0 position
+        /////////////Ignore narrow bands.
+        float spreadStd = c.getSpreadStd();
+        float stdRate = spreadStd/(rbegin->p1 * c.m_slope + rbegin->p2);
+        if (stdRate < MIN_STD_RATE) {
+            m_log->trace("I-[{}]:{}\t{}\t[STD band is too narrow]; stdRate:{}%, spreadStd:{}, p1:{} * slope:{} +p2:{}",winDiff.getTickCnt(), c.getName(), rbegin->toString(), 
+            stdRate*100,spreadStd, rbegin->p1, c.m_slope,rbegin->p2
+            );
+            return ;
+        }
+        /////////////
         if (halfLifeSeconds > leftTime ) {
             m_log->trace("I-[{}]:{}\t{}\t[max trade time has reached] halfLifeSeconds,lefttime {},{} mins",winDiff.getTickCnt(), c.getName(), rbegin->toString(), halfLifeSeconds/60,leftTime/60);
             return ;
         }
-        if (curTime - m_startTime <  SKIP_1ST_SECS) {
-            m_log->trace("I-[{}]:{}\t{}\t[Skipe 1st time range {} secs ] ",winDiff.getTickCnt(), c.getName(), rbegin->toString(), SKIP_1ST_SECS);
+        if (curTime - m_startTime <  DELAY_IN_SECONDS) {
+            m_log->trace("I-[{}]:{}\t{}\t[Skipe 1st time range {} secs ] ",winDiff.getTickCnt(), c.getName(), rbegin->toString(), DELAY_IN_SECONDS);
             return ;
         }
         it = rbegin;
