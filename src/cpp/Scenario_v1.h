@@ -57,7 +57,7 @@ private:
     const int DELAY_IN_SECONDS = 16 * 60;
     const float STD_RATE_STOPDIFF = 0.2; //0.4;  //2.5; //1.3; //1.9;
 #endif
-    const float MAX_LOSS_DOLLARS = 200.;
+    const float MAX_LOSS_DOLLARS = 300.;
     const float MIN_STD_RATE = 0.004;  // 0.5%
     const int DELAY_IN_SECONDS = 15 * 60;
     //const float STD_RATE_STOPDIFF = 0.9; //0.4;  //2.5; //1.3; //1.9;
@@ -66,6 +66,6 @@ private:
     const float THRESHOLD_STD_PERCENT = 0.3;
     // const int MAXBARS_STD_CHECK = 1;
 
-    const float THRESHOLD_Z_L = 1.85;
-    const float THRESHOLD_Z_H = 2.2; //;
+    const float THRESHOLD_Z_L = 1.7;
+    const float THRESHOLD_Z_H = 2.0; //;
 };
