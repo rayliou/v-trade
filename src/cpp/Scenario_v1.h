@@ -57,6 +57,7 @@ private:
     const int DELAY_IN_SECONDS = 16 * 60;
     const float STD_RATE_STOPDIFF = 0.2; //0.4;  //2.5; //1.3; //1.9;
 #endif
+    const float MAX_LOSS_DOLLARS = 200.;
     const float MIN_STD_RATE = 0.004;  // 0.5%
     const int DELAY_IN_SECONDS = 15 * 60;
     //const float STD_RATE_STOPDIFF = 0.9; //0.4;  //2.5; //1.3; //1.9;

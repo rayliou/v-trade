@@ -245,10 +245,12 @@ WinDiffDataType &  ContractPairTrade::updateWindowBySnap(DiffData &diffData,std:
     std2 /= (m_winDiff.size() -1);
     std2 = std::sqrt(std2);
     last->std = std2;
-#if 0
-    last->z   = (diffData.diff - mean)/std2;
-#endif
-    last->z   = (getSpread() -getSpreadMean())/getSpreadStd();
+
+    float d = getSpread();
+    float m = getSpreadMean();
+    float s = getSpreadStd();
+    last->z   = (d-m)/s;
+    m_log->trace("{}:z:{}= ({}-{})/{}", m_name, last->z, d, m, s);
 
     using SumTuple=tuple<float,float,float>;
     SumTuple  sumTuple {0., 0., 0.};
@@ -430,9 +432,28 @@ void ContractPairTrade::newPosition(float x, float y,bool buyN1, float z0, const
 #endif
 
 }
+float ContractPairTrade::getPnL(float x, float y) {
+    auto pos_x = m_position1.m_position;
+    auto pos_y = m_position2.m_position;
+    auto x0 = m_position1.m_avgprice ;
+    auto y0 = m_position2.m_avgprice ;
+    auto dx = x - x0;
+    auto dy = y - y0;
+    auto cap_x = x * pos_x;
+    auto cap_y = y * pos_y;
+    auto cap_x_d = dx * pos_x;
+    auto cap_y_d = dy * pos_y;
+
+    auto profit = dx * pos_x + dy * pos_y;
+    auto commission = (abs(pos_x) + abs(pos_y)) * 0.01;
+    profit -= commission;
+    return profit;
+}
 float ContractPairTrade::closePosition(float x, float y) {
     // -1 too low, buy n1 & sell n2
     // 1 too high, buy n2 & sell n1
+    auto profit = getPnL(x,y);
+
     auto last = m_winDiff.rbegin();
     m_closeTime = last->tm;
     auto pos_x = m_position1.m_position;
@@ -446,7 +467,6 @@ float ContractPairTrade::closePosition(float x, float y) {
     auto cap_x_d = dx * pos_x;
     auto cap_y_d = dy * pos_y;
 
-    auto profit = dx * pos_x + dy * pos_y;
 
     auto totalCashPrev =  m_money->getTotalCash() ;
     auto totalMarginPrev =   m_money->getTotalMarginFreezed();
@@ -460,7 +480,6 @@ float ContractPairTrade::closePosition(float x, float y) {
     }
     auto totalCash =  m_money->getTotalCash() ;
     auto totalMargin =   m_money->getTotalMarginFreezed();
-    profit -= commission;
     addProfit( profit);
     m_log->warn("C:[{},{}];M:[{},{}]\t[{}_{}]:closePosition: (x:{} - x0:{}) * pos_x:{} = cap_x_d:{}; (y:{} - y0:{}) * pos_y:{} = cap_y_d:{}; slope:{},profit:{} "
         ,totalCashPrev,totalCash,totalMarginPrev, totalMargin

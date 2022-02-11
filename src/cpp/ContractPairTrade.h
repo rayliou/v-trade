@@ -150,6 +150,7 @@ public:
     }
     void newPosition(int direction, float profitCap,float x, float y);
     void newPosition(float x, float y, bool buyN1,float z0, const time_t &t, const std::map<std::string, std::any> &ext);
+    float getPnL(float x, float y) ;
     float  closePosition(float x, float y);
     float  closePosition(float x, float y,const time_t &t, const std::map<std::string, std::any> & ext);
     virtual string getName() const { return m_name; }

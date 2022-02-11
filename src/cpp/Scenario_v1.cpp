@@ -455,6 +455,14 @@ void Scenario_v1::strategy(ContractPairTrade &c) {
             c.m_hasCrossedMean_half  |= d_mH < 0;
             return;
         }
+        //////////// stop Losss
+        float profit = c.getPnL(rbegin->p1, rbegin->p2);
+        if (profit  < - MAX_LOSS_DOLLARS) {
+            m_log->warn("S-[{}]:{}\t{}\t[Max losss  reached] Loss:{}",winDiff.getTickCnt(), c.getName(), rbegin->toString(), profit);
+            c.closePosition(rbegin->p1, rbegin->p2);
+            return;
+        }
+
         //////////// profit Cap
         if ((rbegin->diff -profitCap ) *curPosition <= 0) {
             m_log->warn("S-[{}]:{}\t{}\t[profit cap reached] diff~profitCap:[{}-{}]",winDiff.getTickCnt(), c.getName(), rbegin->toString(), rbegin->diff, profitCap);
