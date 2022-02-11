@@ -57,7 +57,7 @@ private:
     const int SKIP_1ST_SECS = 16 * 60;
     const float STD_RATE_STOPDIFF = 0.2; //0.4;  //2.5; //1.3; //1.9;
     #endif
-    const int SKIP_1ST_SECS = 5 * 60;
+    const int SKIP_1ST_SECS = 15 * 60;
     //const float STD_RATE_STOPDIFF = 0.9; //0.4;  //2.5; //1.3; //1.9;
     //const float STD_RATE_PROFIT = 0.5; //0.4;  //2.5; //1.3; //1.9;
 
@@ -65,5 +65,5 @@ private:
     // const int MAXBARS_STD_CHECK = 1;
 
     const float THRESHOLD_Z_L = 1.85;
-    const float THRESHOLD_Z_H = 2.2;
+    const float THRESHOLD_Z_H = 2.3; //;
 };

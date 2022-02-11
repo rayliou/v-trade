@@ -137,7 +137,8 @@ public:
     time_t getCointegrateEnd() const { return m_end ;}
     int getHalfLifeBars() const { return int(hl_bars_0) +1; }
     int getLookBackBars() const {
-        //return  getHalfLifeBars()/3.;
+        return  getHalfLifeBars() *4;
+        return (m_end - m_start)/interval_secs /3 ;
         return  1.5 *3600 * 6.5 /interval_secs;  
     }
     int getHalfLifeSecs() const { return halflifeSecs; }

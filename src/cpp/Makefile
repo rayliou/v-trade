@@ -6,10 +6,10 @@ GXX=/usr/local/Cellar/gcc/11.2.0_3/bin/g++-11
 CXXFLAGS=-g  -std=gnu++20 -I/usr/local/Cellar/gcc/11.2.0_3/include  -I3rd-party/spdlog/include
 LDFLAGS=-L/usr/local/Cellar/gcc/11.2.0_3/lib -lgsl -lgslcblas
 
-GROUP=cn
-GROUP=topV100_MC200
+G=cn
+G=topV100_MC200
 
-M=/Users/henry/stock/env_study/2022-01-19.$(GROUP)/js_coint.json
+M=/Users/henry/stock/env_study/2022-01-19.$(G)/js_coint.json
 #loss
 
 LOG_ENV=SPDLOG_LEVEL=err,RunnerBT=trace,s_0=warn,s_dayslr=debug,bt=info,stdout=trace,ContractPairTrade=info 
@@ -23,9 +23,9 @@ M=/Users/henry/stock/env_study/2022-01-04.topV100_MC200/js_coint_v2.json
 I=
 
 test:main_bt
-	$(LOG_ENV) ./$<  $(OUT_TRACE_DATA) --m_src /Users/henry/stock/env_study/2022-01-19.$(GROUP)/bigcsv.csv:$(M) $(I)
+	$(LOG_ENV) ./$<  $(OUT_TRACE_DATA) --m_src /Users/henry/stock/env_study/2022-01-19.$(G)/bigcsv.csv:$(M) $(I)
 m:main_bt
-	 for f in `ls ~/stock/env_study/*.$(GROUP)/js_coint_v2.json` ; do SPDLOG_LEVEL=err,RunnerBT=err,s_0=err,s_dayslr=err,bt=err,stdout=warn,ContractPairTrade=err ./$<  --m_src /Users/henry/stock/env_study/2022-01-19.$(GROUP)/bigcsv.csv:$${f}; done
+	 for f in `ls ~/stock/env_study/*.$(G)/js_coint_v2.json` ; do SPDLOG_LEVEL=err,RunnerBT=err,s_0=err,s_dayslr=err,bt=err,stdout=warn,ContractPairTrade=err ./$<  --m_src /Users/henry/stock/env_study/2022-01-19.$(G)/bigcsv.csv:$${f}; done
 
 
 main_bt: main_bt.cpp Scenario_v1.cpp ContractPairTrade.cpp
@@ -39,7 +39,7 @@ Cointegrate:Cointegrate.cpp
 	#g++ -o $@ $(CXXFLAGS)  $< #$^
 	g++ -o $@ -g  -std=c++17 Cointegrate.cpp 3rd-party/JohansenCointegration/JohansenHelper.cpp -I./3rd-party/JohansenCointegration/  -lgsl -lgslcblas
 xtest:Cointegrate
-	./$^  ~/stock/env_study/2022-01-01.$(GROUP)/bigcsv.csv  '2022-1-14 0:0:0'
+	./$^  ~/stock/env_study/2022-01-01.$(G)/bigcsv.csv  '2022-1-14 0:0:0'
 
 t:t.o
 #common.gch:common.h

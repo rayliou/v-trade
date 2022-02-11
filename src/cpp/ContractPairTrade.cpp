@@ -15,7 +15,7 @@ LogType ContractPairTrade::m_log = spdlog::stderr_color_mt("ContractPairTrade");
 ContractPairTrade::ContractPairTrade (json &j ,  Money &m, std::string &slopeName) : m_money(&m),m_slopeName(slopeName) {
     float MAX_SLOPE_DIFF_RATE = 0.2;
     const int MIN_HALFLIFE_SECS = 34 *60;
-    const float MAX_PVALUE = 0.1;
+    const float MAX_PVALUE = 0.05;
 // ~/stock/env_study/2022-01-12.cn/js_coint.json
 // {"pair":"BZUN_GDS","s_0":10.19418,"s_dayslr":4.71023,"s_daysfast":3.20328,
 // "s_hllr":2.08931,"s_hlfast":3.24254,"std_rate":1.59872,"coint_days":14,
