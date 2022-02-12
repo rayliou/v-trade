@@ -24,6 +24,7 @@ class Scenario_v1 : public IScenario {
 public:
     Scenario_v1(std::string name, CmdOption &cmd,SnapDataMap & snapDataMap,const char * modelFilePath, BigTable & bigtable);
     virtual void postSetup();
+    static std::pair<std::string, std::string> getGroupDateFromPath(std::string path);
 
     virtual void runBT();
     virtual ~Scenario_v1() {}
@@ -31,7 +32,7 @@ public:
 private:
     void preRunBT();
     void postRunBT();
-    void updateSnapDataByBigTable(int pos, SnapData &snap);
+    static void updateSnapDataByBigTable(int pos, SnapData &snap);
     void updateSnapDataByBigTable(int pos);
     void calContractDiffData(ContractPairTrade &c, DiffDataBase &d);
     void strategy(ContractPairTrade &c) ;

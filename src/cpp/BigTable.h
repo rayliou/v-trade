@@ -28,9 +28,20 @@ public:
     IndexData m_index;
     ColumnData m_columnData;
     SymbolToColIdx m_symbolToColIdx;
+    std::string m_csvPath;
 
-    BigTable(const char *csvPath) {
+    BigTable(const char *csvPath):m_csvPath(csvPath) {
         this->read_csv(csvPath);
+    }
+    void debug(LogType &log) {
+        std::ostringstream out;
+        out << "Bigtable Path:\t" << m_csvPath << std::endl;
+        out << "\tm_index:\t" << m_index.begin()->first << " to " << m_index.rbegin()->first  << std::endl;
+        out << "\tsymbolToColIdx:\t" ;
+        for(auto &[k,v]: m_symbolToColIdx) {
+            out << k << ":" << v << ",";
+        }
+        log->debug("{}", out.str());
     }
 
 

@@ -7,6 +7,8 @@
 //#include "Scenario_v0.h"
 #include "Scenario_v1.h"
 
+#include "Backtest.h"
+
 // https://github.com/gabime/spdlog
 
 
@@ -196,6 +198,8 @@ void RunnerBT::johansenCoint(){
 int main(int argc, char * argv[]) {
     CmdOption cmd(argc,argv);
     spdlog::cfg::load_env_levels();
+    Backtest bt(cmd);
+    bt.run(); exit(0);
 #if 0
     auto level = spdlog::level::level_enum::off;;
     auto s  = cmd.get("-v");

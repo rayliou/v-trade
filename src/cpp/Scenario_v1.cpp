@@ -69,7 +69,7 @@ Scenario_v1::Scenario_v1(std::string name, CmdOption &cmd,SnapDataMap & snapData
                 auto idx = it->second ;
                 auto itSnap = m_snapDataMap.find(symbol);
                 if (itSnap == m_snapDataMap.end()) {
-                    m_snapDataMap.insert({symbol,SnapData(symbol,idx)});
+                    m_snapDataMap.insert({symbol,SnapData(symbol,idx, &m_bigtable)});
                 }
             });
         auto itSnap = m_snapDataMap.find(c.m_n1);
@@ -78,24 +78,27 @@ Scenario_v1::Scenario_v1(std::string name, CmdOption &cmd,SnapDataMap & snapData
         c.m_snap2 = &(itSnap->second);
 
     }
-    //get group & model time
-    auto strRe =".*(20\\d\\d-\\d+-\\d+)\\.(.*)/js_coint_v2.json";
-    std::regex re(strRe);
-    std::smatch pieces_match;
-    string var {modelFilePath} ;
-    auto ret = regex_match(var, pieces_match, re);
-    if(!ret ||pieces_match.size() !=3) {
-        m_log->critical("modelFilePath {} does not match re {}", modelFilePath, strRe);
-        return;
-    }
-    auto date = pieces_match[1].str();
-    auto group  = pieces_match[2].str();
+    auto [group,date] = getGroupDateFromPath(modelFilePath);
     //vector<string> dateList;
     vector<time_t> dateList;
     m_modelTime = m_bigtable.strTime2time_t((date+" 23:59:59")  .c_str(),"%Y-%m-%d %H:%M:%S");
 
     postSetup();
     //debug();
+}
+std::pair<std::string, std::string> Scenario_v1::getGroupDateFromPath(string path) {
+    auto strRe =".*(20\\d\\d-\\d+-\\d+)\\.(.*)/js_coint_v2.json";
+    std::regex re(strRe);
+    std::smatch pieces_match;
+    string var {path} ;
+    auto ret = regex_match(var, pieces_match, re);
+    if(!ret ||pieces_match.size() !=3) {
+        string msg = "modelFilePath " + path + " does not match re " + strRe;
+        throw std::runtime_error(msg);
+    }
+    auto date = pieces_match[1].str();
+    auto group  = pieces_match[2].str();
+    return make_pair(group,date);
 }
 void Scenario_v1::postSetup() {
     m_log->info("Start:{}", __PRETTY_FUNCTION__ );
@@ -160,8 +163,9 @@ void Scenario_v1::debug(LogType *log) {
     });
 }
 void Scenario_v1::updateSnapDataByBigTable(int pos, SnapData &snap) {
-    auto tm = m_bigtable.m_index[pos].second;
-    auto itCol = m_bigtable.m_columnData.begin() + snap.idx;
+    BigTable *pTable = snap.pTable;
+    auto tm = pTable->m_index[pos].second;
+    auto itCol = pTable->m_columnData.begin() + snap.idx;
     //close	high	low	open	volume
     auto c  = itCol->second[pos];
     itCol ++;
@@ -306,6 +310,7 @@ void Scenario_v1::postRunBT() {
 }
 void Scenario_v1::runBT() {
     m_log->info("Start:{}", __PRETTY_FUNCTION__ );
+    m_bigtable.debug(m_log);
     //runEpoch
     preRunBT();
     const int contractsLimit  = 3;

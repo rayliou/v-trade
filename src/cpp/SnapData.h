@@ -35,9 +35,10 @@ private:
     std::vector<double> *m_vars {nullptr};
     std::vector<time_t> *m_tms{nullptr};
 };
+class BigTable;
 struct SnapData {
     const int Y20 = 24 *3600 * 365 * 20;
-    SnapData(const std::string &symbol, int idx) : symbol(symbol),idx(idx) {
+    SnapData(const std::string &symbol, int idx, BigTable *p) : symbol(symbol),idx(idx),pTable(p) {
 
     }
     bool  isAvailable() { return  idx != -1;} 
@@ -70,6 +71,7 @@ struct SnapData {
         tm = t;
     }
     int idx ;
+    BigTable * pTable {nullptr};
     std::string symbol;
     float open {0.0};
     float close {0.0};

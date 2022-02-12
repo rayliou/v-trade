@@ -22,13 +22,15 @@ M=/Users/henry/stock/env_study/2022-01-05.cn/js_coint_v2.json
 I=--out_trace_data  ./xxx.csv --includes T_V
 I=--out_trace_data  ./xxx.csv  --includes PDD_KC
 
+BT:main_bt
+	find  ~/stock/env_study -name  'js_coint_v2.json'  | SPDLOG_LEVEL=err,Backtest=trace ./main_bt
 test:main_bt
 	$(LOG_ENV) ./$<  $(OUT_TRACE_DATA) --m_src /Users/henry/stock/env_study/2022-01-19.$(G)/bigcsv.csv:$(M) $(I)
 m:main_bt
 	 for f in `ls ~/stock/env_study/*.$(G)/js_coint_v2.json` ; do SPDLOG_LEVEL=err,RunnerBT=err,s_0=err,s_dayslr=err,bt=err,stdout=warn,ContractPairTrade=err ./$<  --m_src /Users/henry/stock/env_study/2022-01-19.$(G)/bigcsv.csv:$${f}; done
 
 
-main_bt: main_bt.cpp Scenario_v1.cpp ContractPairTrade.cpp
+main_bt: main_bt.cpp Scenario_v1.cpp ContractPairTrade.cpp Backtest.cpp
 	$(GXX)  -o $@ $(CXXFLAGS) $(LDFLAGS) $^  3rd-party/JohansenCointegration/JohansenHelper.cpp -I./3rd-party/JohansenCointegration/  #$<
 
 Scenario_v1: Scenario_v1.cpp common.h.pch  Scenario_v1.h   contract.h  scenario.h  strategy.h
