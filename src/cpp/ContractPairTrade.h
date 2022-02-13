@@ -130,7 +130,7 @@ private:
 
 class ContractPairTrade : public IContract {
 public:
-    ContractPairTrade (json& j,Money &m, std::string &slopeName);
+    ContractPairTrade (json& j,Money *pMoney, std::string &slopeName);
 
     //ContractPairTrade (csv::CSVRow& row, Money &m);
 
@@ -149,10 +149,10 @@ public:
         );
     }
     void newPosition(int direction, float profitCap,float x, float y);
-    void newPosition(float x, float y, bool buyN1,float z0, const time_t &t, const std::map<std::string, std::any> &ext);
+    //void newPosition(float x, float y, bool buyN1,float z0, const time_t &t, const std::map<std::string, std::any> &ext);
     float getPnL(float x, float y) ;
+    json getJResult() ;
     float  closePosition(float x, float y);
-    float  closePosition(float x, float y,const time_t &t, const std::map<std::string, std::any> & ext);
     virtual string getName() const { return m_name; }
     virtual void setRank(float rank)  {m_rank = rank;}
     virtual float getRank() const { return m_rank;}
@@ -220,6 +220,7 @@ private:
     static LogType  m_log;
     bool m_isAvailable {false};
     time_t  m_openTime {0};
+    int m_openTick {0};
     time_t  m_closeTime {0};
     std::string m_name;
     std::string m_slopeName;
@@ -232,6 +233,11 @@ private:
     int halflifeSecs {-1};
     float he_0 {1.};
     float  m_moneyCoeff {1};
+
+    json   m_jModel;
+    json m_jTrades {json::array()};
+    //ContractPairTrade& operator=(ContractPairTrade&&) = delete;
+    //ContractPairTrade& operator=(ContractPairTrade&) = delete;
 
 };
 

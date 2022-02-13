@@ -29,6 +29,7 @@ public:
     virtual void runBT();
     virtual ~Scenario_v1() {}
     virtual void debug(LogType *log = nullptr);
+    virtual json getJResult ();
 private:
     void preRunBT();
     void postRunBT();
@@ -44,11 +45,12 @@ private:
     //std::vector<std::pair<SnapData*, ContractPairTrade* >   > m_snapAsN1;
     //std::vector<std::pair<SnapData*, ContractPairTrade* >   > m_snapAsN2;
     std::string m_modelFilePath;
-    Money m_money;
     static LogType  m_out;
     BigTable &m_bigtable;
     time_t m_modelTime;
     time_t m_startTime;;
+    std::string m_date;
+    std::string m_group;
     std::ostream * m_pOutWinDiff {nullptr};
     const char * m_outTraceDataPath  {nullptr};
 private:

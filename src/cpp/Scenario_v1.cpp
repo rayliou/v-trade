@@ -79,6 +79,8 @@ Scenario_v1::Scenario_v1(std::string name, CmdOption &cmd,SnapDataMap & snapData
 
     }
     auto [group,date] = getGroupDateFromPath(modelFilePath);
+    m_group = group;
+    m_date = date;
     //vector<string> dateList;
     vector<time_t> dateList;
     m_modelTime = m_bigtable.strTime2time_t((date+" 23:59:59")  .c_str(),"%Y-%m-%d %H:%M:%S");
@@ -307,6 +309,23 @@ void Scenario_v1::postRunBT() {
             ,sum,  v.size(),mean, stdev, m_modelFilePath);
 
     m_log->info("End:{}", __PRETTY_FUNCTION__ );
+}
+json Scenario_v1::getJResult() {
+    json j = {
+        {"name", getName()},
+        {"group", m_group},
+        {"date", m_date},
+        {"tm_model", m_modelTime},
+        {"tm_start", m_startTime},
+        {"contracts", json::array()},
+    };
+    auto & contracts = j["contracts"];
+    for (ContractPairTrade &c : m_contracts) {
+        json && jC = c.getJResult();
+        contracts.push_back(jC);
+    }
+    m_log->warn("{}", j.dump());
+    return j;
 }
 void Scenario_v1::runBT() {
     m_log->info("Start:{}", __PRETTY_FUNCTION__ );

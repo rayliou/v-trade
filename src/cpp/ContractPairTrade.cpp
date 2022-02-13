@@ -12,7 +12,8 @@ using namespace std;
 LogType Money::m_log = spdlog::stderr_color_mt("Money");
 LogType ContractPairTrade::m_log = spdlog::stderr_color_mt("ContractPairTrade");
 
-ContractPairTrade::ContractPairTrade (json &j ,  Money &m, std::string &slopeName) : m_money(&m),m_slopeName(slopeName) {
+ContractPairTrade::ContractPairTrade (json &j ,  Money *pMoney, std::string &slopeName) 
+    : m_jModel(j), m_money(pMoney),m_slopeName(slopeName) {
     float MAX_SLOPE_DIFF_RATE = 0.3;
     const int MIN_HALFLIFE_SECS = 34 *60;
     const float MAX_PVALUE = 0.1;
@@ -327,18 +328,6 @@ std::ostream & ContractPairTrade::outWinDiffDataValues(std::ostream & out) {
     return out;
 }
 void ContractPairTrade::newPosition(int direction, float profitCap, float x, float y) {
-    m_hasCrossedStd_near =false;
-    m_hasCrossedStd_far =false;
-    m_hasCrossedStd_far2 =false;
-    m_hasCrossedStd_far3 =false;
-
-    m_hasCrossedMean = false;
-    m_hasCrossedMean_half = false;
-    m_diffFarest = 0.;
-    // -1 too low, buy n1 & sell n2
-    // 1 too high, buy n2 & sell n1
-    auto last = m_winDiff.rbegin();
-    m_openTime = last->tm;
     //apply for $10000
     double amount = 10000;
 #if 0
@@ -360,94 +349,56 @@ void ContractPairTrade::newPosition(int direction, float profitCap, float x, flo
     }
     auto cap_x = x * pos_x;
     auto cap_y = y * pos_y;
-    auto totalCashPrev =  m_money->getTotalCash() ;
-    auto totalMarginPrev =   m_money->getTotalMarginFreezed();
-    if( !m_money->isMoneyAvailable(max(cap_x, cap_y), -min(cap_x, cap_y), 0.5,0.5)) {
-        m_log->warn("C[{}];M[{}] Money is not enough. cap_x:{}, cap_y:{}"
-        , totalCashPrev, totalMarginPrev
-        ,cap_x, cap_y
+    auto last = m_winDiff.rbegin();
+
+    if (nullptr != m_money) {
+
+        auto totalCashPrev =  m_money->getTotalCash() ;
+        auto totalMarginPrev =   m_money->getTotalMarginFreezed();
+        if( !m_money->isMoneyAvailable(max(cap_x, cap_y), -min(cap_x, cap_y), 0.5,0.5)) {
+            m_log->warn("C[{}];M[{}] Money is not enough. cap_x:{}, cap_y:{}"
+            , totalCashPrev, totalMarginPrev
+            ,cap_x, cap_y
+            );
+            return;
+        }
+        m_money->withdraw(max(cap_x, cap_y), -min(cap_x, cap_y));
+        auto totalCash =  m_money->getTotalCash() ;
+        auto totalMargin =   m_money->getTotalMarginFreezed();
+        m_profitCap = profitCap;
+        m_log->warn("[{}]:[{}]:C:[{},{}];M:[{},{}]:newPosition; X:{}={} * {}, Y: {} ={} * {}; slope:{},diff:{}", m_winDiff.getTickCnt(), getName()
+            ,totalCashPrev,totalCash,totalMarginPrev, totalMargin
+            ,x,pos_x,cap_x
+            ,y,pos_y,cap_y
+            ,m_slope
+            ,last->diff
         );
-        return;
-    }
-    m_position1.m_position = pos_x;
-    m_position2.m_position = pos_y;
-    m_position1.m_avgprice = x;
-    m_position2.m_avgprice = y;
-    m_money->withdraw(max(cap_x, cap_y), -min(cap_x, cap_y));
-
-    auto totalCash =  m_money->getTotalCash() ;
-    auto totalMargin =   m_money->getTotalMarginFreezed();
-    m_profitCap = profitCap;
-    m_log->warn("C:[{},{}];M:[{},{}]\t[{}_{}]:newPosition: x({}x{}={}),y({}x{}={}), slope:{},diff~cap: [{}~{}]"
-        ,totalCashPrev,totalCash,totalMarginPrev, totalMargin
-        ,m_n1, m_n2
-        ,x,pos_x,cap_x
-        ,y,pos_y,cap_y
-        ,m_slope
-        ,last->diff,m_profitCap
-    );
-
-}
-void ContractPairTrade::newPosition(float x, float y,bool buyN1, float z0, const time_t &t, const std::map<std::string, std::any> & ext) {
-#if 0
-    m_openTime = t;
-    //apply for $10000
-    double amount = 10000;
-    //use 100% margin rate
-    int pos_y = round ((x < y) ? (amount /y) : (amount /x / m_slope) );
-    int pos_x = round(pos_y * m_slope);
-    if(buyN1) {
-        pos_y *= -1;
     }
     else {
-        pos_x *= -1;
-    }
-    auto cap_x = x * pos_x;
-    auto cap_y = y * pos_y;
-    auto totalCashPrev =  m_money->getTotalCash() ;
-    auto totalMarginPrev =   m_money->getTotalMarginFreezed();
-    if( !m_money->isMoneyAvailable(max(cap_x, cap_y), -min(cap_x, cap_y), 0.5,0.5)) {
-        m_log->warn("C[{}];M[{}] Money is not enough. cap_x:{}, cap_y:{}"
-        , totalCashPrev, totalMarginPrev
-        ,cap_x, cap_y
+        m_log->warn("[{}]:[{}]:newPosition; X:{}={} * {}, Y: {} ={} * {}; slope:{},diff:{}", m_winDiff.getTickCnt(), getName()
+            ,x,pos_x,cap_x
+            ,y,pos_y,cap_y
+            ,m_slope
+            ,last->diff
         );
-        return;
     }
+    m_hasCrossedStd_near =false;
+    m_hasCrossedStd_far =false;
+    m_hasCrossedStd_far2 =false;
+    m_hasCrossedStd_far3 =false;
+
+    m_hasCrossedMean = false;
+    m_hasCrossedMean_half = false;
+    m_diffFarest = 0.;
+    // -1 too low, buy n1 & sell n2
+    // 1 too high, buy n2 & sell n1
+    m_openTime = last->tm;
+    m_openTick = m_winDiff.getTickCnt();
     m_position1.m_position = pos_x;
     m_position2.m_position = pos_y;
     m_position1.m_avgprice = x;
     m_position2.m_avgprice = y;
-    m_z0 = z0;
-    m_money->withdraw(max(cap_x, cap_y), -min(cap_x, cap_y));
 
-    auto totalCash =  m_money->getTotalCash() ;
-    auto totalMargin =   m_money->getTotalMarginFreezed();
-    m_log->warn("C:[{},{}];M:[{},{}]\t[{}_{}]:newPosition: x({}x{}={}),y({}x{}={}), slope:{}"
-        ,totalCashPrev,totalCash,totalMarginPrev, totalMargin
-        ,m_n1, m_n2
-        ,x,pos_x,cap_x
-        ,y,pos_y,cap_y
-        ,m_slope
-    );
-#endif
-
-}
-float ContractPairTrade::getPnL(float x, float y) {
-    auto pos_x = m_position1.m_position;
-    auto pos_y = m_position2.m_position;
-    auto x0 = m_position1.m_avgprice ;
-    auto y0 = m_position2.m_avgprice ;
-    auto dx = x - x0;
-    auto dy = y - y0;
-    auto cap_x = x * pos_x;
-    auto cap_y = y * pos_y;
-    auto cap_x_d = dx * pos_x;
-    auto cap_y_d = dy * pos_y;
-
-    auto profit = dx * pos_x + dy * pos_y;
-    auto commission = (abs(pos_x) + abs(pos_y)) * 0.01;
-    profit -= commission;
-    return profit;
 }
 float ContractPairTrade::closePosition(float x, float y) {
     // -1 too low, buy n1 & sell n2
@@ -466,34 +417,49 @@ float ContractPairTrade::closePosition(float x, float y) {
     auto cap_y = y * pos_y;
     auto cap_x_d = dx * pos_x;
     auto cap_y_d = dy * pos_y;
+    //m_jTrades
+    if (nullptr != m_money) {
+        auto totalCashPrev =  m_money->getTotalCash() ;
+        auto totalMarginPrev =   m_money->getTotalMarginFreezed();
 
-
-    auto totalCashPrev =  m_money->getTotalCash() ;
-    auto totalMarginPrev =   m_money->getTotalMarginFreezed();
-
-    auto commission = (abs(pos_x) + abs(pos_y)) * 0.01;
-    if(pos_x >0){
-        m_money->deposit(-commission + cap_x +cap_y_d, -pos_y *y0);
+        auto commission = (abs(pos_x) + abs(pos_y)) * 0.01;
+        if(pos_x >0){
+            m_money->deposit(-commission + cap_x +cap_y_d, -pos_y *y0);
+        }
+        else {
+            m_money->deposit(-commission +cap_y + cap_x_d, -pos_x *x0);
+        }
+        auto totalCash =  m_money->getTotalCash() ;
+        auto totalMargin =   m_money->getTotalMarginFreezed();
+        m_log->warn("[{}]:[{}]:C:[{},{}];M:[{},{}]:closePosition;(x:{} - x0:{}) * pos_x:{} = cap_x_d:{}; (y:{} - y0:{}) * pos_y:{} = cap_y_d:{}; slope:{},profit:{}", m_winDiff.getTickCnt(), getName()
+            ,totalCashPrev,totalCash,totalMarginPrev, totalMargin
+            ,x,x0,pos_x, cap_x_d
+            ,y,y0,pos_y, cap_y_d
+            ,m_slope,profit
+        );
     }
     else {
-        m_money->deposit(-commission +cap_y + cap_x_d, -pos_x *x0);
+        m_log->warn("[{}]:[{}]:closePosition;(x:{} - x0:{}) * pos_x:{} = cap_x_d:{}; (y:{} - y0:{}) * pos_y:{} = cap_y_d:{}; slope:{},profit:{}", m_winDiff.getTickCnt(), getName()
+            ,x,x0,pos_x, cap_x_d
+            ,y,y0,pos_y, cap_y_d
+            ,m_slope,profit
+        );
     }
-    auto totalCash =  m_money->getTotalCash() ;
-    auto totalMargin =   m_money->getTotalMarginFreezed();
     addProfit( profit);
-    m_log->warn("C:[{},{}];M:[{},{}]\t[{}_{}]:closePosition: (x:{} - x0:{}) * pos_x:{} = cap_x_d:{}; (y:{} - y0:{}) * pos_y:{} = cap_y_d:{}; slope:{},profit:{} "
-        ,totalCashPrev,totalCash,totalMarginPrev, totalMargin
-        ,m_n1, m_n2
-        ,x,x0,pos_x, cap_x_d
-        ,y,y0,pos_y, cap_y_d
-        ,m_slope,profit
-    );
     m_position1.m_position  = m_position2.m_position = 0;
+    json j = {
+        {"profit", profit},
+        {"x0", x0},{"x1", x},{"pos_x", pos_x},
+        {"y0", y0},{"y1", y},{"pos_y", pos_y},
+        {"tm_o", m_openTime},
+        {"tm_c", m_closeTime},
+        {"tick_o", m_openTick},
+        {"tick_c", m_winDiff.getTickCnt()},
+    };
+    m_jTrades.push_back(j);
     return profit;
 }
-float ContractPairTrade::closePosition(float x, float y, const time_t &t, const std::map<std::string, std::any> & ext) {
-#if 0
-    m_closeTime = t;
+float ContractPairTrade::getPnL(float x, float y) {
     auto pos_x = m_position1.m_position;
     auto pos_y = m_position2.m_position;
     auto x0 = m_position1.m_avgprice ;
@@ -506,37 +472,19 @@ float ContractPairTrade::closePosition(float x, float y, const time_t &t, const 
     auto cap_y_d = dy * pos_y;
 
     auto profit = dx * pos_x + dy * pos_y;
-
-    auto totalCashPrev =  m_money->getTotalCash() ;
-    auto totalMarginPrev =   m_money->getTotalMarginFreezed();
-
     auto commission = (abs(pos_x) + abs(pos_y)) * 0.01;
-    if(pos_x >0){
-        m_money->deposit(-commission + cap_x +cap_y_d, -pos_y *y0);
-    }
-    else {
-        m_money->deposit(-commission +cap_y + cap_x_d, -pos_x *x0);
-    }
-    auto totalCash =  m_money->getTotalCash() ;
-    auto totalMargin =   m_money->getTotalMarginFreezed();
     profit -= commission;
-    addProfit( profit);
-
-    
-
-    m_log->warn("C:[{},{}];M:[{},{}]\t[{}_{}]:closePosition: (x:{} - x0:{}) * pos_x:{} = cap_x_d:{}; (y:{} - y0:{}) * pos_y:{} = cap_y_d:{}; slope:{} "
-        ,totalCashPrev,totalCash,totalMarginPrev, totalMargin
-        ,m_n1, m_n2
-        ,x,x0,pos_x, cap_x_d
-        ,y,y0,pos_y, cap_y_d
-        ,m_slope
-    );
-    m_position1.m_position  = m_position2.m_position = 0;
     return profit;
-#endif
-    return 0;
-
 }
+json ContractPairTrade::getJResult() {
+    json j = {
+        {"name", getName()},
+        {"trades", m_jTrades},
+        {"model", m_jModel},
+    };
+    return j;
+}
+
 
 #if 0
 ContractPairTrade::ContractPairTrade (csv::CSVRow& row, Money &m) : m_money(&m) {

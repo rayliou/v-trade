@@ -18,6 +18,7 @@
 #include <time.h>
 #include <any>
                    //
+class Money;
 class IScenario {
 public:
     IScenario(std::string name, CmdOption &cmd,SnapDataMap & snapDataMap)
@@ -37,6 +38,8 @@ public:
 
     //predict begin & end for backtest.
     std::string getName() const  {return m_name;}
+    virtual json getJResult () = 0;
+    void setMoney(Money *m)  {m_money = m; }
     virtual void postSetup() = 0;
     virtual void runBT() = 0;
     virtual void debug(LogType *log) = 0;
@@ -48,6 +51,7 @@ protected:
     std::set<std::string> m_includes;
     SnapDataMap & m_snapDataMap;
     std::string m_name;
+    Money *m_money {nullptr};
     LogType  m_log;
 private:
     virtual void insertIncludes(const std::string &s) {

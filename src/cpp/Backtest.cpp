@@ -64,8 +64,10 @@ void Backtest::addScenario(string & modelPath) {
 void Backtest::run() {
     // string groups [] {"cn", "topV100_MC200"};
     for_each(m_scenarios.begin(),m_scenarios.end(),[&](IScenario * i){
+        i->setMoney(nullptr);
         i->runBT();
-
+        json &&j = i->getJResult();
+        m_log->warn("{}", j.dump());
     }); 
 
 }

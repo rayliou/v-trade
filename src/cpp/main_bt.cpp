@@ -199,7 +199,7 @@ int main(int argc, char * argv[]) {
     CmdOption cmd(argc,argv);
     spdlog::cfg::load_env_levels();
     Backtest bt(cmd);
-    bt.run(); exit(0);
+    bt.run(); return 0;
 #if 0
     auto level = spdlog::level::level_enum::off;;
     auto s  = cmd.get("-v");
