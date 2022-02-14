@@ -197,8 +197,8 @@ public:
     std::string m_ext, m_n1,m_n2;
     std::pair<std::string, std::string> m_symbolsPair;
     // s,i,m,st,pair,p,pmin,ext
-    SnapData * m_snap1;;
-    SnapData *  m_snap2;;
+    SnapData * m_snap1;
+    SnapData *  m_snap2;
     Position m_position1;
     Position m_position2;
 
