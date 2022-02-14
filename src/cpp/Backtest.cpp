@@ -2,7 +2,6 @@
 //
 #include "common.h"
 #include <execution>
-#include "BigTable.h"
 #include "scenario.h"
 #include "Backtest.h"
 

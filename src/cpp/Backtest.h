@@ -3,7 +3,6 @@
 #pragma once
 #include "common.h"
 #include <execution>
-#include "BigTable.h"
 #include "scenario.h"
 #include "Scenario_v1.h"
 

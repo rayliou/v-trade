@@ -1,5 +1,6 @@
 //g++ -g  -std=c++17  ./bigcsv.cpp -o b && ./b
 
+#include "common.h"
 #include <sstream> // std::stringstream
 #include <regex>
 #include "contract.h"

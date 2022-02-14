@@ -1,6 +1,5 @@
 //g++ -g  -std=c++17  ./bigcsv.cpp -o b && ./b
 #include "common.h"
-#include "BigTable.h"
 #include "./3rd-party/JohansenCointegration/JohansenHelper.h"
 
 class Cointegrate{

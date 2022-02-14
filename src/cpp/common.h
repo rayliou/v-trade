@@ -13,20 +13,27 @@
 #include "./3rd-party/JohansenCointegration/JohansenHelper.h"
 
 //https://github.com/gabime/spdlog
+// https://github.com/nlohmann/json
+// https://github.com/nlohmann/json/blob/develop/doc/examples/README.cpp
+#if 0
 #include "3rd-party/spdlog/include/spdlog/spdlog.h"
 #include "3rd-party/spdlog/include/spdlog/sinks/stdout_color_sinks.h"
 #include "3rd-party/spdlog/include/spdlog/cfg/env.h"
-#include "3rd-party/csv-parser/single_include/csv.hpp"
-// https://github.com/nlohmann/json
-// https://github.com/nlohmann/json/blob/develop/doc/examples/README.cpp
+
 #include "3rd-party/json/single_include/nlohmann/json.hpp"
+#else
+#include "spdlog/spdlog.h"
+#include "spdlog/sinks/stdout_color_sinks.h"
+#include "spdlog/cfg/env.h"
+#include "nlohmann/json.hpp"
+#endif
 using json = nlohmann::json;
 
 //https://github.com/vincentlaucsb/csv-parser
 #include "3rd-party/csv-parser/single_include/csv.hpp"
-
 using LogType = std::shared_ptr<spdlog::logger>;
 
+#include "BigTable.h"
 
 inline std::vector<std::string>  strSplit(std::string str, const char delim) {
     std::vector<std::string> ret;

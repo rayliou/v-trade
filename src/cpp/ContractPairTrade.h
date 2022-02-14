@@ -5,7 +5,6 @@
 #include <regex>
 #include "contract.h"
 #include <limits>
-#include "BigTable.h"
 
 class SnapData;
 class Money {

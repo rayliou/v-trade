@@ -324,7 +324,7 @@ json Scenario_v1::getJResult() {
         json && jC = c.getJResult();
         contracts.push_back(jC);
     }
-    m_log->warn("{}", j.dump());
+    //m_log->warn("{}", j.dump());
     return j;
 }
 void Scenario_v1::runBT() {
