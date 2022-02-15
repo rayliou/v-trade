@@ -3,7 +3,6 @@
 #include "common.h"
 #include <sstream> // std::stringstream
 #include <regex>
-#include "contract.h"
 #include "ContractPairTrade.h"
 #include <execinfo.h>
 #include <tuple>

@@ -1,22 +1,11 @@
 //g++ -g  -std=c++17  ./bigcsv.cpp -o b && ./b
 #pragma once
-#if 0
-#include <string>
-#include <fstream>
-#include <vector>
-#include <utility> // std::pair
-#include <stdexcept> // std::runtime_error
-#include <sstream> // std::stringstream
-#include <iostream>
-#include <tuple>
-#include <map>
-#include <time.h>
-#endif
-#include "contract.h"
+#include "common.h"
 #include "strategy.h"
 #include <time.h>
 #include <any>
 #include <map>
+#include "contract.h"
                    //
 //using namespace std;
 //
@@ -35,7 +24,6 @@ private:
     std::vector<double> *m_vars {nullptr};
     std::vector<time_t> *m_tms{nullptr};
 };
-class BigTable;
 struct SnapData {
     const int Y20 = 24 *3600 * 365 * 20;
     SnapData(const std::string &symbol, int idx, BigTable *p) : symbol(symbol),idx(idx),pTable(p) {
@@ -72,6 +60,8 @@ struct SnapData {
     }
     int idx ;
     BigTable * pTable {nullptr};
+    std::unique_ptr<ContractDetails> ibContractDetails {nullptr};
+    bool ibUpdated {false};
     std::string symbol;
     float open {0.0};
     float close {0.0};

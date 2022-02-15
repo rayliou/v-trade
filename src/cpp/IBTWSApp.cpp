@@ -94,10 +94,19 @@ void IBTWSApp::nextValidId( OrderId orderId) {
     m_log->trace("End:{}", __PRETTY_FUNCTION__ );
 }
 void IBTWSApp::contractDetails( int reqId, const ContractDetails& contractDetails) {
-    m_log->trace("Start:{}", __PRETTY_FUNCTION__ );
-    m_log->trace("End:{}", __PRETTY_FUNCTION__ );
-	// printf( "ContractDetails begin. ReqId: %d\n", reqId);
-	// printContractMsg(contractDetails.contract);
-	// printContractDetailsMsg(contractDetails);
-	// printf( "ContractDetails end. ReqId: %d\n", reqId);
+	// auto tid = std::this_thread::get_id();
+	m_semaphore.release();
+	++m_snapUpdatedCnt;
+
+    // m_log->trace("Start:{}", __PRETTY_FUNCTION__ );
+	SnapData * s = m_snapDataVct->at(reqId);
+	if (nullptr == s->ibContractDetails) {
+		s->ibContractDetails =  std::make_unique<ContractDetails>();
+	}
+	*(s->ibContractDetails) = contractDetails;
+	s->ibUpdated = true;
+	// long conId = s->ibContractDetails->contract.conId;
+	// string sym = s->ibContractDetails->contract.symbol;
+	// m_log->debug("contractDetails: reqId,UpCnt {}/{} {},{}",reqId, m_snapUpdatedCnt.load(), sym, conId);
+    // m_log->trace("End:{}", __PRETTY_FUNCTION__ );
 }

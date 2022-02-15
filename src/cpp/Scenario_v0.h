@@ -5,7 +5,6 @@
 #include <vector>
 #include <list>
 
-#include "contract.h"
 #include "strategy.h"
 #include "scenario.h"
 #include "ContractPairTrade.h"

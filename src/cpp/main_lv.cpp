@@ -3,11 +3,8 @@
 #include "common.h"
 #include <execution>
 #include <thread>
-#include "scenario.h"
-//#include "Scenario_v0.h"
-#include "Scenario_v1.h"
 
-#include "Backtest.h"
+#include "ModelLive.h"
 #include "IBTWSApp.h"
 #include "IBTWSClient.h"
 
@@ -23,6 +20,11 @@ int main(int argc, char * argv[]) {
     IBTWSApp ib(cmd, stopFlag);
     std::jthread thIB(&IBTWSApp::run, &ib);
     spdlog::info("{}", cmd.str());
+    //get model
+    ModelLive mlv(cmd, &ib);
+    mlv.run(&stopFlag);
+    //get contract list.
+
     std::this_thread::sleep_for(std::chrono::seconds(3));
     stopFlag = true;
     spdlog::info("Stop !!!");

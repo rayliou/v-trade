@@ -34,44 +34,55 @@ using json = nlohmann::json;
 using LogType = std::shared_ptr<spdlog::logger>;
 
 #include "BigTable.h"
+#include "icontract.h"
 
-inline std::vector<std::string>  strSplit(std::string str, const char delim) {
+////////////////////////// String ulti
+inline std::vector<std::string>  strSplit(std::string str, const char delim , bool removeEmpty =false) {
     std::vector<std::string> ret;
     std::istringstream ss(str);
     std::string v;
     while( getline(ss, v, delim)){
+        if (removeEmpty && v == "" ) {
+            continue;
+        }
         ret.push_back(v);
     }
     return ret;
 }
+const std::string WHITESPACE = " \n\r\t\f\v";
+inline 
+std::string ltrim(const std::string &s) {
+    size_t start = s.find_first_not_of(WHITESPACE);
+    return (start == std::string::npos) ? "" : s.substr(start);
+}
+inline 
+std::string rtrim(const std::string &s) {
+    size_t end = s.find_last_not_of(WHITESPACE);
+    return (end == std::string::npos) ? "" : s.substr(0, end + 1);
+}
+inline 
+std::string trim(const std::string &s) { return rtrim(ltrim(s)); }
 
 class CmdOption {
 public:
     CmdOption(int argc, char * argv[]) :m_argc(argc),m_argv(argv) {
     }
 
-    char* get(const std::string & option)
-    {
+    char* get(const std::string & option) {
         auto begin = m_argv;
         auto end = m_argv + m_argc;
-        char ** itr = std::find(begin,end, option);
-        if (itr != end && ++itr != end)
-        {
-            return *itr;
-        }
-        return nullptr;
+        return _get(option, begin, end);
+
     }
     std::vector<std::string> getM(const std::string & option)
     {
         std::vector<std::string> ret;
         auto begin = m_argv;
         auto end = m_argv + m_argc;
-        char ** itr = std::find(begin,end, option);
-        if (end == itr) {
-            return ret;
-        }
-        for(itr++;(itr != end && **itr != '-' ) ; itr++) {
-            ret.push_back(*itr);
+        char ** last = begin;
+        char * s ;
+        while ( nullptr != ( s = _get(option, last, end, &last) )) {
+            ret.push_back(s);
         }
         return ret;
     }
@@ -88,6 +99,18 @@ public:
             ss << " ";
         }
         return ss.str();
+    }
+private:
+    char* _get(const std::string & option, char ** begin, char ** end, char ***last = nullptr) {
+        char ** itr = std::find(begin,end, option);
+        if (itr != end && ++itr != end)
+        {
+            if ( nullptr != last) {
+                *last = itr +1;
+            }
+            return *itr;
+        }
+        return nullptr;
     }
 private:
     int m_argc;

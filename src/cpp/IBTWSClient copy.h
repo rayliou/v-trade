@@ -1,7 +1,7 @@
 ﻿#pragma once
 #include <mutex>
 #include <semaphore>
-using CountingSemaphore=std::counting_semaphore<200>;
+using CountingSemaphore=std::counting_semaphore<100>;
 
 
 #include "EClientSocket.h"

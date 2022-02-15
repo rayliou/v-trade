@@ -7,8 +7,8 @@ IBTWSClient::IBTWSClient(CountingSemaphore *sem, EWrapper *ptr, EReaderSignal *p
 
 }
 void IBTWSClient::reqContractDetails(int reqId, const Contract& contract) {
-    m_pSemaphore->acquire();
     scoped_lock lock(m_mutex);
+    m_pSemaphore->acquire();
 
     EClientSocket::reqContractDetails(reqId, contract);
 }

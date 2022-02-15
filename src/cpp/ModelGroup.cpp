@@ -3,12 +3,17 @@
 #include "common.h"
 #include <execution>
 #include "scenario.h"
-#include "Backtest.h"
+#include "ModelGroup.h"
 
-LogType Backtest::m_log = spdlog::stderr_color_mt("Backtest");
-Backtest::Backtest(CmdOption &cmd):m_cmd(cmd) {
-    string btJPath = "./bt.json";
-    std::ifstream is(btJPath);
+LogType ModelGroup::m_log = spdlog::stderr_color_mt("ModelGroup");
+ModelGroup::ModelGroup(CmdOption &cmd) :m_cmd(cmd){
+    const char * conf = m_cmd.get("--conf");
+    const char * modelPath = m_cmd.get("--model");
+    if(nullptr == conf) {
+        throw std::runtime_error("argv -conf is needed.");
+    }
+    m_log->debug("Loading conf from {}", conf);
+    std::ifstream is(conf);
     is >> m_jsonConf;
     for (auto& [k, v] :m_jsonConf["big_table"].items()) {
         string path;
@@ -18,7 +23,6 @@ Backtest::Backtest(CmdOption &cmd):m_cmd(cmd) {
         m_log->debug("Loaded bigtable: {}->{}", k, path);
         b->debug(m_log);
     }
-    const char * modelPath = m_cmd.get("--model");
     if ( nullptr != modelPath) {
         string path(modelPath);
         addScenario(path);
@@ -31,18 +35,19 @@ Backtest::Backtest(CmdOption &cmd):m_cmd(cmd) {
     }
 
 }
-Backtest::~Backtest() {
+ModelGroup::~ModelGroup() {
     for (auto& [k, v] :m_bigtables) {
         delete v;
         m_log->debug("Unloaded bigtable: {}", k);
     }
     m_bigtables.clear();
-    for(auto  s: m_scenarios) {
-        m_log->debug("delete scenario: {}", s->getName());
+    for(IScenario * s: m_scenarios) {
+        string name = s->getName();
+        m_log->debug("delete scenario: {}", name);
         delete s;
     }
 }
-void Backtest::addScenario(string & modelPath) {
+void ModelGroup::addScenario(string & modelPath) {
     m_modelFilePaths.push_back(modelPath);
     auto [group,date] = Scenario_v1::getGroupDateFromPath(modelPath);
     string name = "v1-";
@@ -59,14 +64,4 @@ void Backtest::addScenario(string & modelPath) {
     // s->postSetup();
     m_scenarios.push_back(s);
     m_log->debug("Loaded  Scenario: {}\t{}",s->getName(),modelPath);
-}
-void Backtest::run() {
-    // string groups [] {"cn", "topV100_MC200"};
-    for_each(m_scenarios.begin(),m_scenarios.end(),[&](IScenario * i){
-        i->setMoney(nullptr);
-        i->runBT();
-        json &&j = i->getJResult();
-        m_log->warn("{}", j.dump());
-    }); 
-
 }

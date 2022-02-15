@@ -3,7 +3,6 @@
 #include <any> // std::stringstream
 #include <sstream> // std::stringstream
 #include <regex>
-#include "contract.h"
 #include <limits>
 
 class SnapData;

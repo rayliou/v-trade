@@ -6,7 +6,7 @@ set(CC ${CC_DIR}/bin/gcc)
 set(CXX "${CC_DIR}/bin/g++-11")
 set(AR "${CC_DIR}/bin/gcc-ar-11")
 
-#set(CMAKE_CXX_FLAGS "-g")
+set(CMAKE_CXX_FLAGS "-g")
 #set(CMAKE_CXX_FLAGS "-g -pthread -Wall -Wno-switch -Wpedantic -Wno-unused-function")
 
 # set the project name
@@ -26,7 +26,7 @@ link_directories(/usr/local/Cellar/gcc/11.2.0_3/lib)
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED True)
 
-add_executable(main_lv IBTWSApp.cpp IBTWSClient.cpp main_lv.cpp Scenario_v1.cpp ContractPairTrade.cpp Backtest.cpp)
+add_executable(main_lv IBTWSApp.cpp IBTWSClient.cpp ModelLive.cpp ModelGroup.cpp main_lv.cpp Scenario_v1.cpp ContractPairTrade.cpp ModelBacktest.cpp)
 target_link_libraries(main_lv gsl gslcblas  ${BID} tws_ib spdlog)
 target_include_directories(main_lv PUBLIC twsapi_1014.01)
 

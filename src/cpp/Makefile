@@ -1,4 +1,6 @@
 
+t:build
+	 ./b/main_lv --conf  ./conf/v-trade.json
 build:b
 	make -C b
 b:

@@ -6,15 +6,13 @@
 #include "scenario.h"
 #include "Scenario_v1.h"
 
-
-class Backtest {
+class ModelGroup {
 public:
-    Backtest(CmdOption &cmd);
-    virtual ~Backtest();
-    void run() ;
+    virtual void run (bool *stopFlag)  = 0;
+    ModelGroup(CmdOption &cmd);
+    virtual ~ModelGroup();
+protected:
     void addScenario(string & modelPath);
-
-private:
     std::vector<IScenario *> m_scenarios;
     CmdOption & m_cmd;
     json m_jsonConf;
@@ -22,5 +20,7 @@ private:
     list<string> m_modelFilePaths;
     //singleton
     SnapDataMap  m_snapDataMap;
+private:
+    bool * m_stopFlag {nullptr};
     static LogType  m_log;
 };

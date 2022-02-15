@@ -1,4 +1,5 @@
 ﻿#pragma once
+#include <atomic>
 #include "common.h"
 #include "DefaultEWrapper.h"
 
@@ -6,6 +7,7 @@
 #include "EReader.h"
 
 #include "IBTWSClient.h"
+#include "SnapData.h"
 // https://interactivebrokers.github.io/tws-api/client_wrapper.html#ewrapper_impl
 
 #include <memory>
@@ -120,6 +122,9 @@ public:
     void setConnectOptions(const std::string& connectOptions);
 	void processMessages();
 	IBTWSClient * getClient () const {return m_pClient;};
+	int getSnapUpdateCnt () const {return m_snapUpdatedCnt.load();};
+	void resetSnapUpdateCnt () {m_snapUpdatedCnt =0;  };
+	void setSnapDataVct(vector<SnapData *>  * snapDataVct) {m_snapDataVct = snapDataVct; }
 
 private:
 
@@ -143,5 +148,7 @@ private:
     LogType  m_log;
 	CmdOption & m_cmd;
 	bool & m_stopFlag;
+	std::vector<SnapData *>  * m_snapDataVct {nullptr};
+	std::atomic<int> m_snapUpdatedCnt {0};
     CountingSemaphore m_semaphore {50};
 };
