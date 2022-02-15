@@ -1,5 +1,4 @@
 ﻿#include "IBTWSApp.h"
-#include "EClientSocket.h"
 #include "EPosixClientSocketPlatform.h"
 
 void IBTWSApp::run() {
@@ -31,7 +30,8 @@ int main(int argc, char * argv[]) {
 }
 #endif
 
-IBTWSApp::IBTWSApp (CmdOption &cmd, bool &stopFlag) :m_cmd(cmd), m_stopFlag(stopFlag), m_pClient(new EClientSocket(this, &m_osSignal)) {
+IBTWSApp::IBTWSApp (CmdOption &cmd, bool &stopFlag) 
+    :m_cmd(cmd), m_stopFlag(stopFlag), m_pClient(new IBTWSClient(&m_semaphore,this, &m_osSignal)) {
 
  }
 IBTWSApp::~IBTWSApp(){
@@ -91,4 +91,13 @@ void IBTWSApp::nextValidId( OrderId orderId) {
 	m_log->debug("Next Valid Id: {}", orderId);
 	m_orderId = orderId;
 	m_state = State::ST_ACCOUNTOPERATIONS;
+    m_log->trace("End:{}", __PRETTY_FUNCTION__ );
+}
+void IBTWSApp::contractDetails( int reqId, const ContractDetails& contractDetails) {
+    m_log->trace("Start:{}", __PRETTY_FUNCTION__ );
+    m_log->trace("End:{}", __PRETTY_FUNCTION__ );
+	// printf( "ContractDetails begin. ReqId: %d\n", reqId);
+	// printContractMsg(contractDetails.contract);
+	// printContractDetailsMsg(contractDetails);
+	// printf( "ContractDetails end. ReqId: %d\n", reqId);
 }

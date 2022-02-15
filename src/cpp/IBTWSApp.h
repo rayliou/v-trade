@@ -5,6 +5,9 @@
 #include "EReaderOSSignal.h"
 #include "EReader.h"
 
+#include "IBTWSClient.h"
+// https://interactivebrokers.github.io/tws-api/client_wrapper.html#ewrapper_impl
+
 #include <memory>
 #include <vector>
 enum State {
@@ -116,16 +119,18 @@ public:
 	bool isConnected() const;
     void setConnectOptions(const std::string& connectOptions);
 	void processMessages();
+	IBTWSClient * getClient () const {return m_pClient;};
 
 private:
 
     virtual void error(int id, int errorCode, const std::string& errorString, const std::string& advancedOrderRejectJson) ;
 	virtual void nextValidId( OrderId orderId);
+	virtual void contractDetails( int reqId, const ContractDetails& contractDetails);
 
 private:
     	//! [socket_declare]
 	EReaderOSSignal m_osSignal {2000}; //2 secs;
-	EClientSocket * const m_pClient;
+	IBTWSClient * m_pClient;
 	//! [socket_declare]
 	State m_state;
 
@@ -138,4 +143,5 @@ private:
     LogType  m_log;
 	CmdOption & m_cmd;
 	bool & m_stopFlag;
+    CountingSemaphore m_semaphore {50};
 };

@@ -9,6 +9,7 @@
 
 #include "Backtest.h"
 #include "IBTWSApp.h"
+#include "IBTWSClient.h"
 
 // https://github.com/gabime/spdlog
 // https://interactivebrokers.github.io/tws-api/client_wrapper.html#ewrapper_impl

@@ -26,7 +26,7 @@ link_directories(/usr/local/Cellar/gcc/11.2.0_3/lib)
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED True)
 
-add_executable(main_lv IBTWSApp.cpp main_lv.cpp Scenario_v1.cpp ContractPairTrade.cpp Backtest.cpp)
+add_executable(main_lv IBTWSApp.cpp IBTWSClient.cpp main_lv.cpp Scenario_v1.cpp ContractPairTrade.cpp Backtest.cpp)
 target_link_libraries(main_lv gsl gslcblas  ${BID} tws_ib spdlog)
 target_include_directories(main_lv PUBLIC twsapi_1014.01)
 
