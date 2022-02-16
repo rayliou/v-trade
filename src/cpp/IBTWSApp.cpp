@@ -110,3 +110,27 @@ void IBTWSApp::contractDetails( int reqId, const ContractDetails& contractDetail
 	// m_log->debug("contractDetails: reqId,UpCnt {}/{} {},{}",reqId, m_snapUpdatedCnt.load(), sym, conId);
     // m_log->trace("End:{}", __PRETTY_FUNCTION__ );
 }
+void IBTWSApp::historicalDataEnd(int reqId, const std::string& startDateStr, const std::string& endDateStr) {
+	m_semaphore.release();
+    m_log->trace("Call:{}", __PRETTY_FUNCTION__ );
+
+}
+void IBTWSApp::historicalData(TickerId reqId, const Bar& bar) {
+    m_log->trace("Call:{}", __PRETTY_FUNCTION__ );
+	updateSnapByBar(reqId,bar);
+
+}
+void IBTWSApp::historicalDataUpdate(TickerId reqId, const Bar& bar) {
+    m_log->trace("Call:{}", __PRETTY_FUNCTION__ );
+	updateSnapByBar(reqId,bar);
+}
+void IBTWSApp::updateSnapByBar(TickerId reqId, const Bar& bar) {
+	SnapData * s = m_snapDataVct->at(reqId);
+	s->open = bar.open;
+	s->close = bar.close;
+	s->high = bar.high;
+	s->low  = bar.low;
+	s->volume = bar.volume;
+	s->tm = atol(bar.time.c_str());
+	s->debug(m_log);
+}

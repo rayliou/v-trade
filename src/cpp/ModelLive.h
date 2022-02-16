@@ -13,6 +13,9 @@ public:
     virtual void run (bool *stopFlag);
 
 private:
+    void updateSnapDataContracts(int timeout);
+    void updateSnapDataLive(int timeout);
+private:
     static LogType  m_log;
     IBTWSApp * m_ib {nullptr};
     bool * m_stopFlag {nullptr};

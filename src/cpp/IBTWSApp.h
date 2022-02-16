@@ -132,7 +132,12 @@ private:
 	virtual void nextValidId( OrderId orderId);
 	virtual void contractDetails( int reqId, const ContractDetails& contractDetails);
 
+	virtual void historicalData(TickerId reqId, const Bar& bar);
+	virtual void historicalDataEnd(int reqId, const std::string& startDateStr, const std::string& endDateStr);
+	virtual void historicalDataUpdate(TickerId reqId, const Bar& bar);
+
 private:
+	void updateSnapByBar(TickerId reqId, const Bar& bar);
     	//! [socket_declare]
 	EReaderOSSignal m_osSignal {2000}; //2 secs;
 	IBTWSClient * m_pClient;
