@@ -63,6 +63,8 @@ void ModelLive::updateSnapDataContracts(int timeout) {
     }
 }
 void ModelLive::updateSnapDataLive(int timeout) {
+                // self.reqMktData(reqId,c, "", True, True, [])
+
     IBTWSClient *ibClient = m_ib->getClient();
     m_ibSnapDataVct.clear();
     m_ib->setSnapDataVct(&m_ibSnapDataVct);
@@ -80,8 +82,9 @@ void ModelLive::updateSnapDataLive(int timeout) {
         v.ibUpdated = false;
         m_ibSnapDataVct.push_back(&v);
         // https://interactivebrokers.github.io/tws-api/classIBApi_1_1EClient.html#aad87a15294377608e59aec1d87420594
-        ibClient->reqHistoricalData(reqId++, c, "", "200 S", "5 secs", "MIDPOINT", 0, 2/*1 :string, 2: seconds,  */ ,/*keepUpToDate = */ false,TagValueListSPtr()); 
-
+        // ibClient->reqHistoricalData(reqId++, c, "", "200 S", "5 secs", "MIDPOINT", 0, 2/*1 :string, 2: seconds,  */ ,/*keepUpToDate = */ false,TagValueListSPtr()); 
+        // https://interactivebrokers.github.io/tws-api/md_request.html#genticks
+        ibClient->reqMktData(reqId++, c, "", false /*snapshot, false: live */, false /*regulatorySnaphsot */,TagValueListSPtr()); 
     }
     std::this_thread::sleep_for(std::chrono::seconds(timeout));
     //wait

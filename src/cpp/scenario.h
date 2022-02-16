@@ -24,12 +24,12 @@ public:
         :m_name(name),m_cmdOption(cmd),m_snapDataMap(snapDataMap)  {
         auto var = m_cmdOption.get("--includes");
         if (nullptr != var) {
-            auto symbols = strSplit(var,'_');
+            auto symbols = utility::strSplit(var,'_');
             std::for_each(symbols.begin(), symbols.end(), [&] (auto &s) {  m_includes.insert(s);} );
         }
         var  = m_cmdOption.get("--excludes");
         if (nullptr != var) {
-            auto symbols = strSplit(var,',');
+            auto symbols = utility::strSplit(var,',');
             std::for_each(symbols.begin(), symbols.end(), [&] (auto &s) {  m_excludes.insert(s);} );
         }
         m_log = spdlog::stderr_color_mt(m_name);

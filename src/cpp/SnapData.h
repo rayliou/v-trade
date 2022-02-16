@@ -9,6 +9,7 @@
                    //
 //using namespace std;
 //
+#if 0
 struct TimeSeries {
 public:
     void add(double v, const time_t &t) {
@@ -23,6 +24,30 @@ public:
 private:
     std::vector<double> *m_vars {nullptr};
     std::vector<time_t> *m_tms{nullptr};
+};
+#endif
+
+struct LiveData {
+    double bid,ask,last;
+    double bSize,aSize,lSize;
+    double oday, cprev;
+    double hday, lday;
+    double vdayp;
+    operator const std::string () const {
+        std::ostringstream os;
+        os << "oday:" << oday << "," << "cprev:" << cprev << ",";
+        os << "hday:" << hday << "," << "lday:" << lday << ",";
+        os << "vdayp:" << vdayp << ",";
+
+        os << "bid:" << bid << ",";
+        os << "bSize:" << bSize << ",";
+        os << "ask:" << ask << ",";
+        os << "aSize:" << aSize << ",";
+        os << "last:" << last << ",";
+        os << "lSize:" << lSize << ",";
+        return os.str();
+    }
+
 };
 struct SnapData {
     const int Y20 = 24 *3600 * 365 * 20;
@@ -48,7 +73,8 @@ struct SnapData {
         char buf[64];
         ctime_r(&tm, buf);
         //std::ctime_s(&buf, sizeof(buf),&tm);
-        log->debug("idx:{},sym:{},open:{},close:{},high:{},low:{},volume:{},tm:{}", idx, symbol, open, close, high, low,volume,buf); 
+        // log->debug("idx:{},sym:{},open:{},close:{},high:{},low:{},volume:{},tm:{}", idx, symbol, open, close, high, low,volume,buf); 
+        log->debug("idx:{},sym:{}:liveData:{}", idx, symbol,buf, (const string)liveData);
     }
     void update(float o, float h, float l, float c, int v, time_t t) {
         open = o;
@@ -62,6 +88,7 @@ struct SnapData {
     BigTable * pTable {nullptr};
     std::unique_ptr<ContractDetails> ibContractDetails {nullptr};
     bool ibUpdated {false};
+    LiveData liveData;
     std::string symbol;
     float open {0.0};
     float close {0.0};

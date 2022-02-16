@@ -36,3 +36,9 @@ void IBTWSClient::reqHistoricalData(TickerId tickerId, const Contract& contract,
     scoped_lock lock(m_mutex);
     EClient::reqHistoricalData(tickerId, contract, endDateTime, durationStr, barSizeSetting, whatToShow, useRTH, formatDate, keepUpToDate,chartOptions);
 }
+
+void IBTWSClient::reqMktData(TickerId tickerId, const Contract& contract, const std::string& genericTicks, bool snapshot, bool regulatorySnaphsot, const TagValueListSPtr& mktDataOptions) {
+    // speedControl(m_callsCurSec, 50,1);
+    m_pSemaphore->acquire();
+    EClientSocket::reqMktData(tickerId,contract,genericTicks,snapshot,regulatorySnaphsot, mktDataOptions);
+}

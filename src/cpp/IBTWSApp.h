@@ -136,6 +136,19 @@ private:
 	virtual void historicalDataEnd(int reqId, const std::string& startDateStr, const std::string& endDateStr);
 	virtual void historicalDataUpdate(TickerId reqId, const Bar& bar);
 
+	virtual void tickPrice( TickerId tickerId, TickType field, double price, const TickAttrib& attrib);
+	virtual void tickSize(TickerId tickerId, TickType field, Decimal size);
+	virtual void tickSnapshotEnd( int reqId);
+	virtual void tickString(TickerId tickerId, TickType tickType, const std::string& value);
+
+	virtual void tickOptionComputation( TickerId tickerId, TickType tickType, int tickAttrib, double impliedVol, double delta, double optPrice, double pvDividend, double gamma, double vega, double theta, double undPrice){throw std::runtime_error(__PRETTY_FUNCTION__); }
+	virtual void tickGeneric(TickerId tickerId, TickType tickType, double value){throw std::runtime_error(__PRETTY_FUNCTION__); }
+	virtual void tickEFP(TickerId tickerId, TickType tickType, double basisPoints, const std::string& formattedBasisPoints, double totalDividends, int holdDays, const std::string& futureLastTradeDate, double dividendImpact, double dividendsToLastTradeDate){throw std::runtime_error(__PRETTY_FUNCTION__); }
+	virtual void orderStatus( OrderId orderId, const std::string& status, Decimal filled, Decimal remaining, double avgFillPrice, int permId, int parentId, double lastFillPrice, int clientId, const std::string& whyHeld, double mktCapPrice){throw std::runtime_error(__PRETTY_FUNCTION__); }
+	virtual void openOrder( OrderId orderId, const Contract&, const Order&, const OrderState&){throw std::runtime_error(__PRETTY_FUNCTION__); }
+	virtual void openOrderEnd(){throw std::runtime_error(__PRETTY_FUNCTION__); }
+
+
 private:
 	void updateSnapByBar(TickerId reqId, const Bar& bar);
     	//! [socket_declare]
@@ -155,5 +168,5 @@ private:
 	bool & m_stopFlag;
 	std::vector<SnapData *>  * m_snapDataVct {nullptr};
 	std::atomic<int> m_snapUpdatedCnt {0};
-    CountingSemaphore m_semaphore {50};
+    CountingSemaphore m_semaphore {99};
 };

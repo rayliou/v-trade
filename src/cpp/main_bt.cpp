@@ -219,7 +219,7 @@ int main(int argc, char * argv[]) {
     auto mSsources  = cmd.getM("--m_src");
     if (mSsources.size() >0) {
         for (auto & srcPair : mSsources ) {
-            auto ss = strSplit(srcPair, ':');
+            auto ss = utility::strSplit(srcPair, ':');
             RunnerBT c(ss[0].c_str(), cmd);
             //c.johansenCoint(); return 0;
             c.runBT(ss[1].c_str());
@@ -228,7 +228,7 @@ int main(int argc, char * argv[]) {
     }
     else {
         auto srcPair = cmd.get("--src");
-        auto ss = strSplit(srcPair, ':');
+        auto ss = utility::strSplit(srcPair, ':');
         RunnerBT c(ss[0].c_str(), cmd);
         //c.johansenCoint(); return 0;
         c.runBT(ss[1].c_str());

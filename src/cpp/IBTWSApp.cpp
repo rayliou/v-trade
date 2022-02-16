@@ -1,4 +1,5 @@
-﻿#include "IBTWSApp.h"
+﻿#include <stdio.h>
+#include "IBTWSApp.h"
 #include "EPosixClientSocketPlatform.h"
 
 void IBTWSApp::run() {
@@ -133,4 +134,63 @@ void IBTWSApp::updateSnapByBar(TickerId reqId, const Bar& bar) {
 	s->volume = bar.volume;
 	s->tm = atol(bar.time.c_str());
 	s->debug(m_log);
+}
+inline double & getFielPtrinLiveData(LiveData &l, TickType t) {
+	//  https://interactivebrokers.github.io/tws-api/tick_types.html
+	switch (t) {
+        case BID_SIZE:
+		return l.bSize;
+        case BID:
+		return l.bid;
+        case ASK:
+		return l.ask;
+        case ASK_SIZE:
+		return l.aSize;
+        case LAST:
+		return l.last;
+        case LAST_SIZE:
+		return l.lSize;
+        case HIGH:
+		return l.hday;
+        case LOW:
+		return l.lday;
+        case VOLUME:
+		return l.vdayp;
+        case CLOSE:
+		return l.cprev;
+        case OPEN:
+		return l.oday;
+		default: {
+				string s;
+				int nT = (int)t;
+
+				s.resize(128, '\0');
+				snprintf(s.data(), s.size(), "Unknow tick type: %d", nT); //static_cast<std::underlying_type_t<TickType>>(t));
+				throw std::runtime_error(s);
+		}
+	}
+}
+void IBTWSApp::tickPrice( TickerId tickerId, TickType field, double price, const TickAttrib& attrib) {
+	SnapData * s = m_snapDataVct->at(tickerId);
+	getFielPtrinLiveData(s->liveData, field) = price;
+	//FIXME fire strategy:
+	s->debug(m_log);
+    // m_log->trace("[{}]: {}, field:{}, price:{}", __PRETTY_FUNCTION__ , tickerId, field, price);
+}
+void IBTWSApp::tickSize(TickerId tickerId, TickType field, Decimal size) {
+	SnapData * s = m_snapDataVct->at(tickerId);
+	getFielPtrinLiveData(s->liveData, field) = decimalToDouble(size);
+	s->debug(m_log);
+    // m_log->trace("[{}]: {}, field:{}, size:{}", __PRETTY_FUNCTION__ , tickerId, field, decimalToDouble(size));
+}
+void IBTWSApp::tickSnapshotEnd( int reqId) {
+	// SnapData * s = m_snapDataVct->at(reqId);
+	// m_semaphore.release();
+    // m_log->trace("[{}]: {}", __PRETTY_FUNCTION__ , reqId);
+	// // m_pClient->reqMktData(reqId++, s->ibContractDetails.contract, "", true, true,TagValueListSPtr()); 
+}
+void IBTWSApp::tickString(TickerId tickerId, TickType tickType, const std::string& value) {
+	// SnapData * s = m_snapDataVct->at(tickerId);
+    // m_log->trace("[{}]: {}, {}, {}", __PRETTY_FUNCTION__ , tickerId, tickType, value);
+
 }

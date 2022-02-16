@@ -21,8 +21,6 @@ using TableData = tuple<SymbolToColIdx,IndexData,ColumnData>;
 
 
 class BigTable{
-    const   char * TIME_FORMAT = "%Y-%m-%d %H:%M:%S";
-
 public:
     int m_fieldsNum {5};
     IndexData m_index;
@@ -58,12 +56,12 @@ public:
         return keys;
     }
     std::pair<IndexData::const_iterator,IndexData::const_iterator> getIndexRange(string start, string end) {
-            time_t ts = strTime2time_t(start.c_str());
-            time_t te = strTime2time_t(end.c_str());
+            time_t ts = utility::strTime2time_t(start.c_str());
+            time_t te = utility::strTime2time_t(end.c_str());
             return getIndexRange(ts,te);
     }
     std::pair<IndexData::const_iterator,IndexData::const_iterator> getIndexRange(string end, int lagDays =28) {
-            time_t te = strTime2time_t(end.c_str());
+            time_t te = utility::strTime2time_t(end.c_str());
             time_t ts = te - lagDays * 3600 * 24;
             // printf("end:%s; ts= %ld,te=%ld lagday=%d\n", end.c_str(),ts,te, lagDays);
             return getIndexRange(ts,te);
@@ -133,7 +131,7 @@ public:
         for(;itRow != reader.end(); itRow++ ) {
             auto itField = itRow->begin();
             string idx = itField->get<>();
-            time_t t = strTime2time_t(idx.c_str());
+            time_t t = utility::strTime2time_t(idx.c_str());
             m_index.push_back(make_pair(idx,t));
             int i = 0;
             for(itField++ ;itField != itRow->end(); itField++){
@@ -145,15 +143,6 @@ public:
         }
 
         return *this;
-    }
-public:
-    time_t strTime2time_t(const char *s, const char *fmt=nullptr) {
-        if (nullptr == fmt) {
-            fmt = TIME_FORMAT;
-        }
-        struct tm timeptr;
-        strptime(s,fmt,&timeptr);
-        return mktime(&timeptr);
     }
 
 };

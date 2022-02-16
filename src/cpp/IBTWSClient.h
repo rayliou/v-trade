@@ -22,6 +22,9 @@ public:
                                 const std::string&  barSizeSetting, const std::string& whatToShow,
                                 int useRTH, int formatDate, bool keepUpToDate, const TagValueListSPtr& chartOptions);
 
+    void reqMktData(TickerId tickerId, const Contract& contract,
+                         const std::string& genericTicks, bool snapshot, bool regulatorySnaphsot, const TagValueListSPtr& mktDataOptions);
+
 private:
     void speedControl(std::list<time_t> &callList, int maxCalls = 50, int seconds = 1);
 private:
