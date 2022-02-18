@@ -120,6 +120,8 @@ public:
     bool connect(const char * host, int port, int clientId = 0);
 	void disconnect() const;
 	bool isConnected() const;
+	OrderId getOrderId() const { return m_orderId;}
+    void waitConnected();
     void setConnectOptions(const std::string& connectOptions);
 	void processMessages();
 	IBTWSClient * getClient () const {return m_pClient;};
@@ -182,4 +184,5 @@ private:
 	std::vector<SnapData *>  * m_snapDataVct {nullptr};
 	std::atomic<int> m_snapUpdatedCnt {0};
     CountingSemaphore m_semaphore {99};
+    std::thread::id m_IBTWSApp_id;
 };

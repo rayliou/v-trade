@@ -3,6 +3,7 @@
 #include "EPosixClientSocketPlatform.h"
 
 void IBTWSApp::run() {
+    m_IBTWSApp_id = std::this_thread::get_id();
 	const char * port = m_cmd.get("--port");
 	const char * cId = m_cmd.get("--client_id");
 	// if ( nullptr == port) {
@@ -24,6 +25,16 @@ void IBTWSApp::run() {
 	}
 	disconnect();
 	return;
+}
+void IBTWSApp::waitConnected() {
+    std::thread::id this_id = std::this_thread::get_id();
+    if (this_id == m_IBTWSApp_id) {
+        throw std::runtime_error("MUST not be called on this thread");
+    }
+    while(!isConnected() || getOrderId() < 0) {
+        m_log->trace("Wait for connecting.....");
+        std::this_thread::sleep_for(std::chrono::microseconds(100));
+    }
 }
 #if 0
 int main(int argc, char * argv[]) {
@@ -93,7 +104,7 @@ void IBTWSApp::error(int id, int errorCode, const std::string& errorString, cons
 	string sym =  "";
     if (nullptr != m_snapDataVct) {
         sym =  (-1 == id)? "": m_snapDataVct->at(id)->symbol;
-        m_log->trace("m_snapDataVct size :{}",m_snapDataVct->size());
+        m_log->trace("m_snapDataVct size :{},id:{}",m_snapDataVct->size(),id);
     }
 
 	if (!advancedOrderRejectJson.empty()) {

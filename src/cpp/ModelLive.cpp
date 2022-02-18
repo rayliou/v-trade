@@ -20,6 +20,15 @@ void ModelLive::run(bool *stopFlag) {
     updateSnapDataLive(3600 * 6.5);
 
 }
+void ModelLive::history(bool *stopFlag) {
+	// $(RUN_DIR)/main_lv history -o $@ --dt $* --durationStr "1 D" --barSizeSetting "5 secs" --whatToShow "TRADES,BID_ASK" --useRTH 1 --formatDate 1 --sym_source model [--timeout 1800]
+    throw std::runtime_error(__PRETTY_FUNCTION__);
+    const int TIMEOUT_CONTRACTS = 30;
+    m_stopFlag = stopFlag;
+    updateSnapDataContracts(TIMEOUT_CONTRACTS);
+    updateSnapDataLive(3600 * 6.5);
+
+}
 void ModelLive::updateSnapDataContracts(int timeout) {
     IBTWSClient *ibClient = m_ib->getClient();
     m_ibSnapDataVct.clear();

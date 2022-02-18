@@ -10,6 +10,7 @@ class ModelLive: public ModelGroup {
 public:
     ModelLive(CmdOption &cmd, IBTWSApp *ib);
     virtual ~ModelLive();
+    virtual void history (bool *stopFlag);
     virtual void run (bool *stopFlag);
 
 private:

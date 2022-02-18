@@ -61,6 +61,7 @@ struct LiveData {
 };
 struct SnapData {
     const int Y20 = 24 *3600 * 365 * 20;
+    SnapData(const std::string &symbol) : symbol(symbol),idx(0),pTable(nullptr) {}
     SnapData(const std::string &symbol, int idx, BigTable *p) : symbol(symbol),idx(idx),pTable(p) {
 
     }
