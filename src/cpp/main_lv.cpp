@@ -14,7 +14,35 @@ LogType g_log = spdlog::stderr_color_mt("main_lv");
 typedef void (*SubCmdFuncPtr) (CmdOption &cmd) ;
 
 void history_daily_deps(CmdOption &cmd) {
-    // ./b/main_lv history_daily_deps  --dt_to 20220125 --days 60    --port 4096
+    // ./b/main_lv history_daily_deps  --dt_to 20220125 --dt_from xxxxx   --port 4096
+
+    auto dt_to    = cmd.get("--dt_to");
+    if(nullptr == dt_to) {
+        throw std::runtime_error("--dt_to MUST be set! --dt_from may be set");
+    }
+    int days = 60;
+    struct tm tmTo;
+    memset(&tmTo,0, sizeof(tmTo));
+    time_t to,from;
+    strptime(dt_to, "%Y%m%d", &tmTo);
+    to = mktime(&tmTo);
+    auto dt_from  = cmd.get("--dt_from");
+    if(nullptr != dt_from) {
+        struct tm tmFrom;
+        memset(&tmFrom,0, sizeof(tmFrom));
+        strptime(dt_from, "%Y%m%d", &tmFrom);
+        from = mktime(&tmFrom);
+        days = (to -from)/(3600 *24);
+    }
+    char buf[64];
+    strftime(buf, sizeof(buf),"%Y%m%d 16:00:00",&tmTo);
+    string endTime(buf);
+    string strDays = "";
+    ostringstream os;
+    os << days << " D";
+    strDays = os.str();
+    g_log->info("end date:{}, days:{}", endTime, strDays);
+
 
     bool stopFlag = false;
     IBTWSApp ib(cmd, stopFlag);
@@ -45,7 +73,7 @@ void history_daily_deps(CmdOption &cmd) {
     ibClient->reqContractDetails(0, contract);
     while(!done) {
         g_log->trace("Wait for reqContractDetails");
-        std::this_thread::sleep_for(std::chrono::seconds(1));
+        std::this_thread::sleep_for(std::chrono::microseconds(50));
     }
     long conId = contract.conId;
     string sym = contract.symbol;
@@ -53,7 +81,9 @@ void history_daily_deps(CmdOption &cmd) {
 
     // get history
     done = false;
+    list<string> dtList;
     auto cb2  = [&] (TickerId reqId, const Bar& bar) -> bool {
+        dtList.push_back(bar.time);
         //s->open = bar.open;
         //s->close = bar.close;
         //s->high = bar.high;
@@ -61,28 +91,39 @@ void history_daily_deps(CmdOption &cmd) {
         //s->volume = bar.volume;
         //s->tm = atol(bar.time.c_str());
         //stop
-        g_log->trace("tm:{},o:{},c:{},h:{},l:{},v:{}", bar.time,bar.open,bar.close,bar.high,bar.low,bar.volume);
+        //g_log->trace("tm:{},o:{},c:{},h:{},l:{},v:{}", bar.time,bar.open,bar.close,bar.high,bar.low,bar.volume);
         return true;
     };
     auto cbEnd  = [&] (int reqId, const std::string& startDateStr, const std::string& endDateStr) -> bool {
         done = true;
         //stop
-        g_log->trace("Call:{} start:{}, end:{}", __PRETTY_FUNCTION__, startDateStr, endDateStr );
+        //g_log->trace("Call:{} start:{}, end:{}", __PRETTY_FUNCTION__, startDateStr, endDateStr );
         return true;
     };
     ib.setCallback(cb2);
     ib.setCallback(cbEnd);
     // https://interactivebrokers.github.io/tws-api/historical_limitations.html#hd_step_sizes
-    ibClient->reqHistoricalData(1, contract, "", "2 M", "1 day", "MIDPOINT", 0, 1/*1 :string, 2: seconds,  */ ,/*keepUpToDate = */ false,TagValueListSPtr()); 
+    ibClient->reqHistoricalData(1, contract, endTime, strDays, "1 day", "MIDPOINT", 0, 1/*1 :string, 2: seconds,  */ ,/*keepUpToDate = */ false,TagValueListSPtr()); 
     while(!done) {
-        std::this_thread::sleep_for(std::chrono::seconds(1));
+        std::this_thread::sleep_for(std::chrono::microseconds(50));
     }
-
-
+    dtList.sort();
+    string sP("");
+    for(auto s: dtList) {
+        if (nullptr != dt_from && s < dt_from) {
+            continue;
+        }
+        s += ".5s.csv";
+        if(!sP.empty()) {
+            cout << s << ":" << sP << endl;
+        }
+        sP = s;
+    }
     stopFlag = true;
-    spdlog::info("Stop !!!");
+    //spdlog::info("Stop !!!");
     thIB.join();
 }
+
 void live(CmdOption &cmd) {
     bool stopFlag = false;
     IBTWSApp ib(cmd, stopFlag);

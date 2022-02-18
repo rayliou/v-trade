@@ -1,3 +1,4 @@
+include global.mk
 GIT_VERSION := $(shell git describe --abbrev=4 --dirty --always --tags)
 CXX=/usr/local/Cellar/gcc/11.2.0_3/bin/g++-11
 AR=/usr/local/Cellar/gcc/11.2.0_3/bin/gcc-ar-11

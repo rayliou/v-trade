@@ -19,7 +19,7 @@ void IBTWSApp::run() {
         std::this_thread::sleep_for(std::chrono::seconds(1));
 	}
 	while(!m_stopFlag && isConnected()) {
-		m_log->trace("m_stopFlag:{}", m_stopFlag);
+		//m_log->trace("m_stopFlag:{}", m_stopFlag);
 		processMessages();
 	}
 	disconnect();
