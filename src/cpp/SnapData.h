@@ -66,7 +66,7 @@ struct SnapData {
 
     }
     bool  isAvailable() { return  idx != -1;} 
-    void debug(LogType log) { 
+    void debug(LogType log, bool lv=false) { 
 #if 0
         if (tm == 0) {
             tm = time(&tm);
@@ -81,11 +81,15 @@ struct SnapData {
         }
 #endif
 
-        char buf[64];
-        ctime_r(&tm, buf);
-        //std::ctime_s(&buf, sizeof(buf),&tm);
-        // log->debug("idx:{},sym:{},open:{},close:{},high:{},low:{},volume:{},tm:{}", idx, symbol, open, close, high, low,volume,buf); 
-        log->debug("idx:{},sym:{}:liveData:{}", idx, symbol,(const string)liveData);
+        if(lv) {
+            log->debug("idx:{},sym:{}:liveData:{}", idx, symbol,(const string)liveData);
+        }
+        else {
+            char buf[64];
+            ctime_r(&tm, buf);
+            //std::ctime_s(&buf, sizeof(buf),&tm);
+             log->debug("idx:{},sym:{},open:{},close:{},high:{},low:{},volume:{},tm:{}/{}", idx, symbol, open, close, high, low,volume,tmStr, buf); 
+        }
     }
     void update(float o, float h, float l, float c, int v, time_t t) {
         open = o;
@@ -107,5 +111,6 @@ struct SnapData {
     float low {0.0};
     int   volume {0};
     time_t tm {0};
+    std::string tmStr ;
 };
 using SnapDataMap= std::map<std::string, SnapData>;

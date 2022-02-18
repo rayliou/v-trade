@@ -128,6 +128,7 @@ public:
 	int getSnapUpdateCnt () const {return m_snapUpdatedCnt.load();};
 	void resetSnapUpdateCnt () {m_snapUpdatedCnt =0;  };
 	void setSnapDataVct(vector<SnapData *>  * snapDataVct) {m_snapDataVct = snapDataVct; }
+    void setJThread(std::jthread * j) {m_jthread = j; }
     using PcontractDetails = std::function<bool ( int reqId, const ContractDetails& contractDetails)>;
 	using PhistoricalData=std::function<bool (TickerId reqId, const Bar& bar)>;
 	using PhistoricalDataEnd=std::function<bool (int reqId, const std::string& startDateStr, const std::string& endDateStr) >;
@@ -183,6 +184,7 @@ private:
 	bool & m_stopFlag;
 	std::vector<SnapData *>  * m_snapDataVct {nullptr};
 	std::atomic<int> m_snapUpdatedCnt {0};
-    CountingSemaphore m_semaphore {99};
+    CountingSemaphore m_semaphore {50};
     std::thread::id m_IBTWSApp_id;
+    std::jthread * m_jthread {nullptr};
 };

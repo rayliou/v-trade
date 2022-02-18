@@ -1,4 +1,4 @@
-//g++ -g  -std=c++17  ./bigcsv.cpp -o b && ./b
+//g++ -g  -std=c++20  ./bigcsv.cpp -o b && ./b
 //
 #include "common.h"
 #include <execution>
@@ -17,7 +17,20 @@ typedef void (*SubCmdFuncPtr) (CmdOption &cmd) ;
 
 
 void history(CmdOption &cmd) {
-	// $(RUN_DIR)/main_lv history -o $@ --dt $* --durationStr "1 D" --barSizeSetting "5 secs" --whatToShow "TRADES,BID_ASK" --useRTH 1 --formatDate 1 --sym_source model [--timeout 1800]
+	// $(RUN_DIR)/main_lv history -o $@ --dt $* --barSizeSetting "5 secs" --whatToShow "TRADES,BID_ASK" --useRTH 1 --formatDate 1 --sym_source model [--timeout 1800]
+    // $(RUN_DIR)/main_lv history -o $@ --dt $* --barSizeSetting "5 secs" --whatToShow "TRADES,BID_ASK" --useRTH 1 --formatDate 1 --sym_source model [--timeout 1800]
+    const char * dt = cmd.get("--dt");
+    const char * barSizeSetting = cmd.get("--barSizeSetting");
+    ARG_NOT_NULL(dt);
+    ARG_NOT_NULL(barSizeSetting);
+
+    const char * durationStr = "3600 S";
+    const char * whatToShow = cmd.get("--whatToShow");
+    whatToShow = (nullptr == whatToShow)?"TRADES":whatToShow;
+    const char * useRTH = cmd.get("--useRTH");
+    int nUseRTH = (nullptr == useRTH )? 1: atoi(useRTH);
+    const char * formatDate = cmd.get("--formatDate");
+    int nFormatDate = (nullptr ==formatDate )? 1: atoi(formatDate );
     //
     auto symSource    = cmd.get("--sym_source");
     if(nullptr == symSource) {
@@ -44,6 +57,7 @@ void history(CmdOption &cmd) {
         std::jthread thIB(&IBTWSApp::run, &ib0);
         ib0.waitConnected();
         IBTWSApp* ib = &ib0;
+        ib->setJThread(&thIB);
         //g_log->trace("sleep 5s");
         //std::this_thread::sleep_for(std::chrono::seconds(5));
         //g_log->trace("after sleep 5s");
@@ -52,9 +66,7 @@ void history(CmdOption &cmd) {
         m_ibSnapDataVct.clear();
         g_log->trace("call setSnapDataVct ");
         ib->setSnapDataVct(&m_ibSnapDataVct);
-        g_log->trace("before resetSnapUpdateCnt");
         ib->resetSnapUpdateCnt();
-        g_log->trace("After resetSnapUpdateCnt");
 
 
         int reqId = 0;
@@ -64,24 +76,72 @@ void history(CmdOption &cmd) {
             contract.secType = "STK";
             contract.currency = "USD";
             contract.exchange = "SMART";
+            if( s == "LLY" ) {
+                contract.primaryExchange = "NYSE";
+            }
+            if(s == "CD" ) {
+                contract.primaryExchange = "NASDAQ";
+            }
             auto v = new SnapData(s);
             v->ibUpdated = false;
             m_ibSnapDataVct.push_back(v);
-            g_log->trace("reqContractDetails({},{})", reqId, s);
+            //g_log->trace("reqContractDetails({},{})", reqId, s);
             ibClient->reqContractDetails(reqId++, contract);
         }
         int doneCnt ;
         auto total = symbolsSet.size();
-        total = 112;
         while ( (doneCnt = ib->getSnapUpdateCnt()) < total) {
-            g_log->trace("wait:{}/{}",doneCnt, total );
+            g_log->trace("wait:{}/{}:reqContractDetails",doneCnt, total );
             std::this_thread::sleep_for(std::chrono::seconds(1));
         }
-        for(auto v:m_ibSnapDataVct) {
-            v->debug(g_log);
-            delete v;
+        //for(auto v:m_ibSnapDataVct) {
+            //v->debug(g_log);
+            //delete v;
+        //}
+        reqId = 0;
+        ib->resetSnapUpdateCnt();
+
+        struct tm tmTo;
+        memset(&tmTo,0, sizeof(tmTo));
+        strptime(dt, "%Y%m%d", &tmTo);
+        char buf[64];
+        strftime(buf, sizeof(buf),"%Y%m%d ",&tmTo);
+        list<string> timeList {
+            "10:00:00",
+            "11:00:00",
+            "12:00:00",
+            "13:00:00",
+            "14:00:00",
+            "15:00:00",
+            "16:00:00",
+                };
+        for (auto &strTime: timeList) {
+            string endTime(buf);
+            endTime += strTime;
+            durationStr = (strTime == "")?"1800 S":"3600 S";
+            for(SnapData * s: m_ibSnapDataVct){
+                auto c = s->ibContractDetails->contract;
+                // https://interactivebrokers.github.io/tws-api/classIBApi_1_1EClient.html#aad87a15294377608e59aec1d87420594
+                //ibClient->reqHistoricalData(reqId++, c, "", "200 S", "5 secs", "MIDPOINT", 0, 2/*1 :string, 2: seconds,  */ ,/*keepUpToDate = */ false,TagValueListSPtr()); 
+                g_log->debug("reqHistoricalData([{}/{}],{},'{}','{}','{}',{},{},{})"
+                        ,reqId,total, c.symbol, endTime, durationStr, barSizeSetting, whatToShow, nUseRTH, nFormatDate);
+                ibClient->reqHistoricalData(reqId++, c, endTime, durationStr, barSizeSetting, whatToShow, nUseRTH, nFormatDate/*1 :string, 2: seconds,  */ ,/*keepUpToDate = */ false,TagValueListSPtr()); 
+            }
+            while ( (doneCnt = ib->getSnapUpdateCnt()) < total) {
+                g_log->trace("wait:{}/{}:reqHistoricalData",doneCnt, total );
+                std::this_thread::sleep_for(std::chrono::seconds(1));
+            }
+            for(auto v:m_ibSnapDataVct) {
+                v->debug(g_log);
+                delete v;
+            }
         }
+
+        spdlog::info("Stop !!!");
+        stopFlag = true;
         //delete ib ;
+        //spdlog::info("Stop !!!");
+        //thIB.join();
 
 #if 0
 

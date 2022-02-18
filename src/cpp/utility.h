@@ -10,18 +10,6 @@ namespace utility {
         strptime(s,fmt,&timeptr);
         return mktime(&timeptr);
     }
-    inline std::vector<std::string>  strSplit(std::string str, const char delim , bool removeEmpty =false) {
-        std::vector<std::string> ret;
-        std::istringstream ss(str);
-        std::string v;
-        while( getline(ss, v, delim)){
-            if (removeEmpty && v == "" ) {
-                continue;
-            }
-            ret.push_back(v);
-        }
-        return ret;
-    }
     const std::string WHITESPACE = " \n\r\t\f\v";
     inline 
     std::string ltrim(const std::string &s) {
@@ -35,5 +23,19 @@ namespace utility {
     }
     inline 
     std::string trim(const std::string &s) { return rtrim(ltrim(s)); }
+
+    inline std::vector<std::string>  strSplit(std::string str, const char delim , bool removeEmpty =false, bool strip = true) {
+        std::vector<std::string> ret;
+        std::istringstream ss(str);
+        std::string v;
+        while( getline(ss, v, delim)){
+            v = strip?trim(v):v;
+            if (removeEmpty && v == "" ) {
+                continue;
+            }
+            ret.push_back(v);
+        }
+        return ret;
+    }
 };
 

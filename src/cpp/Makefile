@@ -4,7 +4,7 @@ RUN_DIR=./b
 t: $(RUN_DIR)/history_daily_deps.mk
 	echo $@
 
-bt:
+bt:xbuild
 	cd $(RUN_DIR) && ln -sf ../*.mk .
 	make -C $(RUN_DIR)  -f bt.mk 20220126.5s.csv
 t1:xbuild

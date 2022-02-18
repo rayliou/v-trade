@@ -121,7 +121,7 @@ void IBTWSApp::nextValidId( OrderId orderId) {
     m_log->trace("End:{}", __PRETTY_FUNCTION__ );
 }
 void IBTWSApp::contractDetails( int reqId, const ContractDetails& contractDetails) {
-     m_log->trace("Call:{}", __PRETTY_FUNCTION__ );
+     //m_log->trace("Call:{}", __PRETTY_FUNCTION__ );
     if(pcontractDetails != nullptr && pcontractDetails(reqId,contractDetails)) {
         //stop
         return;
@@ -147,8 +147,12 @@ void IBTWSApp::historicalDataEnd(int reqId, const std::string& startDateStr, con
         //stop
         return;
     }
-	m_semaphore.release();
-    m_log->trace("Call:{}", __PRETTY_FUNCTION__ );
+    if(nullptr != m_snapDataVct) {
+        SnapData * s = m_snapDataVct->at(reqId);
+        m_semaphore.release();
+        --m_snapUpdatedCnt;
+        m_log->trace("Call:{},symbol:{},start:{},end:{}", __PRETTY_FUNCTION__ ,s->symbol, startDateStr, endDateStr);
+    }
 
 }
 void IBTWSApp::historicalData(TickerId reqId, const Bar& bar) {
@@ -172,7 +176,8 @@ void IBTWSApp::updateSnapByBar(TickerId reqId, const Bar& bar) {
 	s->low  = bar.low;
 	s->volume = bar.volume;
 	s->tm = atol(bar.time.c_str());
-	s->debug(m_log);
+    s->tmStr = bar.time;
+	s->debug(m_log,false);
 }
 inline double & getFielPtrinLiveData(LiveData &l, TickType t) {
 	//  https://interactivebrokers.github.io/tws-api/tick_types.html
