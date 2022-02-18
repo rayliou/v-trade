@@ -11,7 +11,15 @@ void IBTWSApp::run() {
 	int p = nullptr == port ? 7496:atoi(port);
 	int clientId = nullptr == cId ? 0:atoi(cId);
 	connect("127.0.0.1", p,clientId);
+	for(int i =0; i < 10; i++){
+		if(isConnected()) {
+			break;
+		}
+		m_log->trace("Connectting......");
+        std::this_thread::sleep_for(std::chrono::seconds(1));
+	}
 	while(!m_stopFlag && isConnected()) {
+		m_log->trace("m_stopFlag:{}", m_stopFlag);
 		processMessages();
 	}
 	disconnect();
@@ -33,6 +41,7 @@ int main(int argc, char * argv[]) {
 
 IBTWSApp::IBTWSApp (CmdOption &cmd, bool &stopFlag) 
     :m_cmd(cmd), m_stopFlag(stopFlag), m_pClient(new IBTWSClient(&m_semaphore,this, &m_osSignal)) {
+    m_log = spdlog::stderr_color_mt("IBTWSApp");
 
  }
 IBTWSApp::~IBTWSApp(){
@@ -70,7 +79,7 @@ void IBTWSApp::disconnect() const {
 	m_log->info("Disconnected");
 }
 
-bool IBTWSApp::isConnected() const { return m_pClient->isConnected(); }
+bool IBTWSApp::isConnected() const { return m_orderId > -1 &&  m_pClient->isConnected(); }
 void IBTWSApp::setConnectOptions(const std::string& connectOptions) { m_pClient->setConnectOptions(connectOptions); }
 void IBTWSApp::processMessages()
 {
@@ -81,10 +90,12 @@ void IBTWSApp::processMessages()
 	m_pReader->processMsgs();
 }
 void IBTWSApp::error(int id, int errorCode, const std::string& errorString, const std::string& advancedOrderRejectJson) {
+	string sym =  (-1 == id)? "": m_snapDataVct->at(id)->symbol;
+
 	if (!advancedOrderRejectJson.empty()) {
-		m_log->error("Error. Id: {}, Code: {}, Msg: {}, AdvancedOrderRejectJson: {}", id, errorCode, errorString.c_str(), advancedOrderRejectJson.c_str());
+		m_log->error("Error. Id: {}:{}, Code: {}, Msg: {}, AdvancedOrderRejectJson: {}", id,sym, errorCode, errorString.c_str(), advancedOrderRejectJson.c_str());
 	} else {
-	m_log->error("Error. Id: {}, Code: {}, Msg: {}", id, errorCode, errorString.c_str());
+	m_log->error("Error. Id: {}:{}, Code: {}, Msg: {}", id,sym, errorCode, errorString.c_str());
 	}
 }
 
@@ -95,6 +106,11 @@ void IBTWSApp::nextValidId( OrderId orderId) {
     m_log->trace("End:{}", __PRETTY_FUNCTION__ );
 }
 void IBTWSApp::contractDetails( int reqId, const ContractDetails& contractDetails) {
+     m_log->trace("Call:{}", __PRETTY_FUNCTION__ );
+    if(pcontractDetails != nullptr && pcontractDetails(reqId,contractDetails)) {
+        //stop
+        return;
+    }
 	// auto tid = std::this_thread::get_id();
 	m_semaphore.release();
 	++m_snapUpdatedCnt;
@@ -112,11 +128,19 @@ void IBTWSApp::contractDetails( int reqId, const ContractDetails& contractDetail
     // m_log->trace("End:{}", __PRETTY_FUNCTION__ );
 }
 void IBTWSApp::historicalDataEnd(int reqId, const std::string& startDateStr, const std::string& endDateStr) {
+    if(phistoricalDataEnd != nullptr && phistoricalDataEnd(reqId,  startDateStr,  endDateStr)) {
+        //stop
+        return;
+    }
 	m_semaphore.release();
     m_log->trace("Call:{}", __PRETTY_FUNCTION__ );
 
 }
 void IBTWSApp::historicalData(TickerId reqId, const Bar& bar) {
+    if(phistoricalData != nullptr && phistoricalData(reqId,  bar)) {
+        //stop
+        return;
+    }
     m_log->trace("Call:{}", __PRETTY_FUNCTION__ );
 	updateSnapByBar(reqId,bar);
 
@@ -173,6 +197,12 @@ inline double & getFielPtrinLiveData(LiveData &l, TickType t) {
 void IBTWSApp::tickPrice( TickerId tickerId, TickType field, double price, const TickAttrib& attrib) {
 	SnapData * s = m_snapDataVct->at(tickerId);
 	getFielPtrinLiveData(s->liveData, field) = price;
+	if( ASK != field) {
+		return;
+	}
+	if ( std::fabs(s->liveData.bid - s->liveData.ask)/s->liveData.ask > 0.05 ) {
+		return;
+	}
 	//FIXME fire strategy:
 	s->debug(m_log);
     // m_log->trace("[{}]: {}, field:{}, price:{}", __PRETTY_FUNCTION__ , tickerId, field, price);
@@ -180,7 +210,7 @@ void IBTWSApp::tickPrice( TickerId tickerId, TickType field, double price, const
 void IBTWSApp::tickSize(TickerId tickerId, TickType field, Decimal size) {
 	SnapData * s = m_snapDataVct->at(tickerId);
 	getFielPtrinLiveData(s->liveData, field) = decimalToDouble(size);
-	s->debug(m_log);
+	// s->debug(m_log);
     // m_log->trace("[{}]: {}, field:{}, size:{}", __PRETTY_FUNCTION__ , tickerId, field, decimalToDouble(size));
 }
 void IBTWSApp::tickSnapshotEnd( int reqId) {

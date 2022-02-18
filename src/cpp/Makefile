@@ -1,7 +1,9 @@
 
-t:build
-	 ./b/main_lv --conf  ./conf/v-trade.json
-build:b
+t:xbuild
+	 ./b/main_lv live --conf  ./conf/v-trade.json
+	 #./b/main_lv history_daily_deps
+	 #./b/main_lv --conf  ./conf/v-trade.json
+xbuild:b
 	make -C b
 b:
 	mkdir b

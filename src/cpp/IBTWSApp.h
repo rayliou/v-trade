@@ -1,5 +1,6 @@
 ﻿#pragma once
 #include <atomic>
+#include <functional>
 #include "common.h"
 #include "DefaultEWrapper.h"
 
@@ -125,21 +126,32 @@ public:
 	int getSnapUpdateCnt () const {return m_snapUpdatedCnt.load();};
 	void resetSnapUpdateCnt () {m_snapUpdatedCnt =0;  };
 	void setSnapDataVct(vector<SnapData *>  * snapDataVct) {m_snapDataVct = snapDataVct; }
+    using PcontractDetails = std::function<bool ( int reqId, const ContractDetails& contractDetails)>;
+	using PhistoricalData=std::function<bool (TickerId reqId, const Bar& bar)>;
+	using PhistoricalDataEnd=std::function<bool (int reqId, const std::string& startDateStr, const std::string& endDateStr) >;
+
+    void setCallback(PcontractDetails p) {pcontractDetails =p;}
+    void setCallback(PhistoricalData p) {phistoricalData =p;}
+    void setCallback(PhistoricalDataEnd p) {phistoricalDataEnd =p;}
 
 private:
 
     virtual void error(int id, int errorCode, const std::string& errorString, const std::string& advancedOrderRejectJson) ;
 	virtual void nextValidId( OrderId orderId);
 	virtual void contractDetails( int reqId, const ContractDetails& contractDetails);
+	PcontractDetails pcontractDetails {nullptr};
 
 	virtual void historicalData(TickerId reqId, const Bar& bar);
+	PhistoricalData phistoricalData {nullptr};
 	virtual void historicalDataEnd(int reqId, const std::string& startDateStr, const std::string& endDateStr);
+	PhistoricalDataEnd phistoricalDataEnd {nullptr};
 	virtual void historicalDataUpdate(TickerId reqId, const Bar& bar);
 
 	virtual void tickPrice( TickerId tickerId, TickType field, double price, const TickAttrib& attrib);
 	virtual void tickSize(TickerId tickerId, TickType field, Decimal size);
 	virtual void tickSnapshotEnd( int reqId);
 	virtual void tickString(TickerId tickerId, TickType tickType, const std::string& value);
+#if 0
 
 	virtual void tickOptionComputation( TickerId tickerId, TickType tickType, int tickAttrib, double impliedVol, double delta, double optPrice, double pvDividend, double gamma, double vega, double theta, double undPrice){throw std::runtime_error(__PRETTY_FUNCTION__); }
 	virtual void tickGeneric(TickerId tickerId, TickType tickType, double value){throw std::runtime_error(__PRETTY_FUNCTION__); }
@@ -147,6 +159,7 @@ private:
 	virtual void orderStatus( OrderId orderId, const std::string& status, Decimal filled, Decimal remaining, double avgFillPrice, int permId, int parentId, double lastFillPrice, int clientId, const std::string& whyHeld, double mktCapPrice){throw std::runtime_error(__PRETTY_FUNCTION__); }
 	virtual void openOrder( OrderId orderId, const Contract&, const Order&, const OrderState&){throw std::runtime_error(__PRETTY_FUNCTION__); }
 	virtual void openOrderEnd(){throw std::runtime_error(__PRETTY_FUNCTION__); }
+#endif
 
 
 private:
@@ -160,7 +173,7 @@ private:
 	std::unique_ptr<EReader> m_pReader;
 
 	time_t m_sleepDeadline {0};
-	OrderId m_orderId {0};
+	OrderId m_orderId {-1};
     bool m_extraAuth {false};
 	std::string m_bboExchange;
     LogType  m_log;

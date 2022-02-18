@@ -1,3 +1,10 @@
+## flow
+1. Get Daily data of SPY. 
+1. Generate yyyymmDD.csv dependences. first later, last earlier
+1. Get data day by day. (5 seconds)
+1. Backtest.
+
+
 ## IBKR API compile
 
 https://groups.io/g/twsapi/topic/c_upgrade_api_to_10_11/87904832?p=,,,20,0,0,0::recentpostdate/sticky,,,20,2,20,87904832,previd=1640328166371234878,nextid=1639126360059394114&previd=1640328166371234878&nextid=1639126360059394114

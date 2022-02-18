@@ -3,6 +3,7 @@
 #include "common.h"
 #include "strategy.h"
 #include <time.h>
+#include <string.h>
 #include <any>
 #include <map>
 #include "contract.h"
@@ -33,18 +34,27 @@ struct LiveData {
     double oday, cprev;
     double hday, lday;
     double vdayp;
+    LiveData () {
+        memset(this, 0, sizeof(*this));
+    }
     operator const std::string () const {
+        #define OUT_F(t) os << #t << ": " << t << ","
         std::ostringstream os;
         os << "oday:" << oday << "," << "cprev:" << cprev << ",";
         os << "hday:" << hday << "," << "lday:" << lday << ",";
         os << "vdayp:" << vdayp << ",";
 
-        os << "bid:" << bid << ",";
-        os << "bSize:" << bSize << ",";
-        os << "ask:" << ask << ",";
-        os << "aSize:" << aSize << ",";
-        os << "last:" << last << ",";
-        os << "lSize:" << lSize << ",";
+        OUT_F(oday); OUT_F(cprev);
+        OUT_F(hday); OUT_F(lday);
+        OUT_F(vdayp);
+        OUT_F(bid);
+        OUT_F(bSize);
+        OUT_F(ask);
+        OUT_F(aSize);
+        OUT_F(last);
+        OUT_F(lSize);
+        #undef OUT_F
+
         return os.str();
     }
 
@@ -74,7 +84,7 @@ struct SnapData {
         ctime_r(&tm, buf);
         //std::ctime_s(&buf, sizeof(buf),&tm);
         // log->debug("idx:{},sym:{},open:{},close:{},high:{},low:{},volume:{},tm:{}", idx, symbol, open, close, high, low,volume,buf); 
-        log->debug("idx:{},sym:{}:liveData:{}", idx, symbol,buf, (const string)liveData);
+        log->debug("idx:{},sym:{}:liveData:{}", idx, symbol,(const string)liveData);
     }
     void update(float o, float h, float l, float c, int v, time_t t) {
         open = o;
