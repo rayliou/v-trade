@@ -29,7 +29,7 @@ void history_daily_deps(CmdOption &cmd) {
     IBTWSClient *ibClient = ib.getClient();
 
     Contract contract;
-    contract.symbol = "LI";
+    contract.symbol = "SPY";
     contract.secType = "STK";
     contract.currency = "USD";
     contract.exchange = "SMART";

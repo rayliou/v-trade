@@ -79,7 +79,7 @@ void IBTWSApp::disconnect() const {
 	m_log->info("Disconnected");
 }
 
-bool IBTWSApp::isConnected() const { return m_orderId > -1 &&  m_pClient->isConnected(); }
+bool IBTWSApp::isConnected() const { return  m_pClient->isConnected(); }
 void IBTWSApp::setConnectOptions(const std::string& connectOptions) { m_pClient->setConnectOptions(connectOptions); }
 void IBTWSApp::processMessages()
 {
@@ -90,7 +90,11 @@ void IBTWSApp::processMessages()
 	m_pReader->processMsgs();
 }
 void IBTWSApp::error(int id, int errorCode, const std::string& errorString, const std::string& advancedOrderRejectJson) {
-	string sym =  (-1 == id)? "": m_snapDataVct->at(id)->symbol;
+	string sym =  "";
+    if (nullptr != m_snapDataVct) {
+        sym =  (-1 == id)? "": m_snapDataVct->at(id)->symbol;
+        m_log->trace("m_snapDataVct size :{}",m_snapDataVct->size());
+    }
 
 	if (!advancedOrderRejectJson.empty()) {
 		m_log->error("Error. Id: {}:{}, Code: {}, Msg: {}, AdvancedOrderRejectJson: {}", id,sym, errorCode, errorString.c_str(), advancedOrderRejectJson.c_str());
