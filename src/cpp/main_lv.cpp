@@ -108,33 +108,28 @@ void history(CmdOption &cmd) {
             //delete v;
         //}
         Ohlcv::TimeMapOhlcv timeMapOhlcv;
+        Ohlcv::ValuesOhlcv valuesOhlcv(total);
+        reqId = 0;
+        for(SnapData * s: m_ibSnapDataVct){
+            auto c = s->ibContractDetails->contract;
+            valuesOhlcv[reqId++] = Ohlcv(c.symbol);
+        }
+        ib->setReceiver(&valuesOhlcv, &timeMapOhlcv);
+
         struct tm tmTo;
         memset(&tmTo,0, sizeof(tmTo));
         strptime(dt, "%Y%m%d", &tmTo);
         char buf[64];
-        strftime(buf, sizeof(buf),"%Y%m%d ",&tmTo);
-        list<string> timeList {
-            "10:00:00",
-            //"11:00:00",
-            //"12:00:00",
-            //"13:00:00",
-            //"14:00:00",
-            //"15:00:00",
-            // "16:00:00",
-                };
-        for (auto &strTime: timeList) {
-            string endTime(buf);
-            endTime += strTime;
-            durationStr = (strTime == "10:00:00")?"1800 S":"3600 S";
+        strftime(buf, sizeof(buf),"%Y%m%d  ",&tmTo);
 
-            Ohlcv::ValuesOhlcv valuesOhlcv(total);
-            reqId = 0;
-            ib->setReceiver(&valuesOhlcv, &timeMapOhlcv);
+        string endTime(buf);
+        string startTime(buf);
+        //startTime += "09:30:00";
+        startTime += "15:00:00";
+        endTime += "16:00:00";
+        while  (timeMapOhlcv.empty() || (endTime = timeMapOhlcv.begin()->first) > startTime) {
+            durationStr = "1800 S";
             ib->resetSnapUpdateCnt();
-            for(SnapData * s: m_ibSnapDataVct){
-                auto c = s->ibContractDetails->contract;
-                valuesOhlcv[reqId++] = Ohlcv(c.symbol);
-            }
             reqId = 0;
             for(SnapData * s: m_ibSnapDataVct){
                 auto c = s->ibContractDetails->contract;
@@ -149,6 +144,11 @@ void history(CmdOption &cmd) {
                 g_log->trace("wait:{}/{}:reqHistoricalData",doneCnt, total );
                 std::this_thread::sleep_for(std::chrono::seconds(1));
             }
+            g_log->trace("timeMapOhlcv.empty:{}", timeMapOhlcv.empty());
+            bool ret = (endTime = timeMapOhlcv.begin()->first) > startTime;
+            g_log->trace("{} = (endTime:{} = timeMapOhlcv.begin() ->first:{}    ) > startTime {} ",ret,  endTime,timeMapOhlcv.begin()->first,startTime);
+
+
         }
         for(auto v:m_ibSnapDataVct) {
             delete v;
