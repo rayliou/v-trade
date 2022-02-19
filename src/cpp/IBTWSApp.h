@@ -137,6 +137,8 @@ public:
     void setCallback(PhistoricalData p) {phistoricalData =p;}
     void setCallback(PhistoricalDataEnd p) {phistoricalDataEnd =p;}
 
+	void setReceiver(Ohlcv::ValuesOhlcv * v,Ohlcv::TimeMapOhlcv *m) {m_emptyValuesOhlcv = v;m_timeMapOhlcv =m;}
+
 private:
 
     virtual void error(int id, int errorCode, const std::string& errorString, const std::string& advancedOrderRejectJson) ;
@@ -187,4 +189,6 @@ private:
     CountingSemaphore m_semaphore {50};
     std::thread::id m_IBTWSApp_id;
     std::jthread * m_jthread {nullptr};
+	Ohlcv::ValuesOhlcv  * m_emptyValuesOhlcv {nullptr};
+	Ohlcv::TimeMapOhlcv  *m_timeMapOhlcv {nullptr};
 };

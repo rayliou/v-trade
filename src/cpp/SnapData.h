@@ -7,6 +7,7 @@
 #include <any>
 #include <map>
 #include "contract.h"
+#include "Ohlcv.h"
                    //
 //using namespace std;
 //
@@ -40,10 +41,6 @@ struct LiveData {
     operator const std::string () const {
         #define OUT_F(t) os << #t << ": " << t << ","
         std::ostringstream os;
-        os << "oday:" << oday << "," << "cprev:" << cprev << ",";
-        os << "hday:" << hday << "," << "lday:" << lday << ",";
-        os << "vdayp:" << vdayp << ",";
-
         OUT_F(oday); OUT_F(cprev);
         OUT_F(hday); OUT_F(lday);
         OUT_F(vdayp);
@@ -59,10 +56,10 @@ struct LiveData {
     }
 
 };
-struct SnapData {
+struct SnapData: public Ohlcv {
     const int Y20 = 24 *3600 * 365 * 20;
-    SnapData(const std::string &symbol) : symbol(symbol),idx(0),pTable(nullptr) {}
-    SnapData(const std::string &symbol, int idx, BigTable *p) : symbol(symbol),idx(idx),pTable(p) {
+    SnapData(const std::string &symbol) : Ohlcv(symbol),idx(0),pTable(nullptr) {}
+    SnapData(const std::string &symbol, int idx, BigTable *p) : Ohlcv(symbol),idx(idx),pTable(p) {
 
     }
     bool  isAvailable() { return  idx != -1;} 
@@ -104,13 +101,5 @@ struct SnapData {
     std::unique_ptr<ContractDetails> ibContractDetails {nullptr};
     bool ibUpdated {false};
     LiveData liveData;
-    std::string symbol;
-    float open {0.0};
-    float close {0.0};
-    float high {0.0};
-    float low {0.0};
-    int   volume {0};
-    time_t tm {0};
-    std::string tmStr ;
 };
 using SnapDataMap= std::map<std::string, SnapData>;

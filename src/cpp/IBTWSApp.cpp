@@ -142,6 +142,7 @@ void IBTWSApp::contractDetails( int reqId, const ContractDetails& contractDetail
 	// m_log->debug("contractDetails: reqId,UpCnt {}/{} {},{}",reqId, m_snapUpdatedCnt.load(), sym, conId);
     // m_log->trace("End:{}", __PRETTY_FUNCTION__ );
 }
+//static vector<int> g_historicalCnts(200,0);
 void IBTWSApp::historicalDataEnd(int reqId, const std::string& startDateStr, const std::string& endDateStr) {
     if(phistoricalDataEnd != nullptr && phistoricalDataEnd(reqId,  startDateStr,  endDateStr)) {
         //stop
@@ -150,19 +151,26 @@ void IBTWSApp::historicalDataEnd(int reqId, const std::string& startDateStr, con
     if(nullptr != m_snapDataVct) {
         SnapData * s = m_snapDataVct->at(reqId);
         m_semaphore.release();
-        --m_snapUpdatedCnt;
-        m_log->trace("Call:{},symbol:{},start:{},end:{}", __PRETTY_FUNCTION__ ,s->symbol, startDateStr, endDateStr);
+        ++m_snapUpdatedCnt;
+        m_log->trace("Call:historicalDataEnd:symbol:{}, reqId: {}:start:{},end:{}", /*__PRETTY_FUNCTION__ ,*/s->symbol, reqId, startDateStr, endDateStr);
     }
 
 }
 void IBTWSApp::historicalData(TickerId reqId, const Bar& bar) {
+
     if(phistoricalData != nullptr && phistoricalData(reqId,  bar)) {
         //stop
         return;
     }
-    m_log->trace("Call:{}", __PRETTY_FUNCTION__ );
-	updateSnapByBar(reqId,bar);
+	auto it = m_timeMapOhlcv->find(bar.time);
+	if (it == m_timeMapOhlcv->end()) {
+		it = m_timeMapOhlcv->insert({bar.time, *m_emptyValuesOhlcv}).first;
 
+	}
+	it->second[reqId] = bar;
+	//it->second[reqId].debug(m_log);
+
+    // m_log->trace("Call:{}", __PRETTY_FUNCTION__ );
 }
 void IBTWSApp::historicalDataUpdate(TickerId reqId, const Bar& bar) {
     m_log->trace("Call:{}", __PRETTY_FUNCTION__ );

@@ -13,14 +13,16 @@
 // https://interactivebrokers.github.io/tws-api/client_wrapper.html#ewrapper_impl
 LogType g_log = spdlog::stderr_color_mt("main_lv");
 typedef void (*SubCmdFuncPtr) (CmdOption &cmd) ;
-#define ARG_NOT_NULL(arg) if(nullptr == arg) { throw std::runtime_error("argv --"  #arg "is needed."); }
+#define ARG_NOT_NULL(arg) if(nullptr == arg) { throw std::runtime_error("argv --"  #arg " is needed."); }
 
 
 void history(CmdOption &cmd) {
 	// $(RUN_DIR)/main_lv history -o $@ --dt $* --barSizeSetting "5 secs" --whatToShow "TRADES,BID_ASK" --useRTH 1 --formatDate 1 --sym_source model [--timeout 1800]
     // $(RUN_DIR)/main_lv history -o $@ --dt $* --barSizeSetting "5 secs" --whatToShow "TRADES,BID_ASK" --useRTH 1 --formatDate 1 --sym_source model [--timeout 1800]
+    const char * output = cmd.get("--output");
     const char * dt = cmd.get("--dt");
     const char * barSizeSetting = cmd.get("--barSizeSetting");
+    ARG_NOT_NULL(output);
     ARG_NOT_NULL(dt);
     ARG_NOT_NULL(barSizeSetting);
 
@@ -90,17 +92,22 @@ void history(CmdOption &cmd) {
         }
         int doneCnt ;
         auto total = symbolsSet.size();
+        bool ret =  ( (doneCnt = ib->getSnapUpdateCnt()) < total);
+        g_log->trace("( (doneCnt {}  = ib->getSnapUpdateCnt() {}  ) < total {} ) ={} ;", doneCnt,ib->getSnapUpdateCnt() ,total, ret);
+
         while ( (doneCnt = ib->getSnapUpdateCnt()) < total) {
             g_log->trace("wait:{}/{}:reqContractDetails",doneCnt, total );
             std::this_thread::sleep_for(std::chrono::seconds(1));
+            bool ret =  ( (doneCnt = ib->getSnapUpdateCnt()) < total);
+            g_log->trace("( (doneCnt {}  = ib->getSnapUpdateCnt() {}  ) < total {} ) ={} ;", doneCnt,ib->getSnapUpdateCnt() ,total, ret);
         }
+        ret =  ( (doneCnt = ib->getSnapUpdateCnt()) < total);
+        g_log->trace("AFTER ( (doneCnt {}  = ib->getSnapUpdateCnt() {}  ) < total {} ) ={} ;", doneCnt,ib->getSnapUpdateCnt() ,total, ret);
         //for(auto v:m_ibSnapDataVct) {
             //v->debug(g_log);
             //delete v;
         //}
-        reqId = 0;
-        ib->resetSnapUpdateCnt();
-
+        Ohlcv::TimeMapOhlcv timeMapOhlcv;
         struct tm tmTo;
         memset(&tmTo,0, sizeof(tmTo));
         strptime(dt, "%Y%m%d", &tmTo);
@@ -108,19 +115,30 @@ void history(CmdOption &cmd) {
         strftime(buf, sizeof(buf),"%Y%m%d ",&tmTo);
         list<string> timeList {
             "10:00:00",
-            "11:00:00",
-            "12:00:00",
-            "13:00:00",
-            "14:00:00",
-            "15:00:00",
-            "16:00:00",
+            //"11:00:00",
+            //"12:00:00",
+            //"13:00:00",
+            //"14:00:00",
+            //"15:00:00",
+            // "16:00:00",
                 };
         for (auto &strTime: timeList) {
             string endTime(buf);
             endTime += strTime;
-            durationStr = (strTime == "")?"1800 S":"3600 S";
+            durationStr = (strTime == "10:00:00")?"1800 S":"3600 S";
+
+            Ohlcv::ValuesOhlcv valuesOhlcv(total);
+            reqId = 0;
+            ib->setReceiver(&valuesOhlcv, &timeMapOhlcv);
+            ib->resetSnapUpdateCnt();
             for(SnapData * s: m_ibSnapDataVct){
                 auto c = s->ibContractDetails->contract;
+                valuesOhlcv[reqId++] = Ohlcv(c.symbol);
+            }
+            reqId = 0;
+            for(SnapData * s: m_ibSnapDataVct){
+                auto c = s->ibContractDetails->contract;
+                // valuesOhlcv[reqId] = Ohlcv(c.symbol);
                 // https://interactivebrokers.github.io/tws-api/classIBApi_1_1EClient.html#aad87a15294377608e59aec1d87420594
                 //ibClient->reqHistoricalData(reqId++, c, "", "200 S", "5 secs", "MIDPOINT", 0, 2/*1 :string, 2: seconds,  */ ,/*keepUpToDate = */ false,TagValueListSPtr()); 
                 g_log->debug("reqHistoricalData([{}/{}],{},'{}','{}','{}',{},{},{})"
@@ -131,32 +149,19 @@ void history(CmdOption &cmd) {
                 g_log->trace("wait:{}/{}:reqHistoricalData",doneCnt, total );
                 std::this_thread::sleep_for(std::chrono::seconds(1));
             }
-            for(auto v:m_ibSnapDataVct) {
-                v->debug(g_log);
-                delete v;
-            }
         }
+        for(auto v:m_ibSnapDataVct) {
+            delete v;
+        }
+        ofstream of(output);
+        Ohlcv::dump(timeMapOhlcv, of);
+        of.close();
 
         spdlog::info("Stop !!!");
         stopFlag = true;
         //delete ib ;
         //spdlog::info("Stop !!!");
         //thIB.join();
-
-#if 0
-
-        spdlog::info("{}", cmd.str());
-        //get model
-        ModelLive mlv(cmd, &ib);
-        mlv.history(&stopFlag);
-        const char * strTimeout = cmd.get("--timeout");
-        auto timeout = (nullptr == strTimeout )?1800:atoi(strTimeout);
-        g_log->info("Timeout {}", timeout);
-        std::this_thread::sleep_for(std::chrono::seconds(timeout));
-        stopFlag = true;
-        spdlog::info("Stop !!!");
-        thIB.join();
-#endif
     }
     else if (0 == strcmp("model",symSource)) {
         bool stopFlag = false;
