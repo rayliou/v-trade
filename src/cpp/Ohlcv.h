@@ -7,7 +7,7 @@
 
 struct Ohlcv {
     Ohlcv () {}
-    Ohlcv (std::string symbol):symbol(symbol) {}
+    Ohlcv (std::string symbol):symbol(symbol){}
     float open {-1.};
     float close {-1.};
     float high {-1.};

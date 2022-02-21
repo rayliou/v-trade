@@ -6,8 +6,8 @@
 #include <string.h>
 #include <any>
 #include <map>
-#include "contract.h"
 #include "Ohlcv.h"
+#include "contract.h"
                    //
 //using namespace std;
 //

@@ -33,7 +33,6 @@ void history(CmdOption &cmd) {
     const char * barSizeSetting = cmd.get("--barSizeSetting");
     ARG_NOT_NULL(barSizeSetting);
 
-    const char * durationStr = "3600 S";
     const char * whatToShow = cmd.get("--whatToShow");
     whatToShow = (nullptr == whatToShow)?"TRADES":whatToShow;
     const char * useRTH = cmd.get("--useRTH");
@@ -134,49 +133,62 @@ void history(CmdOption &cmd) {
 
         string endTime(endPrefix);
 
-        startTime += " 09:30:00";
-        endTime += " 16:00:00";
+        startTime += "  09:30:00";
+        endTime   += "  16:00:00";
         fs::path parent(out_dir);
         fs::create_directories(parent);
-
+        map<string,const char *> mapDurationStr {
+            {"1 secs", "360 S"},
+            {"5 secs", "1800 S"},
+            {"30 secs", "10800 S"},
+            {"1 min", "1 D"},
+        };
+        const char * durationStr = mapDurationStr[barSizeSetting];
         g_log->info("Before get data, save dir: {}; Start:{} -> End:{}", parent.c_str(), startTime, endTime);
         do {
             fs::path outPath (parent/(endTime + ".csv"));
             if(fs::exists(outPath)) {
-                g_log->info("File {} existed.", outPath.c_str());
-                continue;
+                //get next endTime.
+                ifstream is(outPath);
+                string line;
+                std::getline(is,line);
+                std::getline(is,line);
+                auto end = line.find(',');
+                endTime = line.substr(0,end);
+                g_log->info("File {} existed. next endTime:{}", outPath.c_str(),endTime);
             }
-            timeMapOhlcv.clear();
-            durationStr = "1800 S";
-            ib->resetSnapUpdateCnt();
-            reqId = 0;
-            for(SnapData * s: m_ibSnapDataVct){
-                auto c = s->ibContractDetails->contract;
-                // valuesOhlcv[reqId] = Ohlcv(c.symbol);
-                // https://interactivebrokers.github.io/tws-api/classIBApi_1_1EClient.html#aad87a15294377608e59aec1d87420594
-                //ibClient->reqHistoricalData(reqId++, c, "", "200 S", "5 secs", "MIDPOINT", 0, 2/*1 :string, 2: seconds,  */ ,/*keepUpToDate = */ false,TagValueListSPtr()); 
-                g_log->debug("reqHistoricalData([{}/{}],{},'{}','{}','{}',{},{},{})"
-                        ,reqId,total, c.symbol, endTime, durationStr, barSizeSetting, whatToShow, nUseRTH, nFormatDate);
-                ibClient->reqHistoricalData(reqId++, c, endTime, durationStr, barSizeSetting, whatToShow, nUseRTH, nFormatDate/*1 :string, 2: seconds,  */ ,/*keepUpToDate = */ false,TagValueListSPtr()); 
-            }
-            while ( (doneCnt = ib->getSnapUpdateCnt()) < total) {
-                g_log->trace("wait:{}/{}:reqHistoricalData",doneCnt, total );
-                std::this_thread::sleep_for(std::chrono::seconds(1));
-            }
-            g_log->trace("timeMapOhlcv.empty:{}", timeMapOhlcv.empty());
-            bool ret = (endTime = timeMapOhlcv.begin()->first) > startTime;
-            g_log->trace("{} = (endTime:{} = timeMapOhlcv.begin() ->first:{}    ) > startTime {} ",ret,  endTime,timeMapOhlcv.begin()->first,startTime);
+            else {
+                timeMapOhlcv.clear();
+                ib->resetSnapUpdateCnt();
+                reqId = 0;
+                for(SnapData * s: m_ibSnapDataVct){
+                    auto &c = s->ibContractDetails->contract;
+                    // https://interactivebrokers.github.io/tws-api/classIBApi_1_1EClient.html#aad87a15294377608e59aec1d87420594
+                    //ibClient->reqHistoricalData(reqId++, c, "", "200 S", "5 secs", "MIDPOINT", 0, 2/*1 :string, 2: seconds,  */ ,/*keepUpToDate = */ false,TagValueListSPtr()); 
+                    g_log->debug("reqHistoricalData([{}/{}],{},'{}','{}','{}',{},{},{})"
+                            ,reqId,total, c.symbol, endTime, durationStr, barSizeSetting, whatToShow, nUseRTH, nFormatDate);
+                    ibClient->reqHistoricalData(reqId++, c, endTime, durationStr, barSizeSetting, whatToShow, nUseRTH, nFormatDate/*1 :string, 2: seconds,  */ ,/*keepUpToDate = */ false,TagValueListSPtr()); 
+                }
+                while ( (doneCnt = ib->getSnapUpdateCnt()) < total) {
+                    g_log->trace("wait:{}/{}:reqHistoricalData",doneCnt, total );
+                    std::this_thread::sleep_for(std::chrono::seconds(1));
+                }
+                g_log->trace("timeMapOhlcv.empty:{}", timeMapOhlcv.empty());
+                bool ret = (endTime = timeMapOhlcv.begin()->first) > startTime;
+                g_log->trace("{} = (endTime:{} = timeMapOhlcv.begin() ->first:{}    ) > startTime {} ",ret,  endTime,timeMapOhlcv.begin()->first,startTime);
 
-            ofstream of(outPath);
-            if(!of.is_open()){
-                string msg("Cannot open file: ");
-                throw std::runtime_error(msg +outPath.c_str());
+                ofstream of(outPath);
+                if(!of.is_open()){
+                    string msg("Cannot open file: ");
+                    throw std::runtime_error(msg +outPath.c_str());
+                }
+                Ohlcv::dump(timeMapOhlcv, of);
+                of.close();
+                endTime = timeMapOhlcv.begin()->first;
+                g_log->info("Wrote file {} next endTime:{} ", outPath.c_str(), endTime);
             }
-            Ohlcv::dump(timeMapOhlcv, of);
-            of.close();
-            g_log->info("Wrote file {}", outPath.c_str());
 
-        } while  ( !timeMapOhlcv.empty() && (endTime = timeMapOhlcv.begin()->first) > startTime);
+        } while  ( endTime > startTime);
 
         for(auto v:m_ibSnapDataVct) {
             delete v;
