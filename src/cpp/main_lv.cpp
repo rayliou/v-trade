@@ -3,11 +3,14 @@
 #include "common.h"
 #include <execution>
 #include <set>
+#include <filesystem>
 #include <thread>
 
 #include "ModelLive.h"
 #include "IBTWSApp.h"
 #include "IBTWSClient.h"
+
+namespace fs=std::filesystem;
 
 // https://github.com/gabime/spdlog
 // https://interactivebrokers.github.io/tws-api/client_wrapper.html#ewrapper_impl
@@ -19,11 +22,15 @@ typedef void (*SubCmdFuncPtr) (CmdOption &cmd) ;
 void history(CmdOption &cmd) {
 	// $(RUN_DIR)/main_lv history -o $@ --dt $* --barSizeSetting "5 secs" --whatToShow "TRADES,BID_ASK" --useRTH 1 --formatDate 1 --sym_source model [--timeout 1800]
     // $(RUN_DIR)/main_lv history -o $@ --dt $* --barSizeSetting "5 secs" --whatToShow "TRADES,BID_ASK" --useRTH 1 --formatDate 1 --sym_source model [--timeout 1800]
-    const char * output = cmd.get("--output");
-    const char * dt = cmd.get("--dt");
+    const char * out_dir = cmd.get("--out_dir");
+    ARG_NOT_NULL(out_dir);
+    auto dt_to    = cmd.get("--dt_to");
+    auto dt_from  = cmd.get("--dt_from");
+    ARG_NOT_NULL(dt_to);
+    ARG_NOT_NULL(dt_from);
+
+
     const char * barSizeSetting = cmd.get("--barSizeSetting");
-    ARG_NOT_NULL(output);
-    ARG_NOT_NULL(dt);
     ARG_NOT_NULL(barSizeSetting);
 
     const char * durationStr = "3600 S";
@@ -116,18 +123,30 @@ void history(CmdOption &cmd) {
         }
         ib->setReceiver(&valuesOhlcv, &timeMapOhlcv);
 
-        struct tm tmTo;
-        memset(&tmTo,0, sizeof(tmTo));
-        strptime(dt, "%Y%m%d", &tmTo);
-        char buf[64];
-        strftime(buf, sizeof(buf),"%Y%m%d  ",&tmTo);
+        string startTime(dt_from);
 
-        string endTime(buf);
-        string startTime(buf);
-        //startTime += "09:30:00";
-        startTime += "15:00:00";
-        endTime += "16:00:00";
-        while  (timeMapOhlcv.empty() || (endTime = timeMapOhlcv.begin()->first) > startTime) {
+        string endPrefix(64,'\0');
+        struct tm t;
+        memset(&t,0, sizeof(t));
+        strptime(dt_to, "%Y%m%d", &t);
+        strftime(endPrefix.data(), endPrefix.size(),"%Y%m%d",&t);
+        endPrefix.resize(strlen(endPrefix.data()));
+
+        string endTime(endPrefix);
+
+        startTime += " 09:30:00";
+        endTime += " 16:00:00";
+        fs::path parent(out_dir);
+        fs::create_directories(parent);
+
+        g_log->info("Before get data, save dir: {}; Start:{} -> End:{}", parent.c_str(), startTime, endTime);
+        do {
+            fs::path outPath (parent/(endTime + ".csv"));
+            if(fs::exists(outPath)) {
+                g_log->info("File {} existed.", outPath.c_str());
+                continue;
+            }
+            timeMapOhlcv.clear();
             durationStr = "1800 S";
             ib->resetSnapUpdateCnt();
             reqId = 0;
@@ -148,14 +167,20 @@ void history(CmdOption &cmd) {
             bool ret = (endTime = timeMapOhlcv.begin()->first) > startTime;
             g_log->trace("{} = (endTime:{} = timeMapOhlcv.begin() ->first:{}    ) > startTime {} ",ret,  endTime,timeMapOhlcv.begin()->first,startTime);
 
+            ofstream of(outPath);
+            if(!of.is_open()){
+                string msg("Cannot open file: ");
+                throw std::runtime_error(msg +outPath.c_str());
+            }
+            Ohlcv::dump(timeMapOhlcv, of);
+            of.close();
+            g_log->info("Wrote file {}", outPath.c_str());
 
-        }
+        } while  ( !timeMapOhlcv.empty() && (endTime = timeMapOhlcv.begin()->first) > startTime);
+
         for(auto v:m_ibSnapDataVct) {
             delete v;
         }
-        ofstream of(output);
-        Ohlcv::dump(timeMapOhlcv, of);
-        of.close();
 
         spdlog::info("Stop !!!");
         stopFlag = true;
@@ -186,6 +211,8 @@ void history(CmdOption &cmd) {
 void history_daily_deps(CmdOption &cmd) {
     // ./b/main_lv history_daily_deps  --dt_to 20220125 --dt_from xxxxx   --port 4096
 
+    const char * output = cmd.get("--output");
+    ARG_NOT_NULL(output);
     auto dt_to    = cmd.get("--dt_to");
     if(nullptr == dt_to) {
         throw std::runtime_error("--dt_to MUST be set! --dt_from may be set");
@@ -279,19 +306,20 @@ void history_daily_deps(CmdOption &cmd) {
     }
     dtList.sort();
     string sP("");
+    ofstream of(output);
     for(auto s: dtList) {
         if (nullptr != dt_from && s < dt_from) {
             continue;
         }
         s += ".5s.csv";
         if(!sP.empty()) {
-            cout << s << ":" << sP << endl;
+            of << s << ":" << sP << endl;
         }
         sP = s;
     }
     stopFlag = true;
     //spdlog::info("Stop !!!");
-    thIB.join();
+    //thIB.join();
 }
 
 void live(CmdOption &cmd) {

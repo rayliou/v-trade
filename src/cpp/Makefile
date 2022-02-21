@@ -1,12 +1,13 @@
 
 RUN_DIR=./b
 
+bt:xbuild
+	cd $(RUN_DIR) && ln -sf ../*.mk .
+	make -C $(RUN_DIR)  -f bt.mk
+
 t: $(RUN_DIR)/history_daily_deps.mk
 	echo $@
 
-bt:xbuild
-	cd $(RUN_DIR) && ln -sf ../*.mk .
-	make -C $(RUN_DIR)  -f bt.mk 20220126.5s.csv
 t1:xbuild
 	 $(RUN_DIR)/main_lv history_daily_deps --dt_to 20220126 --dt_from  20211210 2>/dev/null
 	 #./b/main_lv live --conf  ./conf/v-trade.json
