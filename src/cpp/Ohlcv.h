@@ -2,6 +2,7 @@
 #pragma once
 #include "common.h"
 #include <iostream>
+#include <set>
 
 #include "bar.h"
 
@@ -92,6 +93,46 @@ static void dump(TimeMapOhlcv &m, std::ostream &os) {
     }
     return;
 }
+static void load(TimeMapOhlcv &dst, std::string fileName) {
+    /*****************
+     * time	open_AAPL	high_AAPL	low_AAPL	close_AAPL	volume_AAPL	wap_AAPL	open_ACN	high_ACN	low_ACN
+     * 20220126  12:00:00	162.85	162.9	162.84	162.9	107	162.883	340.07	340.07	340.07
+     * ************/
+    using namespace csv;
+    using namespace std;
+    using namespace utility;
 
+    CSVReader reader(fileName);
+    ValuesOhlcv valuesOhlcv;
+    set<string> symbols;
+    for (auto col: reader.get_col_names()){
+        col = trim(col);
+        if(col.empty()) {
+            continue;
+        }
+        auto v = strSplit(col,'_');
+        if(v.size() == 2) {
+            auto s = v[1];
+            symbols.insert(s);
+        }
+    }
+    for(auto &s: symbols){
+        valuesOhlcv.push_back(Ohlcv(s));
+    }
+    for(auto &row:reader) {
+        ValuesOhlcv values(valuesOhlcv);
+        for(auto &v: values) {
+#define FILL(x) v.x = row[ #x"_" + v.symbol].get<double>()
+            FILL(open);
+            FILL(high);
+            FILL(low);
+            FILL(close);
+            FILL(volume);
+            FILL(wap);
+#undef FILL
+        }
+        dst.insert( {row["time"].get<>() ,values});
+    }
+}
 
 };

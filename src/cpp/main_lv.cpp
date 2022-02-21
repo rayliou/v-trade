@@ -375,5 +375,20 @@ int main(int argc, char * argv[]) {
         throw std::runtime_error("argv[1] MUST be one of [" + os.str() + "]");
     }
     it->second(cmd);
+#if 0
+    string xpath = "/Users/henry/stock/env_study/data/5s_data/20220126/20220125  12:00:00.csv"; 
+    Ohlcv::TimeMapOhlcv xdst;
+    Ohlcv::load(xdst,xpath);
+    for(auto &[k,vs]:xdst){
+        for(auto &v:vs){
+            if(v.symbol == "NVDA"){
+                cout << k << ":" << v.open << "," << v.high << "," << v.volume << endl;
+            }
+        }
+    }
+    //Ohlcv::dump(xdst,cout);
+    return ;
+#endif
+
     return 0;
 }

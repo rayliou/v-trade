@@ -16,7 +16,7 @@ $(RUN_DIR)/history_daily_deps.mk:xbuild
 	 $(RUN_DIR)/main_lv history_daily_deps --dt_to 20220126 --dt_from  20211210 > $@
 xbuild:b
 	make -C $(RUN_DIR)
-	touch $@
+	#touch $@
 b:
 	mkdir $(RUN_DIR)
 	cd $(RUN_DIR) && cmake ..
