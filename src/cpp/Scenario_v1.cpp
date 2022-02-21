@@ -61,12 +61,11 @@ Scenario_v1::Scenario_v1(std::string name, CmdOption &cmd,SnapDataMap & snapData
     for(auto &c : m_contracts) {
         auto symbols = c.getSymbols();
             for_each(symbols.begin(), symbols.end(), [&] (const string  & symbol ) {
-                auto it = m_bigtable.m_symbolToColIdx.find(symbol);
-                if(m_bigtable.m_symbolToColIdx.end() == it) {
+                auto idx = m_bigtable.getSymbolIndex(symbol);
+                if (-1 == idx) {
                     m_log->critical("Cannot get {} from bigtable, pair path: {}", symbol, modelFilePath);
                     return;
                 }
-                auto idx = it->second ;
                 auto itSnap = m_snapDataMap.find(symbol);
                 if (itSnap == m_snapDataMap.end()) {
                     m_snapDataMap.insert({symbol,SnapData(symbol,idx, &m_bigtable)});
@@ -164,29 +163,18 @@ void Scenario_v1::debug(LogType *log) {
             }
     });
 }
-void Scenario_v1::updateSnapDataByBigTable(int pos, SnapData &snap) {
+void Scenario_v1::updateSnapDataByBigTable(BigTable::iterator &it, SnapData &snap) {
     BigTable *pTable = snap.pTable;
-    auto tm = pTable->m_index[pos].second;
-    auto itCol = pTable->m_columnData.begin() + snap.idx;
-    //close	high	low	open	volume
-    auto c  = itCol->second[pos];
-    itCol ++;
-    auto h  = itCol->second[pos];
-    itCol ++;
-    auto l  = itCol->second[pos];
-    itCol ++;
-    auto o  = itCol->second[pos];
-    itCol ++;
-    auto v  = itCol->second[pos];
-    snap.update(o,h,l,c,v,tm);
+    auto tm = it->first;
+    snap = it->second[snap.idx];
 }
-void Scenario_v1::updateSnapDataByBigTable(int pos) {
+void Scenario_v1::updateSnapDataByBigTable(BigTable::iterator &it) {
     for_each(std::execution::par,m_snapDataMap.begin(),m_snapDataMap.end(),[&](auto &pair){
         auto &[symbol, snap] = pair;
         if( !snap.isAvailable()) {
             return;
         }
-        updateSnapDataByBigTable(pos,snap);
+        updateSnapDataByBigTable(it,snap);
     });
 }
 void Scenario_v1::rank(std::vector<ContractPairTrade *> &openCtrcts,std::vector<ContractPairTrade *> &closeCtrcts) {
@@ -220,39 +208,43 @@ void Scenario_v1::executeTrades(std::vector<ContractPairTrade *> &openCtrcts,std
 }
 void Scenario_v1::preRunBT() {
     m_log->info("Start:{}", __PRETTY_FUNCTION__ );
-    auto itEnd = find_if(m_bigtable.m_index.begin(),m_bigtable.m_index.end(),[&] (auto & i){ 
-            return i.second >= m_modelTime;
+    auto itEnd = find_if(m_bigtable.begin(),m_bigtable.end(),[&] (auto & i){ 
+            return i.first >= m_modelTime;
     });
-    if (itEnd == m_bigtable.m_index.end()) {
+    if (itEnd == m_bigtable.end()) {
         m_log->critical("Big table error, cannot find index time gt {}", m_modelTime);
         exit(1);
     }
-    int end = itEnd - m_bigtable.m_index.begin();
-    //int intervalSecs = (m_bigtable.m_index.begin() +1)->second - m_bigtable.m_index.begin()->second;
-    //auto maxBasrs = 1 + maxBTdays * 6.5 * 3600 / intervalSecs;
-    //int pos = itStart - m_bigtable.m_index.begin();
-    //int end = pos + maxBasrs;
-     //using WinDiffDataType=std::list<DiffData>;
     for ( auto & c: m_contracts) {
-        auto start = c.getCointegrateStart();
-        auto itStart = find_if(m_bigtable.m_index.begin(),m_bigtable.m_index.end(),[&] (auto & i){ 
-                return i.second >= start;
+        time_t tm_start = c.getCointegrateStart();
+        string start = utility::to_time_str(tm_start);
+
+        auto itStart = find_if(m_bigtable.begin(),itEnd ,[&] (auto & i){ 
+                return i.first >= start;
         });
-        int pos0 = itStart - m_bigtable.m_index.begin();
-        int pos1 = end - c.getLookBackBars();
-        int pos = pos0;
+        auto it1 = itEnd;
+        int barsCnt = c. getLookBackBars();
+        for(int cnt =0; cnt < barsCnt; cnt++) {
+            it1--;
+        }
         WinDiffDataType winDiff;
-        for(;pos != end ;pos++) {
-            updateSnapDataByBigTable(pos, *c.m_snap1);
-            updateSnapDataByBigTable(pos, *c.m_snap2);
+        bool overIt1 = false;
+        for(auto it = itStart; it != itEnd; it++){
+            auto &[t,vs] = *it;
+            updateSnapDataByBigTable(it, *c.m_snap1);
+            updateSnapDataByBigTable(it, *c.m_snap2);
             DiffDataBase b;
             calContractDiffData(c,b);
             c.addLongDiffItem(b);
-            if ( pos >= pos1) {
+            if ( it == it1) {
+                overIt1  =true; 
+            }
+            if (overIt1) {
                 DiffData d;
                 calContractDiffData(c,d);
                 winDiff.push_back(d,false);
             }
+
         }
         c.initWindowByHistory(std::move(winDiff));
         //m_log->warn("windiff size:{}",winDiff.size()); exit(0);
@@ -337,41 +329,34 @@ void Scenario_v1::runBT() {
                             //
     float maxBTdays = 1.5;
     //use the next trade day after the date which is set.
-    auto itStart = find_if(m_bigtable.m_index.begin(),m_bigtable.m_index.end(),[&] (auto & i){ 
-            return i.second >= m_modelTime;
+    auto itStart = find_if(m_bigtable.begin(),m_bigtable.end(),[&] (auto & i){ 
+            return i.first >= m_modelTime;
     });
-    if (itStart == m_bigtable.m_index.end()) {
+    if (itStart == m_bigtable.end()) {
         m_log->critical("Big table error, cannot find index time gt {}", m_modelTime);
         exit(1);
     }
-    m_startTime = itStart->second;
-    int intervalSecs = (m_bigtable.m_index.begin() +1)->second - m_bigtable.m_index.begin()->second;
-    int maxBasrs = 1 + maxBTdays * 6.5 * 3600 / intervalSecs;
-    int leftBars = m_bigtable.m_index.end() - itStart;
-    maxBasrs = std::min(maxBasrs, leftBars);
-    int pos = itStart - m_bigtable.m_index.begin();
-    int end = pos + maxBasrs;
-    m_log->info("BT time range: {} to {}",m_bigtable.m_index[pos].first, m_bigtable.m_index[end-1].first);
-
+    m_startTime = itStart->first;
+    m_tmStart  = utility::to_time_t(m_startTime);
+    auto tm = m_tmStart;
+    auto tmPrev = tm;
+    int  tmEnd = maxBTdays * 6.5 * 3600 + tm;
+    string strEndTime = utility::to_time_str(tmEnd);
+    auto itEnd = find_if(itStart,m_bigtable.end(),[&] (auto & i){ 
+            return i.first >= strEndTime;
+    });
+    if (itEnd == m_bigtable.end()) {
+        m_log->critical("Big table error, cannot find end time >= {}", strEndTime);
+        exit(1);
+    }
+    m_log->info("BT time range: {} to {}", itStart->first,itEnd->first);
     std::vector<ContractPairTrade *> openCtrcts;
     std::vector<ContractPairTrade *> closeCtrcts;
-    auto tm = m_bigtable.m_index[pos].second;
-    auto tmPrev = tm;
-
-    m_pOutWinDiff = &cout;
-    m_pOutWinDiff  = nullptr;
-    ofstream of;
-    if ( nullptr != m_outTraceDataPath &&  m_outTraceDataPath[0] != 0 ) {
-        of.open(m_outTraceDataPath); 
-        m_pOutWinDiff = &of; 
-        *m_pOutWinDiff << "pair," << m_contracts.begin()->getWinDiffDataFields() << endl;
-    }
-
-    for (; pos < end; pos++) {
-        updateSnapDataByBigTable(pos);
+    for(auto it = itStart; it != itEnd; it++){
+        updateSnapDataByBigTable(it);
         //evalue strategy & sort by rank
         rank(openCtrcts,closeCtrcts);
-        tm = m_bigtable.m_index[pos].second;
+        tm = utility::to_time_t( it->first);
         if (tm - tmPrev > timeOut || openCtrcts.size() > contractsLimit || closeCtrcts.size() >contractsLimit ) {
             executeTrades(openCtrcts,closeCtrcts);
             tmPrev = tm;
@@ -382,30 +367,6 @@ void Scenario_v1::runBT() {
     executeTrades(openCtrcts,closeCtrcts);
     //for (auto &[symbol, snap]:m_snapDataMap) { snap.debug(m_log); }
     postRunBT();
-#if 0
-    struct tm tPrev;
-    memset(&tPrev, 0, sizeof(tPrev));
-    //remove duplicate/uniq
-    for_each(itStart,m_bigtable.m_index.end(), [&] (auto & i){
-            struct tm t;
-            localtime_r(&(i.second), &t);
-            if(t.tm_year > tPrev.tm_year ||t.tm_mon > tPrev.tm_mon ||t.tm_mday > tPrev.tm_mday ) {
-                dateList.push_back(i.second);
-            }
-            tPrev = t;
-    });
-    auto itEnd   = m_bigtable.m_index.end();
-    if (dateList.size() >=2) {
-        itEnd = find_if(itStart,m_bigtable.m_index.end(),[&] (auto & i){ 
-                //m_log->debug(i.first);
-                return i.second > dateList[continueDays];
-        });
-    }
-
-    for_each(m_scenarios.begin(), m_scenarios.end(), [&] (auto s){
-            s->preOneEpoch(extEnv);
-    });
-#endif
 
 }
 void Scenario_v1::calContractDiffData(ContractPairTrade &c, DiffDataBase &d) {
@@ -443,7 +404,7 @@ void Scenario_v1::strategy(ContractPairTrade &c) {
     // WinDiffDataType::reverse_iterator it = rbegin;
     // to 15:30
     time_t curTime  = rbegin->tm;
-    auto leftTime =   m_startTime + 3600 * 5 -  curTime;
+    auto leftTime =   m_tmStart + 3600 * 5 -  curTime;
     int halfLifeSeconds = c.getHalfLifeSecs();
 
     int curPosition = c.curPositionDirection() ;
@@ -555,7 +516,7 @@ void Scenario_v1::strategy(ContractPairTrade &c) {
             m_log->trace("I-[{}]:{}\t{}\t[max trade time has reached] halfLifeSeconds,lefttime {},{} mins",winDiff.getTickCnt(), c.getName(), rbegin->toString(), halfLifeSeconds/60,leftTime/60);
             return ;
         }
-        if (curTime - m_startTime <  DELAY_IN_SECONDS) {
+        if (curTime - m_tmStart <  DELAY_IN_SECONDS) {
             m_log->trace("I-[{}]:{}\t{}\t[Skipe 1st time range {} secs ] ",winDiff.getTickCnt(), c.getName(), rbegin->toString(), DELAY_IN_SECONDS);
             return ;
         }

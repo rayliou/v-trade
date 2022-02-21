@@ -30,9 +30,8 @@ void IBTWSClient::reqHistoricalData(TickerId tickerId, const Contract& contract,
                                 const std::string& endDateTime, const std::string& durationStr,
                                 const std::string&  barSizeSetting, const std::string& whatToShow,
                                 int useRTH, int formatDate, bool keepUpToDate, const TagValueListSPtr& chartOptions) {
-    // m_pSemaphore->acquire();
-    speedControl(m_callsCurSec, 50,1);
     m_pSemaphore->acquire();
+    speedControl(m_callsCurSec, 50,1);
     scoped_lock lock(m_mutex);
     EClient::reqHistoricalData(tickerId, contract, endDateTime, durationStr, barSizeSetting, whatToShow, useRTH, formatDate, keepUpToDate,chartOptions);
 }

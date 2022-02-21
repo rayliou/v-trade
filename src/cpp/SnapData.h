@@ -62,6 +62,8 @@ struct SnapData: public Ohlcv {
     SnapData(const std::string &symbol, int idx, BigTable *p) : Ohlcv(symbol),idx(idx),pTable(p) {
 
     }
+
+    SnapData  & operator = (const Ohlcv & o) { if(o.symbol != symbol) throw std::runtime_error("Snap symbol != assigned symbol " + o.symbol + " vs " + symbol);  Ohlcv::operator =(o); return *this; }
     bool  isAvailable() { return  idx != -1;} 
     void debug(LogType log, bool lv=false) { 
 #if 0

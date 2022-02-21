@@ -1,5 +1,102 @@
-//g++ -g  -std=c++17  ./bigcsv.cpp -o b && ./b
 #pragma once
+#include "Ohlcv.h"
+
+class BigTable : public Ohlcv::TimeMapOhlcv {
+public:
+    //using iterator= Ohlcv::TimeMapOhlcv::iterator;
+    //using const_iterator= Ohlcv::TimeMapOhlcv::const_iterator;
+
+    int getSymbolIndex(const std::string &symbol) const {
+        auto it = m_symbolToColIdx.find(symbol);
+        if (m_symbolToColIdx.end() == it){
+            return -1;
+        }
+        return it->second;
+    }
+    void debug(LogType log) {
+        ostringstream os;
+        for(auto &f: m_sourceList){
+            os << f << ",";
+        }
+        log->debug("BigTable: srcList: {}", os.str());
+    }
+    void load(std::string fileName) {
+        using namespace csv;
+        using namespace std;
+        using namespace utility;
+        /*****************
+         * time	open_AAPL	high_AAPL	low_AAPL	close_AAPL	volume_AAPL	wap_AAPL	open_ACN	high_ACN	low_ACN
+         * 20220126  12:00:00	162.85	162.9	162.84	162.9	107	162.883	340.07	340.07	340.07
+         * ************/
+        m_sourceList.push_back(fileName);
+
+        CSVReader reader(fileName);
+        Ohlcv::ValuesOhlcv valuesOhlcv;
+        set<string> symbols;
+        for (auto col: reader.get_col_names()){
+            col = trim(col);
+            if(col.empty()) {
+                continue;
+            }
+            auto v = strSplit(col,'_');
+            if(v.size() == 2) {
+                auto s = v[1];
+                symbols.insert(s);
+            }
+        }
+        int cnt =0;
+        for(auto &s: symbols){
+            valuesOhlcv.push_back(Ohlcv(s));
+            m_symbolToColIdx[s] = cnt++;
+        }
+        for(auto &row:reader) {
+            string strTime = row["time"].get<>();
+            Ohlcv::ValuesOhlcv values(valuesOhlcv);
+            for(auto &v: values) {
+    #define FILL(x) v.x = row[ #x"_" + v.symbol].get<double>()
+                FILL(open);
+                FILL(high);
+                FILL(low);
+                FILL(close);
+                FILL(volume);
+                FILL(wap);
+                v.tmStr = strTime;
+                v.tm = utility::to_time_t(v.tmStr.c_str());
+    #undef FILL
+            }
+            insert( {strTime ,values});
+        }
+    }
+    friend std::ostream & operator << (std::ostream &o, BigTable & b);
+private:
+void dump(std::ostream &os) {
+        if(size() == 0) {
+            return;
+        }
+        auto &[t,v] = *begin();
+        os << "time" << ',';
+        for(auto & ohlcv: v){
+            ohlcv.dump(os,false,true);
+        }
+        os << std::endl;
+        for(auto &[t,v]:*this) {
+            os << t << ',';
+            for(auto & ohlcv: v){
+                ohlcv.dump(os,true);
+            }
+            os << std::endl;
+        }
+        return;
+    }
+private:
+    std::list<std::string> m_sourceList;
+    using SymbolToColIdx = map<string,int>;
+    SymbolToColIdx m_symbolToColIdx;
+
+} ;
+inline std::ostream & operator << (std::ostream &o, BigTable & b) { b.dump(o); return o; }
+
+#if 0
 #include <string>
 #include <fstream>
 #include <vector>
@@ -47,6 +144,7 @@ public:
     :m_index(index), m_columnData(columnData),m_symbolToColIdx(symbolToColIdx) { }
 
     vector<string>  getSymbolList() const  {
+
         vector<string> keys;
         std::transform(
             m_symbolToColIdx.begin(),
@@ -146,3 +244,4 @@ public:
     }
 
 };
+#endif 

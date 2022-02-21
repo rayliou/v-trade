@@ -21,3 +21,12 @@ make CALL_BY_REF=0 GLOBAL_RND=0 GLOBAL_FLAGS=0 UNCHANGED_BINARY_FLAGS=0 CC=/usr/
 
 - https://github.com/sewenew/redis-plus-plus#redis-stream
 
+-----------------------------------
+ $CXX -o a a.cpp && ./a "20220226  09:00:00"
+20220226  09:00:00:
+1645884000	20220226   14:00:00	mktime,gmtime
+1645884000	20220226   09:00:00	mktime,localtime
+1645866000	20220226   09:00:00	timegm,gmtime
+1645866000	20220226   04:00:00	timegm,localtime
+1645884000	20220226   14:00:00	timelocal,gmtime
+1645884000	20220226   09:00:00	timelocal,localtime

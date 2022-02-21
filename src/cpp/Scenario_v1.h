@@ -32,8 +32,8 @@ public:
 private:
     void preRunBT();
     void postRunBT();
-    static void updateSnapDataByBigTable(int pos, SnapData &snap);
-    void updateSnapDataByBigTable(int pos);
+    static void updateSnapDataByBigTable(BigTable::iterator &it, SnapData &snap);
+    void updateSnapDataByBigTable(BigTable::iterator &it);
     void calContractDiffData(ContractPairTrade &c, DiffDataBase &d);
     void strategy(ContractPairTrade &c) ;
     void rank(std::vector<ContractPairTrade *> &openCtrcts,std::vector<ContractPairTrade *> &closeCtrcts) ;
@@ -46,8 +46,10 @@ private:
     std::string m_modelFilePath;
     static LogType  m_out;
     BigTable &m_bigtable;
-    time_t m_modelTime;
-    time_t m_startTime;;
+    std::string m_modelTime;
+    std::string m_startTime;
+    time_t m_tmStart {0};
+
     std::string m_date;
     std::string m_group;
     std::ostream * m_pOutWinDiff {nullptr};

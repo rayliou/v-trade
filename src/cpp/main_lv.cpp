@@ -19,6 +19,8 @@ typedef void (*SubCmdFuncPtr) (CmdOption &cmd) ;
 #define ARG_NOT_NULL(arg) if(nullptr == arg) { throw std::runtime_error("argv --"  #arg " is needed."); }
 
 
+void bt(CmdOption &cmd) {
+}
 void history(CmdOption &cmd) {
 	// $(RUN_DIR)/main_lv history -o $@ --dt $* --barSizeSetting "5 secs" --whatToShow "TRADES,BID_ASK" --useRTH 1 --formatDate 1 --sym_source model [--timeout 1800]
     // $(RUN_DIR)/main_lv history -o $@ --dt $* --barSizeSetting "5 secs" --whatToShow "TRADES,BID_ASK" --useRTH 1 --formatDate 1 --sym_source model [--timeout 1800]
@@ -113,14 +115,14 @@ void history(CmdOption &cmd) {
             //v->debug(g_log);
             //delete v;
         //}
-        Ohlcv::TimeMapOhlcv timeMapOhlcv;
+        BigTable bigtable;
         Ohlcv::ValuesOhlcv valuesOhlcv(total);
         reqId = 0;
         for(SnapData * s: m_ibSnapDataVct){
             auto c = s->ibContractDetails->contract;
             valuesOhlcv[reqId++] = Ohlcv(c.symbol);
         }
-        ib->setReceiver(&valuesOhlcv, &timeMapOhlcv);
+        ib->setReceiver(&valuesOhlcv, &bigtable);
 
         string startTime(dt_from);
 
@@ -158,7 +160,7 @@ void history(CmdOption &cmd) {
                 g_log->info("File {} existed. next endTime:{}", outPath.c_str(),endTime);
             }
             else {
-                timeMapOhlcv.clear();
+                bigtable.clear();
                 ib->resetSnapUpdateCnt();
                 reqId = 0;
                 for(SnapData * s: m_ibSnapDataVct){
@@ -173,18 +175,18 @@ void history(CmdOption &cmd) {
                     g_log->trace("wait:{}/{}:reqHistoricalData",doneCnt, total );
                     std::this_thread::sleep_for(std::chrono::seconds(1));
                 }
-                g_log->trace("timeMapOhlcv.empty:{}", timeMapOhlcv.empty());
-                bool ret = (endTime = timeMapOhlcv.begin()->first) > startTime;
-                g_log->trace("{} = (endTime:{} = timeMapOhlcv.begin() ->first:{}    ) > startTime {} ",ret,  endTime,timeMapOhlcv.begin()->first,startTime);
+                g_log->trace("bigtable.empty:{}", bigtable.empty());
+                bool ret = (endTime = bigtable.begin()->first) > startTime;
+                g_log->trace("{} = (endTime:{} = bigtable.begin() ->first:{}    ) > startTime {} ",ret,  endTime,bigtable.begin()->first,startTime);
 
                 ofstream of(outPath);
                 if(!of.is_open()){
                     string msg("Cannot open file: ");
                     throw std::runtime_error(msg +outPath.c_str());
                 }
-                Ohlcv::dump(timeMapOhlcv, of);
+                of << bigtable;
                 of.close();
-                endTime = timeMapOhlcv.begin()->first;
+                endTime = bigtable.begin()->first;
                 g_log->info("Wrote file {} next endTime:{} ", outPath.c_str(), endTime);
             }
 
@@ -354,6 +356,7 @@ void regSubCmd() {
 #define CMD_REG(c) mapSubCmds[#c] =c
     CMD_REG(history_daily_deps);
     CMD_REG(history);
+    CMD_REG(bt);
     CMD_REG(live);
 #undef CMD_REG
 

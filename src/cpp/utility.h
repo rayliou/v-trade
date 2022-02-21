@@ -1,6 +1,26 @@
 #pragma once
 #include <string>
+#include <string.h>
 namespace utility {
+
+#define  IB_TIME_FMT  "%Y%m%d   %H:%M:%S"
+    inline time_t to_time_t(const std::string &s, const char *fmt=IB_TIME_FMT ) { return to_time_t(s.c_str(),fmt); }
+    inline time_t to_time_t(const char *s, const char *fmt=IB_TIME_FMT ) {
+        struct tm timeptr;
+        memset(&timeptr,0,sizeof(timeptr));
+        strptime(s,fmt,&timeptr);
+        return timelocal(&timeptr);
+    }
+    inline std::string to_time_str(time_t t, const char *fmt=IB_TIME_FMT ) {
+        struct tm timeptr;
+        memset(&timeptr,0,sizeof(timeptr));
+        localtime_r(&t, &timeptr);
+        std::string sz(64,'\0');
+        strftime(sz.data(), sz.size(),fmt,&timeptr);
+        sz.resize(strlen(sz.data()));
+        return sz;
+    }
+
     inline time_t strTime2time_t(const char *s, const char *fmt=nullptr) {
         const   char * TIME_FORMAT = "%Y-%m-%d %H:%M:%S";
         if (nullptr == fmt) {

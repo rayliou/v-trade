@@ -18,7 +18,9 @@ ModelGroup::ModelGroup(CmdOption &cmd) :m_cmd(cmd){
     for (auto& [k, v] :m_jsonConf["big_table"].items()) {
         string path;
         v.get_to(path);
-        BigTable * b  = new BigTable(path.c_str());
+        BigTable * b  = new BigTable();
+        //FIXME 
+        b->load(path);
         m_bigtables[k] = b;
         m_log->debug("Loaded bigtable: {}->{}", k, path);
         b->debug(m_log);

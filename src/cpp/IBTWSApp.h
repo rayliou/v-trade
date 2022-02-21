@@ -165,6 +165,9 @@ private:
 	virtual void openOrder( OrderId orderId, const Contract&, const Order&, const OrderState&){throw std::runtime_error(__PRETTY_FUNCTION__); }
 	virtual void openOrderEnd(){throw std::runtime_error(__PRETTY_FUNCTION__); }
 #endif
+virtual void managedAccounts( const std::string& accountsList);
+virtual void pnl(int reqId, double dailyPnL, double unrealizedPnL, double realizedPnL);
+virtual void pnlSingle(int reqId, Decimal pos, double dailyPnL, double unrealizedPnL, double realizedPnL, double value);
 
 
 private:
@@ -179,6 +182,7 @@ private:
 
 	time_t m_sleepDeadline {0};
 	OrderId m_orderId {-1};
+	std::string m_accountName;
     bool m_extraAuth {false};
 	std::string m_bboExchange;
     LogType  m_log;

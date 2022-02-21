@@ -35,6 +35,11 @@ void IBTWSApp::waitConnected() {
         m_log->trace("Wait for connecting.....");
         std::this_thread::sleep_for(std::chrono::microseconds(100));
     }
+	// Don't need to send reqManagedAccts due to the msg is generated automatically after connected
+    // m_pClient->reqManagedAccts();
+	if(!m_accountName.empty()){
+		m_pClient->reqPnL(7001,m_accountName ,"");
+	}
 }
 #if 0
 int main(int argc, char * argv[]) {
@@ -252,3 +257,15 @@ void IBTWSApp::tickString(TickerId tickerId, TickType tickType, const std::strin
     // m_log->trace("[{}]: {}, {}, {}", __PRETTY_FUNCTION__ , tickerId, tickType, value);
 
 }
+void IBTWSApp::managedAccounts( const std::string& accountsList) {
+	// from ..... m_pClient->reqManagedAccts();
+	m_accountName = accountsList;
+     m_log->info("managedAccounts: {}", accountsList);
+ }
+void IBTWSApp::pnl(int reqId, double dailyPnL, double unrealizedPnL, double realizedPnL) {
+     m_log->info("PNL:reqId {}, dailyPnL {},unrealizedPnL {}, realizedPnL {} ", reqId, dailyPnL, unrealizedPnL,realizedPnL);
+
+ }
+void IBTWSApp::pnlSingle(int reqId, Decimal pos, double dailyPnL, double unrealizedPnL, double realizedPnL, double value) {
+
+ }
