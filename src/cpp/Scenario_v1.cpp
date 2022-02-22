@@ -79,11 +79,10 @@ Scenario_v1::Scenario_v1(std::string name, CmdOption &cmd,SnapDataMap & snapData
     }
     auto [group,date] = getGroupDateFromPath(modelFilePath);
     m_group = group;
+    auto endStrip = std::remove(date.begin(), date.end(), '-');
+    date.erase(endStrip ,date.end());
     m_date = date;
-    //vector<string> dateList;
-    vector<time_t> dateList;
-    m_modelTime = utility::strTime2time_t((date+" 23:59:59")  .c_str(),"%Y-%m-%d %H:%M:%S");
-
+    m_modelTime = date + "  23:59:59";
     postSetup();
     //debug();
 }

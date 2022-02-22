@@ -21,15 +21,6 @@ namespace utility {
         return sz;
     }
 
-    inline time_t strTime2time_t(const char *s, const char *fmt=nullptr) {
-        const   char * TIME_FORMAT = "%Y-%m-%d %H:%M:%S";
-        if (nullptr == fmt) {
-            fmt = TIME_FORMAT;
-        }
-        struct tm timeptr;
-        strptime(s,fmt,&timeptr);
-        return mktime(&timeptr);
-    }
     const std::string WHITESPACE = " \n\r\t\f\v";
     inline 
     std::string ltrim(const std::string &s) {
