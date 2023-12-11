@@ -1,0 +1,6 @@
+{
+    "big_table" : {
+        "cn" : "/Users/henry/stock/v-trade/data/data_study/stk-daily-20220125.cn.Yahoo.1m.csv",
+        "topV100_MC200" : "/Users/henry/stock/v-trade/data/data_study/stk-daily-20220125.topV100_MC200.Yahoo.1m.csv"
+    }
+}

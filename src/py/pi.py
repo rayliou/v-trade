@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # coding=utf-8
-import re
-from futu import *
+import re,sys
+# from futu import *
 from IPython.display import display, HTML
 import random as rn
 import numpy as np
@@ -18,7 +18,7 @@ import matplotlib.pyplot as plt
 
 if __name__ == '__main__':
     rng = np.random.default_rng()
-    N = 50000000
+    N = 500000000
     r = rng.random((N,2))
     f = (r[:,0] - 0.5) ** 2 + (r[:,1] - 0.5) ** 2
     f = np.where(f <= 0.25, 1,0)

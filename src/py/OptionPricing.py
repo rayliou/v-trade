@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # coding=utf-8
 import re
-from futu import *
+# from futu import *
 from IPython.display import display, HTML
 import numpy as np
 import matplotlib.pyplot as plt
@@ -474,31 +474,45 @@ def volatilitytoPremium():
     plt.legend()
     plt.show()
     pass
+def calculateAmericanOptionPrice(option_type, current_price, strike_price, risk_free_rate, dividend_yield, volatility, start_date=None, expiration_date=None):
+    """
+    Calculate the price of an American option.
 
-def t(option_type, fs, x, r, q, v,start=None,end=None):
-    print(f't({option_type}, {fs}, {x}, {r}, {q}, {v},{start},{end})')
-    t = yearFractionDates(start,end)
-    #print(T1,T2,yf)
-    if v < 1:
-        print('american              : {}'.format(american(option_type, fs, x, t, r, q, v)))
-        print('american_76           : {}'.format( american_76(option_type, fs, x, t, r, v)))
-    print('qscOption             : {}'.format(qscOption(option_type, fs, x, t, r, q, v)))
-    print('QuantLibOptionPrice   : {}'.format(QuantLibOptionPrice(option_type, fs, x, t, r, q, v,start,end)))
+    :param option_type: 'c' for call option, 'p' for put option
+    :param current_price: Current price of the underlying asset
+    :param strike_price: Strike price of the option
+    :param risk_free_rate: Annual risk-free interest rate
+    :param dividend_yield: Annual dividend yield of the asset
+    :param volatility: Volatility of the underlying asset
+    :param start_date: Start date of the option (optional)
+    :param expiration_date: Expiration date of the option
+    """
+    print(f'calculateAmericanOptionPrice({option_type}, {current_price}, {strike_price}, {risk_free_rate}, {dividend_yield}, {volatility}, {start_date}, {expiration_date})')
+    option_lifetime = yearFractionDates(start_date, expiration_date)
+    
+    # Different pricing models based on volatility
+    if volatility < 1:
+        print('american              : {}'.format(american(option_type, current_price, strike_price, option_lifetime, risk_free_rate, dividend_yield, volatility)))
+        print('american_76           : {}'.format(american_76(option_type, current_price, strike_price, option_lifetime, risk_free_rate, volatility)))
+    
+    print('qscOption             : {}'.format(qscOption(option_type, current_price, strike_price, option_lifetime, risk_free_rate, dividend_yield, volatility)))
+    print('QuantLibOptionPrice   : {}'.format(QuantLibOptionPrice(option_type, current_price, strike_price, option_lifetime, risk_free_rate, dividend_yield, volatility, start_date, expiration_date)))
     pass
 
 
-
 if __name__ == '__main__':
-    ironCondor();sys.exit(0)
-    FsXToPremium2D();sys.exit(0)
-    FsXToPremium3D();sys.exit(0)
-    #DIDI
-    t('p', 11.9 ,12, 0.01, 0, 0.56762,end='20210717');sys.exit(0)
-    #MOXC 魔线
-    t('c', 27.843 ,25, 0.01, 0, 2.3195,end='20210820')
-    t('p', 27.843 ,25, 0.01, 0, 2.3195,end='20210820');sys.exit(0)
-    strikePriceToPremium();sys.exit(0)
-    volatilitytoPremium();sys.exit(0)
-    t('c', 657.49 ,710, 0.01, 0, 0.48413,start=None,end='20210716')
+    # Example calls with detailed explanation of parameters
+    # Calculate price of a put option with current price $136.35, strike price $136, risk-free rate 5.3877%, dividend yield 0%, volatility 23.584%, expiring on 2023-12-22
+    calculateAmericanOptionPrice('p', 136.35, 136, 0.053877, 0, 0.23584, expiration_date='20231222')
+    calculateAmericanOptionPrice('c', 136.35, 136, 0.053877, 0, 0.247493, expiration_date='20231222')
     sys.exit(0)
-    #ironCondor()
+
+    # Other function calls (not related to the option pricing function)
+    #ironCondor();sys.exit(0)
+    #FsXToPremium2D();sys.exit(0)
+    #FsXToPremium3D();sys.exit(0)
+
+
+    # Other function calls (not related to the option pricing function)
+    #strikePriceToPremium();sys.exit(0)
+    #volatilitytoPremium();sys.exit(0)
