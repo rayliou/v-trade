@@ -12,10 +12,10 @@ using CountingSemaphore=std::counting_semaphore<200>;
 class EWrapper;
 class EReaderSignal;
 
-class V_IB_EClientSocket : public EClientSocket {
+class V_IB_Sender : public EClientSocket {
 public:
-	explicit V_IB_EClientSocket(CountingSemaphore *sem, EWrapper *ptr, EReaderSignal *pSignal = 0);
-    virtual ~V_IB_EClientSocket() {}
+	explicit V_IB_Sender(CountingSemaphore *sem, EWrapper *ptr, EReaderSignal *pSignal = 0);
+    virtual ~V_IB_Sender() {}
 	void reqContractDetails(int reqId, const Contract& contract);
     void reqHistoricalData(TickerId tickerId, const Contract& contract,
                                 const std::string& endDateTime, const std::string& durationStr,

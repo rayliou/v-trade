@@ -1,11 +1,13 @@
+#include "VContract.h"
 #include "common.h"
 #include "CmdOption.h"
+#include <memory>
 #include <set>
 #include <map>
 #include <spdlog/spdlog.h>
 
-#include "V_IB_EClientSocket.h"
-#include "V_IB_EWrapper.h"
+#include "V_IB_Sender.h"
+#include "V_IB_Receiver.h"
 
 // FYI: src/cpp/main_lv.cpp
 
@@ -26,6 +28,7 @@ void test_log(CmdOption &cmd){
     is >> m_jsonConf;
     //Get symbol list
     std::set<std::string> symbolsSet;
+    VectorOfPtrVContract vcontract_vector;
     for (auto& [k, v] :m_jsonConf["stoks.us.groups"].items()) {
         std::string symbols;
         v.get_to(symbols);
@@ -35,15 +38,13 @@ void test_log(CmdOption &cmd){
     //
     // for(auto & v:symbolsSet){ g_log->debug("{}",v); }
     bool stopFlag = false;
-    V_IB_EWrapper ib0(cmd, stopFlag);
-    std::jthread thIB(&V_IB_EWrapper::run, &ib0);
+    V_IB_Receiver ib0(cmd, stopFlag, &vcontract_vector);
+    std::jthread thIB(&V_IB_Receiver::run, &ib0);
     ib0.waitConnected();
-    V_IB_EWrapper* ib = &ib0;
+    V_IB_Receiver* ib = &ib0;
     ib->setJThread(&thIB);
-    //g_log->trace("sleep 5s");
-    //std::this_thread::sleep_for(std::chrono::seconds(5));
-    //g_log->trace("after sleep 5s");
-    V_IB_EClientSocket *ibClient = ib->getClient();
+    V_IB_Sender *ibClient = ib->getClient();
+    ib->setRemainingCnt(symbolsSet.size());
     // std::vector<SnapData *> m_ibSnapDataVct;
     // m_ibSnapDataVct.clear();
     // g_log->trace("call setSnapDataVct ");
@@ -64,28 +65,25 @@ void test_log(CmdOption &cmd){
         if(s == "CD" ) {
             contract.primaryExchange = "NASDAQ";
         }
-        // auto v = new SnapData(s);
+        vcontract_vector.push_back(std::make_unique<VContract>(s.c_str()));
         // v->ibUpdated = false;
-        // m_ibSnapDataVct.push_back(v);
         g_log->trace("reqContractDetails({},{})", reqId, s);
         ibClient->reqContractDetails(reqId++, contract);
+        //callback void V_IB_Receiver::contractDetails( int reqId, const ContractDetails& contractDetails) {
     }
-    std::this_thread::sleep_for(std::chrono::seconds(30));
-#if 0
-    int doneCnt ;
-    auto total = symbolsSet.size();
-    bool ret =  ( (doneCnt = ib->getSnapUpdateCnt()) < total);
-    g_log->trace("( (doneCnt {}  = ib->getSnapUpdateCnt() {}  ) < total {} ) ={} ;", doneCnt,ib->getSnapUpdateCnt() ,total, ret);
-
-    while ( (doneCnt = ib->getSnapUpdateCnt()) < total) {
-        g_log->trace("wait:{}/{}:reqContractDetails",doneCnt, total );
+    int remain  = 0;
+    while((remain = ib->getRemainingCnt()) > 0 ){
         std::this_thread::sleep_for(std::chrono::seconds(1));
-        bool ret =  ( (doneCnt = ib->getSnapUpdateCnt()) < total);
-        g_log->trace("( (doneCnt {}  = ib->getSnapUpdateCnt() {}  ) < total {} ) ={} ;", doneCnt,ib->getSnapUpdateCnt() ,total, ret);
+        g_log->debug("Remaining cnt {}", remain);
+
     }
-    ret =  ( (doneCnt = ib->getSnapUpdateCnt()) < total);
-    g_log->trace("AFTER ( (doneCnt {}  = ib->getSnapUpdateCnt() {}  ) < total {} ) ={} ;", doneCnt,ib->getSnapUpdateCnt() ,total, ret);
-#endif
+    stopFlag = true;
+    for(auto &p : vcontract_vector){
+        if (p->ibContractDetails_ == nullptr){ continue; }
+        auto & c = p->ibContractDetails_->contract;
+        g_log->info("Contract:{}:{}", c.symbol,c.conId);
+    }
+    return;
 
 }
 static std::map<std::string,SubCmdFuncPtr> mapSubCmds;

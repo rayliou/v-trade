@@ -10,7 +10,8 @@
 #include <vector>
 #include "common.h"
 #include "CmdOption.h"
-#include "V_IB_EClientSocket.h"
+#include "V_IB_Sender.h"
+#include "VContract.h"
 enum State {
 	ST_CONNECT,
 	ST_TICKDATAOPERATION,
@@ -107,20 +108,26 @@ enum State {
 };
 
 //! [ewrapperimpl]
-class V_IB_EWrapper : public EWrapper
+class V_IB_Receiver : public EWrapper
 {
 //! [ewrapperimpl]
 public:
 	void run();
-    V_IB_EClientSocket * getClient() {return m_pClient;}
+    V_IB_Sender * getClient() {return m_pClient;}
 	void waitConnected();
 	void setJThread(std::jthread * jth){m_jthread = jth;}
+	//Counting when requesting a batch of data
+	int getRemainingCnt() const  {return m_remaining_cnt;}
+	void setRemainingCnt(int cnt) {m_remaining_cnt = cnt;}
 public:
-    V_IB_EWrapper(CmdOption &cmd, bool &stopFlag);
-	~V_IB_EWrapper();
+    V_IB_Receiver(CmdOption &cmd, bool &stopFlag,VectorOfPtrVContract * vcontract_vector);
+	~V_IB_Receiver();
 
 	void setConnectOptions(const std::string&);
 	void processMessages();
+
+private:
+	void switchState();
 
 public:
 
@@ -189,7 +196,7 @@ private:
 private:
 	//! [socket_declare]
 	EReaderOSSignal m_osSignal;
-	V_IB_EClientSocket * m_pClient;
+	V_IB_Sender * m_pClient;
 	//! [socket_declare]
 	State m_state;
 	time_t m_sleepDeadline;
@@ -199,10 +206,11 @@ private:
     bool m_extraAuth;
 	std::string m_bboExchange;
 private:
+	int m_remaining_cnt {0};
     LogType  m_log;
 	CmdOption & m_cmd;
 	bool & m_stopFlag;
-	// std::vector<SnapData *>  * m_snapDataVct {nullptr};
+	VectorOfPtrVContract *m_vcontract_vector {nullptr};
 	// std::atomic<int> m_snapUpdatedCnt {0};
     CountingSemaphore m_semaphore {50};
     std::thread::id m_IBTWSApp_id;

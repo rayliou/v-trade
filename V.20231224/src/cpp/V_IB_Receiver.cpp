@@ -2,7 +2,7 @@
  * and conditions of the IB API Non-Commercial License or the IB API Commercial License, as applicable. */
 
 
-#include "V_IB_EWrapper.h"
+#include "V_IB_Receiver.h"
 
 #include "EPosixClientSocketPlatform.h"
 
@@ -27,6 +27,7 @@
 // #include "AccountSummaryTags.h"
 #include "Utils.h"
 
+#include <memory>
 #include <stdio.h>
 #include <chrono>
 #include <iostream>
@@ -41,20 +42,21 @@ const int SLEEP_BETWEEN_PINGS = 30; // seconds
 ///////////////////////////////////////////////////////////
 // member funcs
 //! [socket_init]
-V_IB_EWrapper::V_IB_EWrapper(CmdOption &cmd, bool &stopFlag) :
+V_IB_Receiver::V_IB_Receiver(CmdOption &cmd, bool &stopFlag,VectorOfPtrVContract * vcontract_vector) :
       m_osSignal(2000)//2-seconds timeout
-    , m_pClient(new V_IB_EClientSocket(&m_semaphore, this, &m_osSignal))
+    , m_pClient(new V_IB_Sender(&m_semaphore, this, &m_osSignal))
 	, m_state(ST_CONNECT)
 	, m_sleepDeadline(0)
-	, m_orderId(0)
+	, m_orderId(-1)
     , m_extraAuth(false)
     , m_cmd(cmd)
     ,m_stopFlag(stopFlag)
-	,m_log(spdlog::stderr_color_mt("IBTWSApp"))
+	,m_log(spdlog::stderr_color_mt("V_IB_Receiver"))
+	,m_vcontract_vector(vcontract_vector)
 {
 }
 //! [socket_init]
-V_IB_EWrapper::~V_IB_EWrapper()
+V_IB_Receiver::~V_IB_Receiver()
 {
 	// destroy the reader before the client
 	if( m_pReader )
@@ -63,7 +65,7 @@ V_IB_EWrapper::~V_IB_EWrapper()
 	delete m_pClient;
 }
 
-bool V_IB_EWrapper::connect(const char *host, int port, int clientId)
+bool V_IB_Receiver::connect(const char *host, int port, int clientId)
 {
 	// trying to connect
 	printf( "Connecting to %s:%d clientId:%d\n", !( host && *host) ? "127.0.0.1" : host, port, clientId);
@@ -73,37 +75,42 @@ bool V_IB_EWrapper::connect(const char *host, int port, int clientId)
 	//! [connect]
 	
 	if (bRes) {
-		printf( "Connected to %s:%d clientId:%d\n", m_pClient->host().c_str(), m_pClient->port(), clientId);
+		m_log->debug("[{}] Connecting to {}:{} clientId:{}", __LINE__, m_pClient->host(), m_pClient->port(),clientId);
 		//! [ereader]
 		m_pReader = std::unique_ptr<EReader>( new EReader(m_pClient, &m_osSignal) );
 		m_pReader->start();
 		//! [ereader]
 	}
 	else
-		printf( "Cannot connect to %s:%d clientId:%d\n", m_pClient->host().c_str(), m_pClient->port(), clientId);
+		m_log->error("[{}] Cannot connect to {}:{} clientId:{}", __LINE__, m_pClient->host(), m_pClient->port(),clientId);
 
 	return bRes;
 }
 
-void V_IB_EWrapper::disconnect() const
+void V_IB_Receiver::disconnect() const
 {
 	m_pClient->eDisconnect();
-
-	printf ( "Disconnected\n");
+	m_log->warn("{} Disconnected", __LINE__);
 }
 
-bool V_IB_EWrapper::isConnected() const
+bool V_IB_Receiver::isConnected() const
 {
 	return m_pClient->isConnected();
 }
 
-void V_IB_EWrapper::setConnectOptions(const std::string& connectOptions)
+void V_IB_Receiver::setConnectOptions(const std::string& connectOptions)
 {
 	m_pClient->setConnectOptions(connectOptions);
 }
 
-void V_IB_EWrapper::processMessages()
-{
+void V_IB_Receiver::processMessages(){
+	// switchState();
+	m_osSignal.waitForSignal();
+	errno = 0;
+	m_pReader->processMsgs();
+
+}
+void V_IB_Receiver::switchState() {
 	time_t now = time(NULL);
 
 	/*****************************************************************/
@@ -331,26 +338,23 @@ void V_IB_EWrapper::processMessages()
 			}
 			break;
 		default:
-			m_log->warn("Unhandled state {}",(int)m_state);
+			m_log->debug("Unhandled state {}",(int)m_state);
 			break;
 
 	}
 
-	m_osSignal.waitForSignal();
-	errno = 0;
-	m_pReader->processMsgs();
 }
 
 //////////////////////////////////////////////////////////////////
 // methods
 //! [connectack]
-void V_IB_EWrapper::connectAck() {
+void V_IB_Receiver::connectAck() {
 	if (!m_extraAuth && m_pClient->asyncEConnect())
         m_pClient->startApi();
 }
 //! [connectack]
 
-void V_IB_EWrapper::reqCurrentTime()
+void V_IB_Receiver::reqCurrentTime()
 {
 	printf( "Requesting Current Time\n");
 
@@ -362,7 +366,7 @@ void V_IB_EWrapper::reqCurrentTime()
 	m_pClient->reqCurrentTime();
 }
 
-void V_IB_EWrapper::pnlOperation()
+void V_IB_Receiver::pnlOperation()
 {
 	//! [reqpnl]
     m_pClient->reqPnL(7001, "DUD00029", "");
@@ -377,7 +381,7 @@ void V_IB_EWrapper::pnlOperation()
     m_state = ST_PNL_ACK;
 }
 
-void V_IB_EWrapper::pnlSingleOperation()
+void V_IB_Receiver::pnlSingleOperation()
 {
 	//! [reqpnlsingle]
     m_pClient->reqPnLSingle(7002, "DUD00029", "", 268084);
@@ -392,7 +396,7 @@ void V_IB_EWrapper::pnlSingleOperation()
     m_state = ST_PNLSINGLE_ACK;
 }
 
-void V_IB_EWrapper::tickDataOperation()
+void V_IB_Receiver::tickDataOperation()
 {
 #if 0
 	/*** Requesting real time market data ***/
@@ -481,7 +485,7 @@ void V_IB_EWrapper::tickDataOperation()
 #endif
 }
 
-void V_IB_EWrapper::tickOptionComputationOperation()
+void V_IB_Receiver::tickOptionComputationOperation()
 {
 #if 0
 	/*** Requesting real time market data ***/
@@ -503,7 +507,7 @@ void V_IB_EWrapper::tickOptionComputationOperation()
 #endif
 }
 
-void V_IB_EWrapper::delayedTickDataOperation()
+void V_IB_Receiver::delayedTickDataOperation()
 {
 #if 0
 	/*** Requesting delayed market data ***/
@@ -526,7 +530,7 @@ void V_IB_EWrapper::delayedTickDataOperation()
 #endif
 }
 
-void V_IB_EWrapper::marketDepthOperations()
+void V_IB_Receiver::marketDepthOperations()
 {
 #if 0
 	/*** Requesting the Deep Book ***/
@@ -553,7 +557,7 @@ void V_IB_EWrapper::marketDepthOperations()
 #endif
 }
 
-void V_IB_EWrapper::realTimeBars()
+void V_IB_Receiver::realTimeBars()
 {
 #if 0
 	/*** Requesting real time bars ***/
@@ -570,7 +574,7 @@ void V_IB_EWrapper::realTimeBars()
 #endif
 }
 
-void V_IB_EWrapper::marketDataType()
+void V_IB_Receiver::marketDataType()
 {
 	//! [reqmarketdatatype]
 	/*** By default only real-time (1) market data is enabled
@@ -584,7 +588,7 @@ void V_IB_EWrapper::marketDataType()
 	m_state = ST_MARKETDATATYPE_ACK;
 }
 
-void V_IB_EWrapper::historicalDataRequests()
+void V_IB_Receiver::historicalDataRequests()
 {
 #if 0
 	/*** Requesting historical data ***/
@@ -611,7 +615,7 @@ void V_IB_EWrapper::historicalDataRequests()
 #endif
 }
 
-void V_IB_EWrapper::optionsOperations()
+void V_IB_Receiver::optionsOperations()
 {
 #if 0
 	//! [reqsecdefoptparams]
@@ -641,7 +645,7 @@ void V_IB_EWrapper::optionsOperations()
 #endif
 }
 
-void V_IB_EWrapper::contractOperations()
+void V_IB_Receiver::contractOperations()
 {
 #if 0
 	m_pClient->reqContractDetails(209, ContractSamples::EurGbpFx());
@@ -671,7 +675,7 @@ void V_IB_EWrapper::contractOperations()
 #endif
 }
 
-void V_IB_EWrapper::marketScanners()
+void V_IB_Receiver::marketScanners()
 {
 #if 0
 	/*** Requesting all available parameters which can be used to build a scanner request ***/
@@ -717,7 +721,7 @@ void V_IB_EWrapper::marketScanners()
 #endif
 }
 
-void V_IB_EWrapper::fundamentals()
+void V_IB_Receiver::fundamentals()
 {
 #if 0
 	/*** Requesting Fundamentals ***/
@@ -735,7 +739,7 @@ void V_IB_EWrapper::fundamentals()
 #endif
 }
 
-void V_IB_EWrapper::bulletins()
+void V_IB_Receiver::bulletins()
 {
 	/*** Requesting Interactive Broker's news bulletins */
 	//! [reqnewsbulletins]
@@ -750,7 +754,7 @@ void V_IB_EWrapper::bulletins()
 	m_state = ST_BULLETINS_ACK;
 }
 
-void V_IB_EWrapper::accountOperations()
+void V_IB_Receiver::accountOperations()
 {
 #if 0
 	/*** Requesting managed accounts***/
@@ -818,7 +822,7 @@ void V_IB_EWrapper::accountOperations()
 #endif
 }
 
-void V_IB_EWrapper::orderOperations()
+void V_IB_Receiver::orderOperations()
 {
 #if 0
 	/*** Requesting the next valid id ***/
@@ -921,7 +925,7 @@ void V_IB_EWrapper::orderOperations()
 #endif
 }
 
-void V_IB_EWrapper::ocaSamples()
+void V_IB_Receiver::ocaSamples()
 {
 #if 0
 	//OCA ORDER
@@ -940,7 +944,7 @@ void V_IB_EWrapper::ocaSamples()
 #endif
 }
 
-void V_IB_EWrapper::conditionSamples()
+void V_IB_Receiver::conditionSamples()
 {
 #if 0
 	//! [order_conditioning_activate]
@@ -976,7 +980,7 @@ void V_IB_EWrapper::conditionSamples()
 #endif
 }
 
-void V_IB_EWrapper::bracketSample(){
+void V_IB_Receiver::bracketSample(){
 #if 0
 	Order parent;
 	Order takeProfit;
@@ -992,7 +996,7 @@ void V_IB_EWrapper::bracketSample(){
 #endif
 }
 
-void V_IB_EWrapper::hedgeSample(){
+void V_IB_Receiver::hedgeSample(){
 #if 0
 	//F Hedge order
 	//! [hedgesubmit]
@@ -1012,7 +1016,7 @@ void V_IB_EWrapper::hedgeSample(){
 #endif
 }
 
-void V_IB_EWrapper::testAlgoSamples(){
+void V_IB_Receiver::testAlgoSamples(){
 #if 0
 	//! [algo_base_order]
 	Order baseOrder = OrderSamples::LimitOrder("BUY", 1000, 1);
@@ -1098,7 +1102,7 @@ void V_IB_EWrapper::testAlgoSamples(){
 #endif
 }
 
-void V_IB_EWrapper::financialAdvisorOrderSamples()
+void V_IB_Receiver::financialAdvisorOrderSamples()
 {
 #if 0
 	//! [faorderoneaccount]
@@ -1146,7 +1150,7 @@ void V_IB_EWrapper::financialAdvisorOrderSamples()
 #endif
 }
 
-void V_IB_EWrapper::financialAdvisorOperations()
+void V_IB_Receiver::financialAdvisorOperations()
 {
 #if 0
 	/*** Requesting FA information ***/
@@ -1187,7 +1191,7 @@ void V_IB_EWrapper::financialAdvisorOperations()
 #endif
 }
 
-void V_IB_EWrapper::testDisplayGroups(){
+void V_IB_Receiver::testDisplayGroups(){
 	//! [querydisplaygroups]
 	m_pClient->queryDisplayGroups(9001);
 	//! [querydisplaygroups]
@@ -1213,7 +1217,7 @@ void V_IB_EWrapper::testDisplayGroups(){
 	m_state = ST_TICKDATAOPERATION_ACK;
 }
 
-void V_IB_EWrapper::miscelaneous()
+void V_IB_Receiver::miscelaneous()
 {
 	/*** Request TWS' current time ***/
 	m_pClient->reqCurrentTime();
@@ -1223,7 +1227,7 @@ void V_IB_EWrapper::miscelaneous()
 	m_state = ST_MISCELANEOUS_ACK;
 }
 
-void V_IB_EWrapper::reqFamilyCodes()
+void V_IB_Receiver::reqFamilyCodes()
 {
 	/*** Request TWS' family codes ***/
 	//! [reqfamilycodes]
@@ -1233,7 +1237,7 @@ void V_IB_EWrapper::reqFamilyCodes()
 	m_state = ST_FAMILYCODES_ACK;
 }
 
-void V_IB_EWrapper::reqMatchingSymbols()
+void V_IB_Receiver::reqMatchingSymbols()
 {
 	/*** Request TWS' mathing symbols ***/
 	//! [reqmatchingsymbols]
@@ -1242,7 +1246,7 @@ void V_IB_EWrapper::reqMatchingSymbols()
 	m_state = ST_SYMBOLSAMPLES_ACK;
 }
 
-void V_IB_EWrapper::reqMktDepthExchanges()
+void V_IB_Receiver::reqMktDepthExchanges()
 {
 	/*** Request TWS' market depth exchanges ***/
 	//! [reqMktDepthExchanges]
@@ -1252,7 +1256,7 @@ void V_IB_EWrapper::reqMktDepthExchanges()
 	m_state = ST_REQMKTDEPTHEXCHANGES_ACK;
 }
 
-void V_IB_EWrapper::reqNewsTicks()
+void V_IB_Receiver::reqNewsTicks()
 {
 #if 0
 	//! [reqmktdata_ticknews]
@@ -1269,7 +1273,7 @@ void V_IB_EWrapper::reqNewsTicks()
 #endif
 }
 
-void V_IB_EWrapper::reqSmartComponents()
+void V_IB_Receiver::reqSmartComponents()
 {
 #if 0
 	static bool bFirstRun = true;
@@ -1293,7 +1297,7 @@ void V_IB_EWrapper::reqSmartComponents()
 #endif
 }
 
-void V_IB_EWrapper::reqNewsProviders()
+void V_IB_Receiver::reqNewsProviders()
 {
 	/*** Request TWS' news providers ***/
 	//! [reqNewsProviders]
@@ -1303,7 +1307,7 @@ void V_IB_EWrapper::reqNewsProviders()
 	m_state = ST_NEWSPROVIDERS_ACK;
 }
 
-void V_IB_EWrapper::reqNewsArticle()
+void V_IB_Receiver::reqNewsArticle()
 {
 	/*** Request TWS' news article ***/
 	//! [reqNewsArticle]
@@ -1315,7 +1319,7 @@ void V_IB_EWrapper::reqNewsArticle()
 	m_state = ST_REQNEWSARTICLE_ACK;
 }
 
-void V_IB_EWrapper::reqHistoricalNews(){
+void V_IB_Receiver::reqHistoricalNews(){
 
 	//! [reqHistoricalNews]
 	TagValueList* list = new TagValueList();
@@ -1329,7 +1333,7 @@ void V_IB_EWrapper::reqHistoricalNews(){
 }
 
 
-void V_IB_EWrapper::reqHeadTimestamp() {
+void V_IB_Receiver::reqHeadTimestamp() {
 #if 0	
 	//! [reqHeadTimeStamp]
 	m_pClient->reqHeadTimestamp(14001, ContractSamples::EurGbpFx(), "MIDPOINT", 1, 1);
@@ -1343,7 +1347,7 @@ void V_IB_EWrapper::reqHeadTimestamp() {
 #endif	
 }
 
-void V_IB_EWrapper::reqHistogramData() {
+void V_IB_Receiver::reqHistogramData() {
 #if 0
 	//! [reqHistogramData]
 	m_pClient->reqHistogramData(15001, ContractSamples::IBMUSStockAtSmart(), false, "1 weeks");
@@ -1356,7 +1360,7 @@ void V_IB_EWrapper::reqHistogramData() {
 #endif
 }
 
-void V_IB_EWrapper::rerouteCFDOperations()
+void V_IB_Receiver::rerouteCFDOperations()
 {
 #if 0
     //! [reqmktdatacfd]
@@ -1381,7 +1385,7 @@ void V_IB_EWrapper::rerouteCFDOperations()
 #endif
 }
 
-void V_IB_EWrapper::marketRuleOperations()
+void V_IB_Receiver::marketRuleOperations()
 {
 #if 0
 	m_pClient->reqContractDetails(17001, ContractSamples::IBMBond());
@@ -1399,7 +1403,7 @@ void V_IB_EWrapper::marketRuleOperations()
 #endif
 }
 
-void V_IB_EWrapper::continuousFuturesOperations()
+void V_IB_Receiver::continuousFuturesOperations()
 {
 #if 0	
 	m_pClient->reqContractDetails(18001, ContractSamples::ContFut());
@@ -1424,7 +1428,7 @@ void V_IB_EWrapper::continuousFuturesOperations()
 #endif
 }
 
-void V_IB_EWrapper::reqHistoricalTicks() 
+void V_IB_Receiver::reqHistoricalTicks() 
 {
 #if 0	
 	//! [reqhistoricalticks]
@@ -1436,7 +1440,7 @@ void V_IB_EWrapper::reqHistoricalTicks()
 #endif	
 }
 
-void V_IB_EWrapper::reqTickByTickData() 
+void V_IB_Receiver::reqTickByTickData() 
 {
 #if 0
     /*** Requesting tick-by-tick data (only refresh) ***/
@@ -1474,7 +1478,7 @@ void V_IB_EWrapper::reqTickByTickData()
 #endif	
 }
 
-void V_IB_EWrapper::whatIfSamples()
+void V_IB_Receiver::whatIfSamples()
 {
 #if 0	
     /*** Placing waht-if order ***/
@@ -1486,7 +1490,7 @@ void V_IB_EWrapper::whatIfSamples()
 #endif	
 }
 
-void V_IB_EWrapper::ibkratsSample(){
+void V_IB_Receiver::ibkratsSample(){
 #if 0	
 	//! [ibkratssubmit]
 	Order ibkratsOrder = OrderSamples::LimitIBKRATS("BUY", 100, 330);
@@ -1497,7 +1501,7 @@ void V_IB_EWrapper::ibkratsSample(){
 #endif	
 }
 
-void V_IB_EWrapper::wshCalendarOperations() {
+void V_IB_Receiver::wshCalendarOperations() {
 	//! [reqmetadata]
 	m_pClient->reqWshMetaData(30001);
 	//! [reqmetadata]
@@ -1524,60 +1528,9 @@ void V_IB_EWrapper::wshCalendarOperations() {
 	m_state = ST_WSH_ACK;
 }
 
-//! [nextvalidid]
-void V_IB_EWrapper::nextValidId( OrderId orderId)
-{
-	printf("Next Valid Id: %ld\n", orderId);
-	m_orderId = orderId;
-	//! [nextvalidid]
-
-    //m_state = ST_TICKOPTIONCOMPUTATIONOPERATION; 
-    //m_state = ST_TICKDATAOPERATION; 
-    //m_state = ST_OPTIONSOPERATIONS;
-    //m_state = ST_REQTICKBYTICKDATA; 
-    //m_state = ST_REQHISTORICALTICKS; 
-    //m_state = ST_CONTFUT; 
-    //m_state = ST_PNLSINGLE; 
-    //m_state = ST_PNL; 
-	//m_state = ST_DELAYEDTICKDATAOPERATION; 
-	//m_state = ST_MARKETDEPTHOPERATION;
-	//m_state = ST_REALTIMEBARS;
-	//m_state = ST_MARKETDATATYPE;
-	//m_state = ST_HISTORICALDATAREQUESTS;
-	m_state = ST_CONTRACTOPERATION;
-	//m_state = ST_MARKETSCANNERS;
-	//m_state = ST_FUNDAMENTALS;
-	//m_state = ST_BULLETINS;
-	//m_state = ST_ACCOUNTOPERATIONS;
-	//m_state = ST_ORDEROPERATIONS;
-	//m_state = ST_OCASAMPLES;
-	//m_state = ST_CONDITIONSAMPLES;
-	//m_state = ST_BRACKETSAMPLES;
-	//m_state = ST_HEDGESAMPLES;
-	//m_state = ST_TESTALGOSAMPLES;
-	//m_state = ST_FAORDERSAMPLES;
-	//m_state = ST_FAOPERATIONS;
-	//m_state = ST_DISPLAYGROUPS;
-	//m_state = ST_MISCELANEOUS;
-	//m_state = ST_FAMILYCODES;
-	//m_state = ST_SYMBOLSAMPLES;
-	//m_state = ST_REQMKTDEPTHEXCHANGES;
-	//m_state = ST_REQNEWSTICKS;
-	//m_state = ST_REQSMARTCOMPONENTS;
-	//m_state = ST_NEWSPROVIDERS;
-	//m_state = ST_REQNEWSARTICLE;
-	//m_state = ST_REQHISTORICALNEWS;
-	//m_state = ST_REQHEADTIMESTAMP;
-	//m_state = ST_REQHISTOGRAMDATA;
-	//m_state = ST_REROUTECFD;
-	//m_state = ST_MARKETRULE;
-	//m_state = ST_PING;
-	//m_state = ST_WHATIFSAMPLES;
-	//m_state = ST_WSH;
-}
 
 
-void V_IB_EWrapper::currentTime( long time)
+void V_IB_Receiver::currentTime( long time)
 {
 	if ( m_state == ST_PING_ACK) {
 		time_t t = ( time_t)time;
@@ -1591,31 +1544,21 @@ void V_IB_EWrapper::currentTime( long time)
 	}
 }
 
-//! [error]
-void V_IB_EWrapper::error(int id, int errorCode, const std::string& errorString, const std::string& advancedOrderRejectJson)
-{
-    if (!advancedOrderRejectJson.empty()) {
-        printf("Error. Id: %d, Code: %d, Msg: %s, AdvancedOrderRejectJson: %s\n", id, errorCode, errorString.c_str(), advancedOrderRejectJson.c_str());
-    } else {
-        printf("Error. Id: %d, Code: %d, Msg: %s\n", id, errorCode, errorString.c_str());
-    }
-}
-//! [error]
 
 //! [tickprice]
-void V_IB_EWrapper::tickPrice( TickerId tickerId, TickType field, double price, const TickAttrib& attribs) {
+void V_IB_Receiver::tickPrice( TickerId tickerId, TickType field, double price, const TickAttrib& attribs) {
     printf( "Tick Price. Ticker Id: %ld, Field: %d, Price: %s, CanAutoExecute: %d, PastLimit: %d, PreOpen: %d\n", tickerId, (int)field, Utils::doubleMaxString(price).c_str(), attribs.canAutoExecute, attribs.pastLimit, attribs.preOpen);
 }
 //! [tickprice]
 
 //! [ticksize]
-void V_IB_EWrapper::tickSize( TickerId tickerId, TickType field, Decimal size) {
+void V_IB_Receiver::tickSize( TickerId tickerId, TickType field, Decimal size) {
 	printf( "Tick Size. Ticker Id: %ld, Field: %d, Size: %s\n", tickerId, (int)field, decimalStringToDisplay(size).c_str());
 }
 //! [ticksize]
 
 //! [tickoptioncomputation]
-void V_IB_EWrapper::tickOptionComputation( TickerId tickerId, TickType tickType, int tickAttrib, double impliedVol, double delta,
+void V_IB_Receiver::tickOptionComputation( TickerId tickerId, TickType tickType, int tickAttrib, double impliedVol, double delta,
                                           double optPrice, double pvDividend,
                                           double gamma, double vega, double theta, double undPrice) {
     printf( "TickOptionComputation. Ticker Id: %ld, Type: %d, TickAttrib: %s, ImpliedVolatility: %s, Delta: %s, OptionPrice: %s, pvDividend: %s, Gamma: %s, Vega: %s, Theta: %s, Underlying Price: %s\n", 
@@ -1625,18 +1568,18 @@ void V_IB_EWrapper::tickOptionComputation( TickerId tickerId, TickType tickType,
 //! [tickoptioncomputation]
 
 //! [tickgeneric]
-void V_IB_EWrapper::tickGeneric(TickerId tickerId, TickType tickType, double value) {
+void V_IB_Receiver::tickGeneric(TickerId tickerId, TickType tickType, double value) {
     printf( "Tick Generic. Ticker Id: %ld, Type: %d, Value: %s\n", tickerId, (int)tickType, Utils::doubleMaxString(value).c_str());
 }
 //! [tickgeneric]
 
 //! [tickstring]
-void V_IB_EWrapper::tickString(TickerId tickerId, TickType tickType, const std::string& value) {
+void V_IB_Receiver::tickString(TickerId tickerId, TickType tickType, const std::string& value) {
 	printf( "Tick String. Ticker Id: %ld, Type: %d, Value: %s\n", tickerId, (int)tickType, value.c_str());
 }
 //! [tickstring]
 
-void V_IB_EWrapper::tickEFP(TickerId tickerId, TickType tickType, double basisPoints, const std::string& formattedBasisPoints,
+void V_IB_Receiver::tickEFP(TickerId tickerId, TickType tickType, double basisPoints, const std::string& formattedBasisPoints,
                             double totalDividends, int holdDays, const std::string& futureLastTradeDate, double dividendImpact, double dividendsToLastTradeDate) {
 #if 0
     printf( "TickEFP. %ld, Type: %d, BasisPoints: %s, FormattedBasisPoints: %s, Total Dividends: %s, HoldDays: %s, Future Last Trade Date: %s, Dividend Impact: %s, Dividends To Last Trade Date: %s\n", 
@@ -1646,7 +1589,7 @@ void V_IB_EWrapper::tickEFP(TickerId tickerId, TickType tickType, double basisPo
 }
 
 //! [orderstatus]
-void V_IB_EWrapper::orderStatus(OrderId orderId, const std::string& status, Decimal filled,
+void V_IB_Receiver::orderStatus(OrderId orderId, const std::string& status, Decimal filled,
 		Decimal remaining, double avgFillPrice, int permId, int parentId,
 		double lastFillPrice, int clientId, const std::string& whyHeld, double mktCapPrice){
 #if 0
@@ -1658,7 +1601,7 @@ void V_IB_EWrapper::orderStatus(OrderId orderId, const std::string& status, Deci
 //! [orderstatus]
 
 //! [openorder]
-void V_IB_EWrapper::openOrder( OrderId orderId, const Contract& contract, const Order& order, const OrderState& orderState) {
+void V_IB_Receiver::openOrder( OrderId orderId, const Contract& contract, const Order& order, const OrderState& orderState) {
     printf( "OpenOrder. PermId: %s, ClientId: %s, OrderId: %s, Account: %s, Symbol: %s, SecType: %s, Exchange: %s:, Action: %s, OrderType:%s, TotalQty: %s, CashQty: %s, "
         "LmtPrice: %s, AuxPrice: %s, Status: %s, MinTradeQty: %s, MinCompeteSize: %s, CompeteAgainstBestOffset: %s, MidOffsetAtWhole: %s, MidOffsetAtHalf: %s\n", 
         Utils::intMaxString(order.permId).c_str(), Utils::longMaxString(order.clientId).c_str(), Utils::longMaxString(orderId).c_str(), order.account.c_str(), contract.symbol.c_str(), 
@@ -1671,25 +1614,25 @@ void V_IB_EWrapper::openOrder( OrderId orderId, const Contract& contract, const 
 //! [openorder]
 
 //! [openorderend]
-void V_IB_EWrapper::openOrderEnd() {
+void V_IB_Receiver::openOrderEnd() {
 	printf( "OpenOrderEnd\n");
 }
 //! [openorderend]
 
-void V_IB_EWrapper::winError( const std::string& str, int lastError) {}
-void V_IB_EWrapper::connectionClosed() {
+void V_IB_Receiver::winError( const std::string& str, int lastError) {}
+void V_IB_Receiver::connectionClosed() {
 	printf( "Connection Closed\n");
 }
 
 //! [updateaccountvalue]
-void V_IB_EWrapper::updateAccountValue(const std::string& key, const std::string& val,
+void V_IB_Receiver::updateAccountValue(const std::string& key, const std::string& val,
                                        const std::string& currency, const std::string& accountName) {
 	printf("UpdateAccountValue. Key: %s, Value: %s, Currency: %s, Account Name: %s\n", key.c_str(), val.c_str(), currency.c_str(), accountName.c_str());
 }
 //! [updateaccountvalue]
 
 //! [updateportfolio]
-void V_IB_EWrapper::updatePortfolio(const Contract& contract, Decimal position,
+void V_IB_Receiver::updatePortfolio(const Contract& contract, Decimal position,
                                     double marketPrice, double marketValue, double averageCost,
                                     double unrealizedPNL, double realizedPNL, const std::string& accountName){
     printf("UpdatePortfolio. %s, %s @ %s: Position: %s, MarketPrice: %s, MarketValue: %s, AverageCost: %s, UnrealizedPNL: %s, RealizedPNL: %s, AccountName: %s\n", 
@@ -1700,35 +1643,26 @@ void V_IB_EWrapper::updatePortfolio(const Contract& contract, Decimal position,
 //! [updateportfolio]
 
 //! [updateaccounttime]
-void V_IB_EWrapper::updateAccountTime(const std::string& timeStamp) {
+void V_IB_Receiver::updateAccountTime(const std::string& timeStamp) {
 	printf( "UpdateAccountTime. Time: %s\n", timeStamp.c_str());
 }
 //! [updateaccounttime]
 
 //! [accountdownloadend]
-void V_IB_EWrapper::accountDownloadEnd(const std::string& accountName) {
+void V_IB_Receiver::accountDownloadEnd(const std::string& accountName) {
 	printf( "Account download finished: %s\n", accountName.c_str());
 }
 //! [accountdownloadend]
 
-//! [contractdetails]
-void V_IB_EWrapper::contractDetails( int reqId, const ContractDetails& contractDetails) {
-	printf( "ContractDetails begin. ReqId: %d\n", reqId);
-	printContractMsg(contractDetails.contract);
-	printContractDetailsMsg(contractDetails);
-	printf( "ContractDetails end. ReqId: %d\n", reqId);
-}
-//! [contractdetails]
-
 //! [bondcontractdetails]
-void V_IB_EWrapper::bondContractDetails( int reqId, const ContractDetails& contractDetails) {
+void V_IB_Receiver::bondContractDetails( int reqId, const ContractDetails& contractDetails) {
 	printf( "BondContractDetails begin. ReqId: %d\n", reqId);
 	printBondContractDetailsMsg(contractDetails);
 	printf( "BondContractDetails end. ReqId: %d\n", reqId);
 }
 //! [bondcontractdetails]
 
-void V_IB_EWrapper::printContractMsg(const Contract& contract) {
+void V_IB_Receiver::printContractMsg(const Contract& contract) {
 	printf("\tConId: %ld\n", contract.conId);
 	printf("\tSymbol: %s\n", contract.symbol.c_str());
 	printf("\tSecType: %s\n", contract.secType.c_str());
@@ -1743,7 +1677,7 @@ void V_IB_EWrapper::printContractMsg(const Contract& contract) {
 	printf("\tTradingClass: %s\n", contract.tradingClass.c_str());
 }
 
-void V_IB_EWrapper::printContractDetailsMsg(const ContractDetails& contractDetails) {
+void V_IB_Receiver::printContractDetailsMsg(const ContractDetails& contractDetails) {
 	printf("\tMarketName: %s\n", contractDetails.marketName.c_str());
 	printf("\tMinTick: %s\n", Utils::doubleMaxString(contractDetails.minTick).c_str());
 	printf("\tPriceMagnifier: %s\n", Utils::longMaxString(contractDetails.priceMagnifier).c_str());
@@ -1773,7 +1707,7 @@ void V_IB_EWrapper::printContractDetailsMsg(const ContractDetails& contractDetai
 	printContractDetailsSecIdList(contractDetails.secIdList);
 }
 
-void V_IB_EWrapper::printContractDetailsSecIdList(const TagValueListSPtr &secIdList) {
+void V_IB_Receiver::printContractDetailsSecIdList(const TagValueListSPtr &secIdList) {
 	const int secIdListCount = secIdList.get() ? secIdList->size() : 0;
 	if (secIdListCount > 0) {
 		printf("\tSecIdList: {");
@@ -1785,7 +1719,7 @@ void V_IB_EWrapper::printContractDetailsSecIdList(const TagValueListSPtr &secIdL
 	}
 }
 
-void V_IB_EWrapper::printBondContractDetailsMsg(const ContractDetails& contractDetails) {
+void V_IB_Receiver::printBondContractDetailsMsg(const ContractDetails& contractDetails) {
 	printf("\tSymbol: %s\n", contractDetails.contract.symbol.c_str());
 	printf("\tSecType: %s\n", contractDetails.contract.secType.c_str());
 	printf("\tCusip: %s\n", contractDetails.cusip.c_str());
@@ -1825,25 +1759,25 @@ void V_IB_EWrapper::printBondContractDetailsMsg(const ContractDetails& contractD
 }
 
 //! [contractdetailsend]
-void V_IB_EWrapper::contractDetailsEnd( int reqId) {
+void V_IB_Receiver::contractDetailsEnd( int reqId) {
 	printf( "ContractDetailsEnd. %d\n", reqId);
 }
 //! [contractdetailsend]
 
 //! [execdetails]
-void V_IB_EWrapper::execDetails( int reqId, const Contract& contract, const Execution& execution) {
+void V_IB_Receiver::execDetails( int reqId, const Contract& contract, const Execution& execution) {
 	printf( "ExecDetails. ReqId: %d - %s, %s, %s - %s, %s, %s, %s, %s\n", reqId, contract.symbol.c_str(), contract.secType.c_str(), contract.currency.c_str(), execution.execId.c_str(), Utils::longMaxString(execution.orderId).c_str(), decimalStringToDisplay(execution.shares).c_str(), decimalStringToDisplay(execution.cumQty).c_str(), Utils::intMaxString(execution.lastLiquidity).c_str());
 }
 //! [execdetails]
 
 //! [execdetailsend]
-void V_IB_EWrapper::execDetailsEnd( int reqId) {
+void V_IB_Receiver::execDetailsEnd( int reqId) {
 	printf( "ExecDetailsEnd. %d\n", reqId);
 }
 //! [execdetailsend]
 
 //! [updatemktdepth]
-void V_IB_EWrapper::updateMktDepth(TickerId id, int position, int operation, int side,
+void V_IB_Receiver::updateMktDepth(TickerId id, int position, int operation, int side,
                                    double price, Decimal size) {
     printf( "UpdateMarketDepth. %ld - Position: %s, Operation: %d, Side: %d, Price: %s, Size: %s\n", id, Utils::intMaxString(position).c_str(), operation, side, 
         Utils::doubleMaxString(price).c_str(), decimalStringToDisplay(size).c_str());
@@ -1851,7 +1785,7 @@ void V_IB_EWrapper::updateMktDepth(TickerId id, int position, int operation, int
 //! [updatemktdepth]
 
 //! [updatemktdepthl2]
-void V_IB_EWrapper::updateMktDepthL2(TickerId id, int position, const std::string& marketMaker, int operation,
+void V_IB_Receiver::updateMktDepthL2(TickerId id, int position, const std::string& marketMaker, int operation,
                                      int side, double price, Decimal size, bool isSmartDepth) {
     printf( "UpdateMarketDepthL2. %ld - Position: %s, Operation: %d, Side: %d, Price: %s, Size: %s, isSmartDepth: %d\n", id, Utils::intMaxString(position).c_str(), operation, side, 
         Utils::doubleMaxString(price).c_str(), decimalStringToDisplay(size).c_str(), isSmartDepth);
@@ -1859,25 +1793,25 @@ void V_IB_EWrapper::updateMktDepthL2(TickerId id, int position, const std::strin
 //! [updatemktdepthl2]
 
 //! [updatenewsbulletin]
-void V_IB_EWrapper::updateNewsBulletin(int msgId, int msgType, const std::string& newsMessage, const std::string& originExch) {
+void V_IB_Receiver::updateNewsBulletin(int msgId, int msgType, const std::string& newsMessage, const std::string& originExch) {
 	printf( "News Bulletins. %d - Type: %d, Message: %s, Exchange of Origin: %s\n", msgId, msgType, newsMessage.c_str(), originExch.c_str());
 }
 //! [updatenewsbulletin]
 
 //! [managedaccounts]
-void V_IB_EWrapper::managedAccounts( const std::string& accountsList) {
+void V_IB_Receiver::managedAccounts( const std::string& accountsList) {
 	printf( "Account List: %s\n", accountsList.c_str());
 }
 //! [managedaccounts]
 
 //! [receivefa]
-void V_IB_EWrapper::receiveFA(faDataType pFaDataType, const std::string& cxml) {
+void V_IB_Receiver::receiveFA(faDataType pFaDataType, const std::string& cxml) {
 	std::cout << "Receiving FA: " << (int)pFaDataType << std::endl << cxml << std::endl;
 }
 //! [receivefa]
 
 //! [historicaldata]
-void V_IB_EWrapper::historicalData(TickerId reqId, const Bar& bar) {
+void V_IB_Receiver::historicalData(TickerId reqId, const Bar& bar) {
     printf( "HistoricalData. ReqId: %ld - Date: %s, Open: %s, High: %s, Low: %s, Close: %s, Volume: %s, Count: %s, WAP: %s\n", reqId, bar.time.c_str(), 
         Utils::doubleMaxString(bar.open).c_str(), Utils::doubleMaxString(bar.high).c_str(), Utils::doubleMaxString(bar.low).c_str(), Utils::doubleMaxString(bar.close).c_str(), 
         decimalStringToDisplay(bar.volume).c_str(), Utils::intMaxString(bar.count).c_str(), decimalStringToDisplay(bar.wap).c_str());
@@ -1885,19 +1819,19 @@ void V_IB_EWrapper::historicalData(TickerId reqId, const Bar& bar) {
 //! [historicaldata]
 
 //! [historicaldataend]
-void V_IB_EWrapper::historicalDataEnd(int reqId, const std::string& startDateStr, const std::string& endDateStr) {
+void V_IB_Receiver::historicalDataEnd(int reqId, const std::string& startDateStr, const std::string& endDateStr) {
 	std::cout << "HistoricalDataEnd. ReqId: " << reqId << " - Start Date: " << startDateStr << ", End Date: " << endDateStr << std::endl;	
 }
 //! [historicaldataend]
 
 //! [scannerparameters]
-void V_IB_EWrapper::scannerParameters(const std::string& xml) {
+void V_IB_Receiver::scannerParameters(const std::string& xml) {
 	printf( "ScannerParameters. %s\n", xml.c_str());
 }
 //! [scannerparameters]
 
 //! [scannerdata]
-void V_IB_EWrapper::scannerData(int reqId, int rank, const ContractDetails& contractDetails,
+void V_IB_Receiver::scannerData(int reqId, int rank, const ContractDetails& contractDetails,
                                 const std::string& distance, const std::string& benchmark, const std::string& projection,
                                 const std::string& legsStr) {
 	printf( "ScannerData. %d - Rank: %d, Symbol: %s, SecType: %s, Currency: %s, Distance: %s, Benchmark: %s, Projection: %s, Legs String: %s\n", reqId, rank, contractDetails.contract.symbol.c_str(), contractDetails.contract.secType.c_str(), contractDetails.contract.currency.c_str(), distance.c_str(), benchmark.c_str(), projection.c_str(), legsStr.c_str());
@@ -1905,13 +1839,13 @@ void V_IB_EWrapper::scannerData(int reqId, int rank, const ContractDetails& cont
 //! [scannerdata]
 
 //! [scannerdataend]
-void V_IB_EWrapper::scannerDataEnd(int reqId) {
+void V_IB_Receiver::scannerDataEnd(int reqId) {
 	printf( "ScannerDataEnd. %d\n", reqId);
 }
 //! [scannerdataend]
 
 //! [realtimebar]
-void V_IB_EWrapper::realtimeBar(TickerId reqId, long time, double open, double high, double low, double close,
+void V_IB_Receiver::realtimeBar(TickerId reqId, long time, double open, double high, double low, double close,
                                 Decimal volume, Decimal wap, int count) {
     printf( "RealTimeBars. %ld - Time: %s, Open: %s, High: %s, Low: %s, Close: %s, Volume: %s, Count: %s, WAP: %s\n", reqId, Utils::longMaxString(time).c_str(), 
         Utils::doubleMaxString(open).c_str(), Utils::doubleMaxString(high).c_str(), Utils::doubleMaxString(low).c_str(), Utils::doubleMaxString(close).c_str(), 
@@ -1920,126 +1854,126 @@ void V_IB_EWrapper::realtimeBar(TickerId reqId, long time, double open, double h
 //! [realtimebar]
 
 //! [fundamentaldata]
-void V_IB_EWrapper::fundamentalData(TickerId reqId, const std::string& data) {
+void V_IB_Receiver::fundamentalData(TickerId reqId, const std::string& data) {
 	printf( "FundamentalData. ReqId: %ld, %s\n", reqId, data.c_str());
 }
 //! [fundamentaldata]
 
-void V_IB_EWrapper::deltaNeutralValidation(int reqId, const DeltaNeutralContract& deltaNeutralContract) {
+void V_IB_Receiver::deltaNeutralValidation(int reqId, const DeltaNeutralContract& deltaNeutralContract) {
     printf( "DeltaNeutralValidation. %d, ConId: %ld, Delta: %s, Price: %s\n", reqId, deltaNeutralContract.conId, Utils::doubleMaxString(deltaNeutralContract.delta).c_str(), Utils::doubleMaxString(deltaNeutralContract.price).c_str());
 }
 
 //! [ticksnapshotend]
-void V_IB_EWrapper::tickSnapshotEnd(int reqId) {
+void V_IB_Receiver::tickSnapshotEnd(int reqId) {
 	printf( "TickSnapshotEnd: %d\n", reqId);
 }
 //! [ticksnapshotend]
 
 //! [marketdatatype]
-void V_IB_EWrapper::marketDataType(TickerId reqId, int marketDataType) {
+void V_IB_Receiver::marketDataType(TickerId reqId, int marketDataType) {
 	printf( "MarketDataType. ReqId: %ld, Type: %d\n", reqId, marketDataType);
 }
 //! [marketdatatype]
 
 //! [commissionreport]
-void V_IB_EWrapper::commissionReport( const CommissionReport& commissionReport) {
+void V_IB_Receiver::commissionReport( const CommissionReport& commissionReport) {
     printf( "CommissionReport. %s - %s %s RPNL %s\n", commissionReport.execId.c_str(), Utils::doubleMaxString(commissionReport.commission).c_str(), commissionReport.currency.c_str(), Utils::doubleMaxString(commissionReport.realizedPNL).c_str());
 }
 //! [commissionreport]
 
 //! [position]
-void V_IB_EWrapper::position( const std::string& account, const Contract& contract, Decimal position, double avgCost) {
+void V_IB_Receiver::position( const std::string& account, const Contract& contract, Decimal position, double avgCost) {
     printf( "Position. %s - Symbol: %s, SecType: %s, Currency: %s, Position: %s, Avg Cost: %s\n", account.c_str(), contract.symbol.c_str(), contract.secType.c_str(), contract.currency.c_str(), decimalStringToDisplay(position).c_str(), Utils::doubleMaxString(avgCost).c_str());
 }
 //! [position]
 
 //! [positionend]
-void V_IB_EWrapper::positionEnd() {
+void V_IB_Receiver::positionEnd() {
 	printf( "PositionEnd\n");
 }
 //! [positionend]
 
 //! [accountsummary]
-void V_IB_EWrapper::accountSummary( int reqId, const std::string& account, const std::string& tag, const std::string& value, const std::string& currency) {
+void V_IB_Receiver::accountSummary( int reqId, const std::string& account, const std::string& tag, const std::string& value, const std::string& currency) {
 	printf( "Acct Summary. ReqId: %d, Account: %s, Tag: %s, Value: %s, Currency: %s\n", reqId, account.c_str(), tag.c_str(), value.c_str(), currency.c_str());
 }
 //! [accountsummary]
 
 //! [accountsummaryend]
-void V_IB_EWrapper::accountSummaryEnd( int reqId) {
+void V_IB_Receiver::accountSummaryEnd( int reqId) {
 	printf( "AccountSummaryEnd. Req Id: %d\n", reqId);
 }
 //! [accountsummaryend]
 
-void V_IB_EWrapper::verifyMessageAPI( const std::string& apiData) {
+void V_IB_Receiver::verifyMessageAPI( const std::string& apiData) {
 	printf("verifyMessageAPI: %s\b", apiData.c_str());
 }
 
-void V_IB_EWrapper::verifyCompleted( bool isSuccessful, const std::string& errorText) {
+void V_IB_Receiver::verifyCompleted( bool isSuccessful, const std::string& errorText) {
 	printf("verifyCompleted. IsSuccessfule: %d - Error: %s\n", isSuccessful, errorText.c_str());
 }
 
-void V_IB_EWrapper::verifyAndAuthMessageAPI( const std::string& apiDatai, const std::string& xyzChallenge) {
+void V_IB_Receiver::verifyAndAuthMessageAPI( const std::string& apiDatai, const std::string& xyzChallenge) {
 	printf("verifyAndAuthMessageAPI: %s %s\n", apiDatai.c_str(), xyzChallenge.c_str());
 }
 
-void V_IB_EWrapper::verifyAndAuthCompleted( bool isSuccessful, const std::string& errorText) {
+void V_IB_Receiver::verifyAndAuthCompleted( bool isSuccessful, const std::string& errorText) {
 	printf("verifyAndAuthCompleted. IsSuccessful: %d - Error: %s\n", isSuccessful, errorText.c_str());
     if (isSuccessful)
         m_pClient->startApi();
 }
 
 //! [displaygrouplist]
-void V_IB_EWrapper::displayGroupList( int reqId, const std::string& groups) {
+void V_IB_Receiver::displayGroupList( int reqId, const std::string& groups) {
 	printf("Display Group List. ReqId: %d, Groups: %s\n", reqId, groups.c_str());
 }
 //! [displaygrouplist]
 
 //! [displaygroupupdated]
-void V_IB_EWrapper::displayGroupUpdated( int reqId, const std::string& contractInfo) {
+void V_IB_Receiver::displayGroupUpdated( int reqId, const std::string& contractInfo) {
 	std::cout << "Display Group Updated. ReqId: " << reqId << ", Contract Info: " << contractInfo << std::endl;
 }
 //! [displaygroupupdated]
 
 //! [positionmulti]
-void V_IB_EWrapper::positionMulti( int reqId, const std::string& account,const std::string& modelCode, const Contract& contract, Decimal pos, double avgCost) {
+void V_IB_Receiver::positionMulti( int reqId, const std::string& account,const std::string& modelCode, const Contract& contract, Decimal pos, double avgCost) {
     printf("Position Multi. Request: %d, Account: %s, ModelCode: %s, Symbol: %s, SecType: %s, Currency: %s, Position: %s, Avg Cost: %s\n", reqId, account.c_str(), modelCode.c_str(), contract.symbol.c_str(), contract.secType.c_str(), contract.currency.c_str(), decimalStringToDisplay(pos).c_str(), Utils::doubleMaxString(avgCost).c_str());
 }
 //! [positionmulti]
 
 //! [positionmultiend]
-void V_IB_EWrapper::positionMultiEnd( int reqId) {
+void V_IB_Receiver::positionMultiEnd( int reqId) {
 	printf("Position Multi End. Request: %d\n", reqId);
 }
 //! [positionmultiend]
 
 //! [accountupdatemulti]
-void V_IB_EWrapper::accountUpdateMulti( int reqId, const std::string& account, const std::string& modelCode, const std::string& key, const std::string& value, const std::string& currency) {
+void V_IB_Receiver::accountUpdateMulti( int reqId, const std::string& account, const std::string& modelCode, const std::string& key, const std::string& value, const std::string& currency) {
 	printf("AccountUpdate Multi. Request: %d, Account: %s, ModelCode: %s, Key, %s, Value: %s, Currency: %s\n", reqId, account.c_str(), modelCode.c_str(), key.c_str(), value.c_str(), currency.c_str());
 }
 //! [accountupdatemulti]
 
 //! [accountupdatemultiend]
-void V_IB_EWrapper::accountUpdateMultiEnd( int reqId) {
+void V_IB_Receiver::accountUpdateMultiEnd( int reqId) {
 	printf("Account Update Multi End. Request: %d\n", reqId);
 }
 //! [accountupdatemultiend]
 
 //! [securityDefinitionOptionParameter]
-void V_IB_EWrapper::securityDefinitionOptionalParameter(int reqId, const std::string& exchange, int underlyingConId, const std::string& tradingClass,
+void V_IB_Receiver::securityDefinitionOptionalParameter(int reqId, const std::string& exchange, int underlyingConId, const std::string& tradingClass,
                                                         const std::string& multiplier, const std::set<std::string>& expirations, const std::set<double>& strikes) {
 	printf("Security Definition Optional Parameter. Request: %d, Trading Class: %s, Multiplier: %s\n", reqId, tradingClass.c_str(), multiplier.c_str());
 }
 //! [securityDefinitionOptionParameter]
 
 //! [securityDefinitionOptionParameterEnd]
-void V_IB_EWrapper::securityDefinitionOptionalParameterEnd(int reqId) {
+void V_IB_Receiver::securityDefinitionOptionalParameterEnd(int reqId) {
 	printf("Security Definition Optional Parameter End. Request: %d\n", reqId);
 }
 //! [securityDefinitionOptionParameterEnd]
 
 //! [softDollarTiers]
-void V_IB_EWrapper::softDollarTiers(int reqId, const std::vector<SoftDollarTier> &tiers) {
+void V_IB_Receiver::softDollarTiers(int reqId, const std::vector<SoftDollarTier> &tiers) {
 	printf("Soft dollar tiers (%lu):", tiers.size());
 
 	for (unsigned int i = 0; i < tiers.size(); i++) {
@@ -2049,7 +1983,7 @@ void V_IB_EWrapper::softDollarTiers(int reqId, const std::vector<SoftDollarTier>
 //! [softDollarTiers]
 
 //! [familyCodes]
-void V_IB_EWrapper::familyCodes(const std::vector<FamilyCode> &familyCodes) {
+void V_IB_Receiver::familyCodes(const std::vector<FamilyCode> &familyCodes) {
 	printf("Family codes (%lu):\n", familyCodes.size());
 
 	for (unsigned int i = 0; i < familyCodes.size(); i++) {
@@ -2059,7 +1993,7 @@ void V_IB_EWrapper::familyCodes(const std::vector<FamilyCode> &familyCodes) {
 //! [familyCodes]
 
 //! [symbolSamples]
-void V_IB_EWrapper::symbolSamples(int reqId, const std::vector<ContractDescription> &contractDescriptions) {
+void V_IB_Receiver::symbolSamples(int reqId, const std::vector<ContractDescription> &contractDescriptions) {
 	printf("Symbol Samples (total=%lu) reqId: %d\n", contractDescriptions.size(), reqId);
 
 	for (unsigned int i = 0; i < contractDescriptions.size(); i++) {
@@ -2077,7 +2011,7 @@ void V_IB_EWrapper::symbolSamples(int reqId, const std::vector<ContractDescripti
 //! [symbolSamples]
 
 //! [mktDepthExchanges]
-void V_IB_EWrapper::mktDepthExchanges(const std::vector<DepthMktDataDescription> &depthMktDataDescriptions) {
+void V_IB_Receiver::mktDepthExchanges(const std::vector<DepthMktDataDescription> &depthMktDataDescriptions) {
 	printf("Mkt Depth Exchanges (%lu):\n", depthMktDataDescriptions.size());
 
 	for (unsigned int i = 0; i < depthMktDataDescriptions.size(); i++) {
@@ -2092,13 +2026,13 @@ void V_IB_EWrapper::mktDepthExchanges(const std::vector<DepthMktDataDescription>
 //! [mktDepthExchanges]
 
 //! [tickNews]
-void V_IB_EWrapper::tickNews(int tickerId, time_t timeStamp, const std::string& providerCode, const std::string& articleId, const std::string& headline, const std::string& extraData) {
+void V_IB_Receiver::tickNews(int tickerId, time_t timeStamp, const std::string& providerCode, const std::string& articleId, const std::string& headline, const std::string& extraData) {
 	printf("News Tick. TickerId: %d, TimeStamp: %s, ProviderCode: %s, ArticleId: %s, Headline: %s, ExtraData: %s\n", tickerId, ctime(&(timeStamp /= 1000)), providerCode.c_str(), articleId.c_str(), headline.c_str(), extraData.c_str());
 }
 //! [tickNews]
 
 //! [smartcomponents]]
-void V_IB_EWrapper::smartComponents(int reqId, const SmartComponentsMap& theMap) {
+void V_IB_Receiver::smartComponents(int reqId, const SmartComponentsMap& theMap) {
 	printf("Smart components: (%lu):\n", theMap.size());
 
 	for (SmartComponentsMap::const_iterator i = theMap.begin(); i != theMap.end(); i++) {
@@ -2108,7 +2042,7 @@ void V_IB_EWrapper::smartComponents(int reqId, const SmartComponentsMap& theMap)
 //! [smartcomponents]
 
 //! [tickReqParams]
-void V_IB_EWrapper::tickReqParams(int tickerId, double minTick, const std::string& bboExchange, int snapshotPermissions) {
+void V_IB_Receiver::tickReqParams(int tickerId, double minTick, const std::string& bboExchange, int snapshotPermissions) {
     printf("tickerId: %d, minTick: %s, bboExchange: %s, snapshotPermissions: %u\n", tickerId, Utils::doubleMaxString(minTick).c_str(), bboExchange.c_str(), snapshotPermissions);
 
 	m_bboExchange = bboExchange;
@@ -2116,7 +2050,7 @@ void V_IB_EWrapper::tickReqParams(int tickerId, double minTick, const std::strin
 //! [tickReqParams]
 
 //! [newsProviders]
-void V_IB_EWrapper::newsProviders(const std::vector<NewsProvider> &newsProviders) {
+void V_IB_Receiver::newsProviders(const std::vector<NewsProvider> &newsProviders) {
 	printf("News providers (%lu):\n", newsProviders.size());
 
 	for (unsigned int i = 0; i < newsProviders.size(); i++) {
@@ -2126,7 +2060,7 @@ void V_IB_EWrapper::newsProviders(const std::vector<NewsProvider> &newsProviders
 //! [newsProviders]
 
 //! [newsArticle]
-void V_IB_EWrapper::newsArticle(int requestId, int articleType, const std::string& articleText) {
+void V_IB_Receiver::newsArticle(int requestId, int articleType, const std::string& articleText) {
 	printf("News Article. Request Id: %d, Article Type: %d\n", requestId, articleType);
 	if (articleType == 0) {
 		printf("News Article Text (text or html): %s\n", articleText.c_str());
@@ -2153,26 +2087,26 @@ void V_IB_EWrapper::newsArticle(int requestId, int articleType, const std::strin
 //! [newsArticle]
 
 //! [historicalNews]
-void V_IB_EWrapper::historicalNews(int requestId, const std::string& time, const std::string& providerCode, const std::string& articleId, const std::string& headline) {
+void V_IB_Receiver::historicalNews(int requestId, const std::string& time, const std::string& providerCode, const std::string& articleId, const std::string& headline) {
 	printf("Historical News. RequestId: %d, Time: %s, ProviderCode: %s, ArticleId: %s, Headline: %s\n", requestId, time.c_str(), providerCode.c_str(), articleId.c_str(), headline.c_str());
 }
 //! [historicalNews]
 
 //! [historicalNewsEnd]
-void V_IB_EWrapper::historicalNewsEnd(int requestId, bool hasMore) {
+void V_IB_Receiver::historicalNewsEnd(int requestId, bool hasMore) {
 	printf("Historical News End. RequestId: %d, HasMore: %s\n", requestId, (hasMore ? "true" : " false"));
 }
 //! [historicalNewsEnd]
 
 //! [headTimestamp]
-void V_IB_EWrapper::headTimestamp(int reqId, const std::string& headTimestamp) {
+void V_IB_Receiver::headTimestamp(int reqId, const std::string& headTimestamp) {
 	printf( "Head time stamp. ReqId: %d - Head time stamp: %s,\n", reqId, headTimestamp.c_str());
 
 }
 //! [headTimestamp]
 
 //! [histogramData]
-void V_IB_EWrapper::histogramData(int reqId, const HistogramDataVector& data) {
+void V_IB_Receiver::histogramData(int reqId, const HistogramDataVector& data) {
 	printf("Histogram. ReqId: %d, data length: %lu\n", reqId, data.size());
 
     for (const HistogramEntry& entry : data) {
@@ -2182,7 +2116,7 @@ void V_IB_EWrapper::histogramData(int reqId, const HistogramDataVector& data) {
 //! [histogramData]
 
 //! [historicalDataUpdate]
-void V_IB_EWrapper::historicalDataUpdate(TickerId reqId, const Bar& bar) {
+void V_IB_Receiver::historicalDataUpdate(TickerId reqId, const Bar& bar) {
     printf( "HistoricalDataUpdate. ReqId: %ld - Date: %s, Open: %s, High: %s, Low: %s, Close: %s, Volume: %s, Count: %s, WAP: %s\n", reqId, bar.time.c_str(), 
         Utils::doubleMaxString(bar.open).c_str(), Utils::doubleMaxString(bar.high).c_str(), Utils::doubleMaxString(bar.low).c_str(), Utils::doubleMaxString(bar.close).c_str(), 
         decimalStringToDisplay(bar.volume).c_str(), Utils::intMaxString(bar.count).c_str(), decimalStringToDisplay(bar.wap).c_str());
@@ -2190,19 +2124,19 @@ void V_IB_EWrapper::historicalDataUpdate(TickerId reqId, const Bar& bar) {
 //! [historicalDataUpdate]
 
 //! [rerouteMktDataReq]
-void V_IB_EWrapper::rerouteMktDataReq(int reqId, int conid, const std::string& exchange) {
+void V_IB_Receiver::rerouteMktDataReq(int reqId, int conid, const std::string& exchange) {
 	printf( "Re-route market data request. ReqId: %d, ConId: %d, Exchange: %s\n", reqId, conid, exchange.c_str());
 }
 //! [rerouteMktDataReq]
 
 //! [rerouteMktDepthReq]
-void V_IB_EWrapper::rerouteMktDepthReq(int reqId, int conid, const std::string& exchange) {
+void V_IB_Receiver::rerouteMktDepthReq(int reqId, int conid, const std::string& exchange) {
 	printf( "Re-route market depth request. ReqId: %d, ConId: %d, Exchange: %s\n", reqId, conid, exchange.c_str());
 }
 //! [rerouteMktDepthReq]
 
 //! [marketRule]
-void V_IB_EWrapper::marketRule(int marketRuleId, const std::vector<PriceIncrement> &priceIncrements) {
+void V_IB_Receiver::marketRule(int marketRuleId, const std::vector<PriceIncrement> &priceIncrements) {
     printf("Market Rule Id: %s\n", Utils::intMaxString(marketRuleId).c_str());
     for (unsigned int i = 0; i < priceIncrements.size(); i++) {
         printf("Low Edge: %s, Increment: %s\n", Utils::doubleMaxString(priceIncrements[i].lowEdge).c_str(), Utils::doubleMaxString(priceIncrements[i].increment).c_str());
@@ -2211,21 +2145,21 @@ void V_IB_EWrapper::marketRule(int marketRuleId, const std::vector<PriceIncremen
 //! [marketRule]
 
 //! [pnl]
-void V_IB_EWrapper::pnl(int reqId, double dailyPnL, double unrealizedPnL, double realizedPnL) {
+void V_IB_Receiver::pnl(int reqId, double dailyPnL, double unrealizedPnL, double realizedPnL) {
     printf("PnL. ReqId: %d, daily PnL: %s, unrealized PnL: %s, realized PnL: %s\n", reqId, Utils::doubleMaxString(dailyPnL).c_str(), Utils::doubleMaxString(unrealizedPnL).c_str(), 
         Utils::doubleMaxString(realizedPnL).c_str());
 }
 //! [pnl]
 
 //! [pnlsingle]
-void V_IB_EWrapper::pnlSingle(int reqId, Decimal pos, double dailyPnL, double unrealizedPnL, double realizedPnL, double value) {
+void V_IB_Receiver::pnlSingle(int reqId, Decimal pos, double dailyPnL, double unrealizedPnL, double realizedPnL, double value) {
     printf("PnL Single. ReqId: %d, pos: %s, daily PnL: %s, unrealized PnL: %s, realized PnL: %s, value: %s\n", reqId, decimalStringToDisplay(pos).c_str(), Utils::doubleMaxString(dailyPnL).c_str(), 
         Utils::doubleMaxString(unrealizedPnL).c_str(), Utils::doubleMaxString(realizedPnL).c_str(), Utils::doubleMaxString(value).c_str());
 }
 //! [pnlsingle]
 
 //! [historicalticks]
-void V_IB_EWrapper::historicalTicks(int reqId, const std::vector<HistoricalTick>& ticks, bool done) {
+void V_IB_Receiver::historicalTicks(int reqId, const std::vector<HistoricalTick>& ticks, bool done) {
     for (const HistoricalTick& tick : ticks) {
     std::time_t t = tick.time;
         std::cout << "Historical tick. ReqId: " << reqId << ", time: " << ctime(&t) << ", price: "<< Utils::doubleMaxString(tick.price).c_str()	<< ", size: " << decimalStringToDisplay(tick.size).c_str() << std::endl;
@@ -2234,7 +2168,7 @@ void V_IB_EWrapper::historicalTicks(int reqId, const std::vector<HistoricalTick>
 //! [historicalticks]
 
 //! [historicalticksbidask]
-void V_IB_EWrapper::historicalTicksBidAsk(int reqId, const std::vector<HistoricalTickBidAsk>& ticks, bool done) {
+void V_IB_Receiver::historicalTicksBidAsk(int reqId, const std::vector<HistoricalTickBidAsk>& ticks, bool done) {
     for (const HistoricalTickBidAsk& tick : ticks) {
     std::time_t t = tick.time;
         std::cout << "Historical tick bid/ask. ReqId: " << reqId << ", time: " << ctime(&t) << ", price bid: "<< Utils::doubleMaxString(tick.priceBid).c_str()	<<
@@ -2245,7 +2179,7 @@ void V_IB_EWrapper::historicalTicksBidAsk(int reqId, const std::vector<Historica
 //! [historicalticksbidask]
 
 //! [historicaltickslast]
-void V_IB_EWrapper::historicalTicksLast(int reqId, const std::vector<HistoricalTickLast>& ticks, bool done) {
+void V_IB_Receiver::historicalTicksLast(int reqId, const std::vector<HistoricalTickLast>& ticks, bool done) {
     for (HistoricalTickLast tick : ticks) {
 	std::time_t t = tick.time;
         std::cout << "Historical tick last. ReqId: " << reqId << ", time: " << ctime(&t) << ", price: "<< Utils::doubleMaxString(tick.price).c_str() <<
@@ -2256,33 +2190,33 @@ void V_IB_EWrapper::historicalTicksLast(int reqId, const std::vector<HistoricalT
 //! [historicaltickslast]
 
 //! [tickbytickalllast]
-void V_IB_EWrapper::tickByTickAllLast(int reqId, int tickType, time_t time, double price, Decimal size, const TickAttribLast& tickAttribLast, const std::string& exchange, const std::string& specialConditions) {
+void V_IB_Receiver::tickByTickAllLast(int reqId, int tickType, time_t time, double price, Decimal size, const TickAttribLast& tickAttribLast, const std::string& exchange, const std::string& specialConditions) {
     printf("Tick-By-Tick. ReqId: %d, TickType: %s, Time: %s, Price: %s, Size: %s, PastLimit: %d, Unreported: %d, Exchange: %s, SpecialConditions:%s\n", 
         reqId, (tickType == 1 ? "Last" : "AllLast"), ctime(&time), Utils::doubleMaxString(price).c_str(), decimalStringToDisplay(size).c_str(), tickAttribLast.pastLimit, tickAttribLast.unreported, exchange.c_str(), specialConditions.c_str());
 }
 //! [tickbytickalllast]
 
 //! [tickbytickbidask]
-void V_IB_EWrapper::tickByTickBidAsk(int reqId, time_t time, double bidPrice, double askPrice, Decimal bidSize, Decimal askSize, const TickAttribBidAsk& tickAttribBidAsk) {
+void V_IB_Receiver::tickByTickBidAsk(int reqId, time_t time, double bidPrice, double askPrice, Decimal bidSize, Decimal askSize, const TickAttribBidAsk& tickAttribBidAsk) {
     printf("Tick-By-Tick. ReqId: %d, TickType: BidAsk, Time: %s, BidPrice: %s, AskPrice: %s, BidSize: %s, AskSize: %s, BidPastLow: %d, AskPastHigh: %d\n", 
         reqId, ctime(&time), Utils::doubleMaxString(bidPrice).c_str(), Utils::doubleMaxString(askPrice).c_str(), decimalStringToDisplay(bidSize).c_str(), decimalStringToDisplay(askSize).c_str(), tickAttribBidAsk.bidPastLow, tickAttribBidAsk.askPastHigh);
 }
 //! [tickbytickbidask]
 
 //! [tickbytickmidpoint]
-void V_IB_EWrapper::tickByTickMidPoint(int reqId, time_t time, double midPoint) {
+void V_IB_Receiver::tickByTickMidPoint(int reqId, time_t time, double midPoint) {
     printf("Tick-By-Tick. ReqId: %d, TickType: MidPoint, Time: %s, MidPoint: %s\n", reqId, ctime(&time), Utils::doubleMaxString(midPoint).c_str());
 }
 //! [tickbytickmidpoint]
 
 //! [orderbound]
-void V_IB_EWrapper::orderBound(long long orderId, int apiClientId, int apiOrderId) {
+void V_IB_Receiver::orderBound(long long orderId, int apiClientId, int apiOrderId) {
     printf("Order bound. OrderId: %s, ApiClientId: %s, ApiOrderId: %s\n", Utils::llongMaxString(orderId).c_str(), Utils::intMaxString(apiClientId).c_str(), Utils::intMaxString(apiOrderId).c_str());
 }
 //! [orderbound]
 
 //! [completedorder]
-void V_IB_EWrapper::completedOrder(const Contract& contract, const Order& order, const OrderState& orderState) {
+void V_IB_Receiver::completedOrder(const Contract& contract, const Order& order, const OrderState& orderState) {
     printf( "CompletedOrder. PermId: %s, ParentPermId: %s, Account: %s, Symbol: %s, SecType: %s, Exchange: %s:, Action: %s, OrderType: %s, TotalQty: %s, CashQty: %s, FilledQty: %s, "
         "LmtPrice: %s, AuxPrice: %s, Status: %s, CompletedTime: %s, CompletedStatus: %s, MinTradeQty: %s, MinCompeteSize: %s, CompeteAgainstBestOffset: %s, MidOffsetAtWhole: %s, MidOffsetAtHalf: %s\n",
         Utils::intMaxString(order.permId).c_str(), Utils::llongMaxString(order.parentPermId).c_str(), order.account.c_str(), contract.symbol.c_str(), contract.secType.c_str(), contract.exchange.c_str(),
@@ -2295,31 +2229,31 @@ void V_IB_EWrapper::completedOrder(const Contract& contract, const Order& order,
 //! [completedorder]
 
 //! [completedordersend]
-void V_IB_EWrapper::completedOrdersEnd() {
+void V_IB_Receiver::completedOrdersEnd() {
 	printf( "CompletedOrdersEnd\n");
 }
 //! [completedordersend]
 
 //! [replacefaend]
-void V_IB_EWrapper::replaceFAEnd(int reqId, const std::string& text) {
+void V_IB_Receiver::replaceFAEnd(int reqId, const std::string& text) {
 	printf("Replace FA End. Request: %d, Text:%s\n", reqId, text.c_str());
 }
 //! [replacefaend]
 
 //! [wshMetaData]
-void V_IB_EWrapper::wshMetaData(int reqId, const std::string& dataJson) {
+void V_IB_Receiver::wshMetaData(int reqId, const std::string& dataJson) {
 	printf("WSH Meta Data. ReqId: %d, dataJson: %s\n", reqId, dataJson.c_str());
 }
 //! [wshMetaData]
 
 //! [wshEventData]
-void V_IB_EWrapper::wshEventData(int reqId, const std::string& dataJson) {
+void V_IB_Receiver::wshEventData(int reqId, const std::string& dataJson) {
 	printf("WSH Event Data. ReqId: %d, dataJson: %s\n", reqId, dataJson.c_str());
 }
 //! [wshEventData]
 
 //! [historicalSchedule]
-void V_IB_EWrapper::historicalSchedule(int reqId, const std::string& startDateTime, const std::string& endDateTime, const std::string& timeZone, const std::vector<HistoricalSession>& sessions) {
+void V_IB_Receiver::historicalSchedule(int reqId, const std::string& startDateTime, const std::string& endDateTime, const std::string& timeZone, const std::vector<HistoricalSession>& sessions) {
 	printf("Historical Schedule. ReqId: %d, Start: %s, End: %s, TimeZone: %s\n", reqId, startDateTime.c_str(), endDateTime.c_str(), timeZone.c_str());
 	for (unsigned int i = 0; i < sessions.size(); i++) {
 		printf("\tSession. Start: %s, End: %s, RefDate: %s\n", sessions[i].startDateTime.c_str(), sessions[i].endDateTime.c_str(), sessions[i].refDate.c_str());
@@ -2328,13 +2262,15 @@ void V_IB_EWrapper::historicalSchedule(int reqId, const std::string& startDateTi
 //! [historicalSchedule]
 
 //! [userInfo]
-void V_IB_EWrapper::userInfo(int reqId, const std::string& whiteBrandingId) {
+void V_IB_Receiver::userInfo(int reqId, const std::string& whiteBrandingId) {
     printf("User Info. ReqId: %d, WhiteBrandingId: %s\n", reqId, whiteBrandingId.c_str());
 }
 //! [userInfo]
 
-void V_IB_EWrapper::run() {
+void V_IB_Receiver::run() {
     m_IBTWSApp_id = std::this_thread::get_id();
+	const char * host = m_cmd.get("--host");
+	host = nullptr == host ? "127.0.0.1":host;
 	const char * port = m_cmd.get("--port");
 	const char * cId = m_cmd.get("--client_id");
 	// if ( nullptr == port) {
@@ -2342,23 +2278,28 @@ void V_IB_EWrapper::run() {
 	// }
 	int p = nullptr == port ? 7496:atoi(port);
 	int clientId = nullptr == cId ? 0:atoi(cId);
-	connect("127.0.0.1", p,clientId);
-	for(int i =0; i < 10; i++){
-		if(isConnected()) {
+	const unsigned MAX_ATTEMPTS = 50;
+	const int SLEEP_TIME = 10;
+	unsigned attempt = 0;
+	for(;!m_stopFlag;){
+		attempt ++;
+		std::string connectOptions {""};
+		setConnectOptions(connectOptions);
+		connect(host, p,clientId);
+		while(!m_stopFlag && isConnected()) {
+			processMessages();
+		}
+		if( attempt >= MAX_ATTEMPTS) {
 			break;
 		}
-		m_log->trace("Connectting......");
-        std::this_thread::sleep_for(std::chrono::seconds(1));
+		m_log->warn("Sleeping {} seconds before next attempt", SLEEP_TIME);
+		std::this_thread::sleep_for(std::chrono::seconds(SLEEP_TIME));
 	}
-	while(!m_stopFlag && isConnected()) {
-		//m_log->trace("m_stopFlag:{}", m_stopFlag);
-		processMessages();
-	}
-	disconnect();
+	// disconnect();
 	return;
 }
 
-void V_IB_EWrapper::waitConnected() {
+void V_IB_Receiver::waitConnected() {
     std::thread::id this_id = std::this_thread::get_id();
     if (this_id == m_IBTWSApp_id) {
         throw std::runtime_error("MUST not be called on this thread");
@@ -2374,3 +2315,45 @@ void V_IB_EWrapper::waitConnected() {
         // }
 }
 
+//! [error]
+void V_IB_Receiver::error(int id, int errorCode, const std::string& errorString, const std::string& advancedOrderRejectJson)
+{
+    if (!advancedOrderRejectJson.empty()) {
+        printf("Error. Id: %d, Code: %d, Msg: %s, AdvancedOrderRejectJson: %s\n", id, errorCode, errorString.c_str(), advancedOrderRejectJson.c_str());
+    } else {
+        printf("Error. Id: %d, Code: %d, Msg: %s\n", id, errorCode, errorString.c_str());
+    }
+	if (id < 0){
+		return;
+	}
+	m_semaphore.release();
+	if( m_remaining_cnt >0){ m_remaining_cnt --; }
+
+	auto &vc = m_vcontract_vector->at(id);
+	m_log->error("[{}] code:{}, string:{}", vc->symbol_, errorCode, errorString);
+
+}
+//! [error]
+//! [nextvalidid]
+void V_IB_Receiver::nextValidId( OrderId orderId)
+{
+	m_log->debug("Next Valid Id: {}", orderId);
+	m_orderId = orderId;
+	// m_state = ST_CONTRACTOPERATION;
+}
+
+//! [contractdetails]
+void V_IB_Receiver::contractDetails( int reqId, const ContractDetails& contractDetails) {
+	m_semaphore.release();
+	auto &vc = m_vcontract_vector->at(reqId);
+	if (nullptr == vc->ibContractDetails_) {
+		vc->ibContractDetails_ = std::make_unique<ContractDetails>();
+	}
+	*(vc->ibContractDetails_) = contractDetails;
+	if( m_remaining_cnt >0){ m_remaining_cnt --; }
+
+}
+//! [contractdetails]
+
+// void V_IB_Receiver::nextValidId( OrderId orderId)
+// void V_IB_Receiver::contractDetails( int reqId, const ContractDetails& contractDetails) {

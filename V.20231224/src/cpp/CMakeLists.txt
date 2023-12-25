@@ -60,7 +60,7 @@ link_directories(${CMAKE_SOURCE_DIR}/IntelRDFPMathLib20U2/LIBRARY)
 add_executable(v-trade
     CmdOption.cpp
     Ohlcv.cpp
-    V_IB_EClientSocket.cpp  V_IB_EWrapper.cpp
+    V_IB_Sender.cpp  V_IB_Receiver.cpp
     v-main.cpp
     twsapi_macunix.1019.02/IBJts/samples/Cpp//TestCppClient/Utils.cpp
 )

@@ -1,12 +1,12 @@
-﻿#include "V_IB_EClientSocket.h"
+﻿#include "V_IB_Sender.h"
 using namespace std;
 
-V_IB_EClientSocket::V_IB_EClientSocket(CountingSemaphore *sem, EWrapper *ptr, EReaderSignal *pSignal)
-    :m_pSemaphore(sem),m_log(spdlog::stderr_color_mt("V_IB_EClientSocket"))
+V_IB_Sender::V_IB_Sender(CountingSemaphore *sem, EWrapper *ptr, EReaderSignal *pSignal)
+    :m_pSemaphore(sem),m_log(spdlog::stderr_color_mt("V_IB_Sender"))
     ,EClientSocket(ptr, pSignal) {
 
 }
-void V_IB_EClientSocket::speedControl(std::list<time_t> &callList, int maxCalls, int seconds){
+void V_IB_Sender::speedControl(std::list<time_t> &callList, int maxCalls, int seconds){
     maxCalls --;
     int total = callList.size();
     while(total >= maxCalls) {
@@ -20,13 +20,13 @@ void V_IB_EClientSocket::speedControl(std::list<time_t> &callList, int maxCalls,
     }
     callList.push_back(time(NULL));
 }
-void V_IB_EClientSocket::reqContractDetails(int reqId, const Contract& contract) {
+void V_IB_Sender::reqContractDetails(int reqId, const Contract& contract) {
     m_pSemaphore->acquire();
     scoped_lock lock(m_mutex);
 
     EClientSocket::reqContractDetails(reqId, contract);
 }
-void V_IB_EClientSocket::reqHistoricalData(TickerId tickerId, const Contract& contract,
+void V_IB_Sender::reqHistoricalData(TickerId tickerId, const Contract& contract,
                                 const std::string& endDateTime, const std::string& durationStr,
                                 const std::string&  barSizeSetting, const std::string& whatToShow,
                                 int useRTH, int formatDate, bool keepUpToDate, const TagValueListSPtr& chartOptions) {
@@ -36,7 +36,7 @@ void V_IB_EClientSocket::reqHistoricalData(TickerId tickerId, const Contract& co
     EClient::reqHistoricalData(tickerId, contract, endDateTime, durationStr, barSizeSetting, whatToShow, useRTH, formatDate, keepUpToDate,chartOptions);
 }
 
-void V_IB_EClientSocket::reqMktData(TickerId tickerId, const Contract& contract, const std::string& genericTicks, bool snapshot, bool regulatorySnaphsot, const TagValueListSPtr& mktDataOptions) {
+void V_IB_Sender::reqMktData(TickerId tickerId, const Contract& contract, const std::string& genericTicks, bool snapshot, bool regulatorySnaphsot, const TagValueListSPtr& mktDataOptions) {
     // speedControl(m_callsCurSec, 50,1);
     m_pSemaphore->acquire();
     EClientSocket::reqMktData(tickerId,contract,genericTicks,snapshot,regulatorySnaphsot, mktDataOptions);

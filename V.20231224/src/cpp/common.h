@@ -1,6 +1,7 @@
 #pragma once
 
 #include <map>
+#include <vector>
 #include <string>
 #include <vector>
 #include <list>
@@ -27,3 +28,5 @@ using LogType = std::shared_ptr<spdlog::logger>;
 
 // #include "BigTable.h"
 // #include "icontract.h"
+
+#include "VContract.h"
