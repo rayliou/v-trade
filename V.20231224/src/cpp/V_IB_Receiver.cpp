@@ -63,6 +63,7 @@ V_IB_Receiver::~V_IB_Receiver()
 		m_pReader.reset();
 
 	delete m_pClient;
+	delete m_vcontract_vector;
 }
 
 bool V_IB_Receiver::connect(const char *host, int port, int clientId)
@@ -2286,14 +2287,17 @@ void V_IB_Receiver::run() {
 		std::string connectOptions {""};
 		setConnectOptions(connectOptions);
 		connect(host, p,clientId);
-		while(!m_stopFlag && isConnected()) {
+		while(isConnected() && !m_stopFlag) {
 			processMessages();
 		}
-		if( attempt >= MAX_ATTEMPTS) {
+		if( attempt >= MAX_ATTEMPTS || m_stopFlag) {
 			break;
 		}
 		m_log->warn("Sleeping {} seconds before next attempt", SLEEP_TIME);
 		std::this_thread::sleep_for(std::chrono::seconds(SLEEP_TIME));
+	}
+	if(isConnected()){
+		disconnect();
 	}
 	// disconnect();
 	return;
@@ -2305,7 +2309,7 @@ void V_IB_Receiver::waitConnected() {
         throw std::runtime_error("MUST not be called on this thread");
     }
     while(!isConnected() || m_orderId < 0) {
-        m_log->trace("Wait for connecting.....");
+        // m_log->trace("Wait for connecting.....");
         std::this_thread::sleep_for(std::chrono::microseconds(100));
     }
         // Don't need to send reqManagedAccts due to the msg is generated automatically after connected

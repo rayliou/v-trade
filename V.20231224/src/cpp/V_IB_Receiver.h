@@ -119,6 +119,7 @@ public:
 	//Counting when requesting a batch of data
 	int getRemainingCnt() const  {return m_remaining_cnt;}
 	void setRemainingCnt(int cnt) {m_remaining_cnt = cnt;}
+	VectorOfPtrVContract * getVContractVector() {return m_vcontract_vector;}
 public:
     V_IB_Receiver(CmdOption &cmd, bool &stopFlag,VectorOfPtrVContract * vcontract_vector);
 	~V_IB_Receiver();

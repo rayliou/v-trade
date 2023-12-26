@@ -62,6 +62,7 @@ add_executable(v-trade
     Ohlcv.cpp
     V_IB_Sender.cpp  V_IB_Receiver.cpp
     v-main.cpp
+    v_scanner.cpp v_news.cpp
     twsapi_macunix.1019.02/IBJts/samples/Cpp//TestCppClient/Utils.cpp
 )
 
