@@ -2243,7 +2243,8 @@ void V_IB_Receiver::replaceFAEnd(int reqId, const std::string& text) {
 
 //! [wshMetaData]
 void V_IB_Receiver::wshMetaData(int reqId, const std::string& dataJson) {
-	printf("WSH Meta Data. ReqId: %d, dataJson: %s\n", reqId, dataJson.c_str());
+	// printf("WSH Meta Data. ReqId: %d, dataJson: %s\n", reqId, dataJson.c_str());
+	m_log->warn("WSH Meta Data. ReqId: {}, dataJson: {}\n", reqId, dataJson.c_str());
 }
 //! [wshMetaData]
 
@@ -2322,6 +2323,7 @@ void V_IB_Receiver::waitConnected() {
 //! [error]
 void V_IB_Receiver::error(int id, int errorCode, const std::string& errorString, const std::string& advancedOrderRejectJson)
 {
+	// https://interactivebrokers.github.io/tws-api/message_codes.html
     if (!advancedOrderRejectJson.empty()) {
         printf("Error. Id: %d, Code: %d, Msg: %s, AdvancedOrderRejectJson: %s\n", id, errorCode, errorString.c_str(), advancedOrderRejectJson.c_str());
     } else {

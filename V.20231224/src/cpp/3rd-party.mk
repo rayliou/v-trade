@@ -1,4 +1,5 @@
-all:spdlog/INSTALL twsapi_macunix.1019.02/IBJts/API_VersionNum.txt csv-parser/README.md json/README.md IntelRDFPMathLib20U2/LIBRARY/libbid.a
+all:spdlog/INSTALL twsapi_macunix.1019.02/IBJts/API_VersionNum.txt csv-parser/README.md json/README.md IntelRDFPMathLib20U2/LIBRARY/libbid.a \
+	clickhouse-cpp/README.md
 
 # https://github.com/gabime/spdlog
 spdlog/INSTALL:
@@ -29,9 +30,11 @@ IntelRDFPMathLib20U2/LIBRARY/libbid.a: IntelRDFPMathLib20U2.tar.gz
 #- https://www.netlib.org/misc/intel/
 IntelRDFPMathLib20U2.tar.gz:
 	curl -o $@ "https://www.netlib.org/misc/intel/IntelRDFPMathLib20U2.tar.gz"
-
+clickhouse-cpp/README.md:
+	git clone git@github.com:ClickHouse/clickhouse-cpp.git
 clean:
 	rm  -fr twsapi_macunix.1019.02*
 	rm -fr IntelRDFPMathLib20U2*
+	rm -fr clickhouse-cpp
 
 .PHONY: spdlog clean

@@ -32,6 +32,8 @@ void regSubCmd() {
     // CMD_REG(history_daily_deps);
     // CMD_REG(history);
     // CMD_REG(bt);
+    CMD_REG(v_tws_history);
+    CMD_REG(v_tws_events);
     CMD_REG(v_news);
     CMD_REG(v_scanner);
     CMD_REG(test_log);
@@ -120,10 +122,12 @@ static void terminateIBConnection(CmdOption &cmd){
     }
     delete  g_pIBReceiver;
     g_pIBReceiver = nullptr;
-    g_log->debug("End {}", __FUNCTION__);
+    g_log->warn("End {}", __FUNCTION__);
 }
 
+
 int main(int argc, char * argv[]) {
+    // test(); return 0;
     //  SPDLOG_LEVEL=trace,v-main=trace
     spdlog::cfg::load_env_levels();
     if ( argc == 1) {
@@ -145,5 +149,48 @@ int main(int argc, char * argv[]) {
     initilizeIBConnection(cmd);
     it->second(cmd);
     terminateIBConnection(cmd);
+    return 0;
+}
+
+#include <clickhouse/client.h>
+int test() {
+    using namespace clickhouse;
+     /// Initialize client connection.
+    Client client(ClientOptions().SetHost("localhost"));
+
+    /// Create a table.
+    client.Execute("CREATE TABLE IF NOT EXISTS default.numbers (id UInt64, name String) ENGINE = Memory");
+
+    /// Insert some values.
+    {
+        Block block;
+
+        auto id = std::make_shared<ColumnUInt64>();
+        id->Append(1);
+        id->Append(7);
+
+        auto name = std::make_shared<ColumnString>();
+        name->Append("one");
+        name->Append("seven");
+
+        block.AppendColumn("id"  , id);
+        block.AppendColumn("name", name);
+
+        client.Insert("default.numbers", block);
+    }
+
+    /// Select values inserted in the previous step.
+    client.Select("SELECT id, name FROM default.numbers", [] (const Block& block)
+        {
+            for (size_t i = 0; i < block.GetRowCount(); ++i) {
+                std::cout << block[0]->As<ColumnUInt64>()->At(i) << " "
+                          << block[1]->As<ColumnString>()->At(i) << "\n";
+            }
+        }
+    );
+
+    /// Delete table.
+    //client.Execute("DROP TABLE default.numbers");
+
     return 0;
 }

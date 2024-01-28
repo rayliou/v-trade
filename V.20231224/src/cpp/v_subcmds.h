@@ -8,3 +8,5 @@
 extern V_IB_Receiver *g_pIBReceiver;
 void v_news(CmdOption &cmd);
 void v_scanner(CmdOption &cmd);
+void v_tws_events(CmdOption &cmd);
+void v_tws_history(CmdOption &cmd);
