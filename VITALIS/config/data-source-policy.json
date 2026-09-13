@@ -1,0 +1,60 @@
+{
+  "schema_version": 1,
+  "status": "design_only_not_consumed_by_existing_clis",
+  "verified_date": "2026-09-13",
+  "research_network_access": false,
+  "annual_aggregate_data_budget_usd": 1000,
+  "storage": {
+    "raw": "immutable_files",
+    "research": "versioned_parquet_queried_by_duckdb",
+    "catalog": "sqlite_single_host_single_ingestion_writer",
+    "database_service_required": false
+  },
+  "retry": {
+    "max_automatic_retries": 3,
+    "honor_retry_after": true,
+    "persist_cooldown": true,
+    "retry_authentication_errors": false
+  },
+  "sources": {
+    "sharadar": {
+      "purpose": "historical_equities_funds_actions_and_ar_fundamentals",
+      "production_ingestion_enabled": false,
+      "official_requests_per_second": null,
+      "official_max_concurrency": null,
+      "official_daily_request_quota": null,
+      "official_default_page_rows": 10000,
+      "project_caps": {"requests_per_second": 1, "max_concurrency": 1, "requests_per_utc_day": 200},
+      "initial_load": "authorized_bulk",
+      "history_tier_required": "full_history",
+      "source": "https://sharadar.com/docs/getting-started"
+    },
+    "sec": {
+      "purpose": "filing_verification_and_forward_archive",
+      "production_ingestion_enabled": false,
+      "official_requests_per_second_per_user_all_machines": 10,
+      "project_caps": {"requests_per_second": 2, "max_concurrency": 1},
+      "real_contact_user_agent_required": true,
+      "source": "https://www.sec.gov/about/developer-resources"
+    },
+    "yahoo": {
+      "purpose": "public_engineering_sample_only",
+      "production_ingestion_enabled": false,
+      "official_chart_requests_per_second": null,
+      "project_caps": {"requests_per_second": 0.5, "max_concurrency": 1},
+      "formal_historical_universe_source": false
+    },
+    "ibkr_tws_socket": {
+      "purpose": "later_read_only_positions_cash_and_quotes",
+      "production_ingestion_enabled": false,
+      "read_only_required": true,
+      "host": "127.0.0.1",
+      "port": null,
+      "official_general_requests_per_second_rule": "market_data_lines / 2",
+      "official_default_market_data_lines": 100,
+      "project_caps": {"general_requests_per_second": 5, "active_quote_subscriptions": 10},
+      "historical_bars_30_seconds_or_less_in_scope": false,
+      "source": "https://www.interactivebrokers.com/docs/tws-api/doc/pacing-limitations/introduction"
+    }
+  }
+}

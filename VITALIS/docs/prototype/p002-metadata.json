@@ -1,0 +1,201 @@
+{
+  "run_id": "20260913T161509927272Z-P002",
+  "experiment_id": "P002-public-sample-data-readiness",
+  "config_sha256": "6fdff4bb07bb5629bb3150856f5d2ff036a0223703686dd44469798fab5316cf",
+  "code_sha256": {
+    "sample_audit.py": "5274b7097b3bfd948904ea6a8ea985d3d505adba48a81fee0d2689fa492fc8da",
+    "pit.py": "1b4e56653f6b1d85ba826ebfbcf196108bef9fbb82f5dd38e4185dbf3d464c86",
+    "data.py": "d717b22abbe055b4eda78ec8a61f98af3f9a6988fe761839c8e160be133c5b3a"
+  },
+  "formal_strategy_validation_ready": false,
+  "investment_decision": "insufficient_evidence",
+  "actual_data_purchase_usd": 0,
+  "status": "completed",
+  "research_blockers": [
+    "Full requested history and warmup coverage not established",
+    "Point-in-time entry/exit universe including delisted securities absent",
+    "Stable security identity and ticker changes not reconciled",
+    "Historical sector/market-cap evidence absent",
+    "Whole-universe as-reported financial coverage absent",
+    "Acquisition, spinoff, delisting settlement and dividend payment timing unverified",
+    "Untouched validation period and forward shadow operation absent"
+  ],
+  "sources": {
+    "stocks": {
+      "url": "https://api.sharadar.com/v1.0/data/stocks?ticker=AAPL&format=json&limit=10000&sort=date.asc&from=2020-01-01&to=2025-12-31&api_key=test-api-key",
+      "retrieved_at_utc": "2026-09-13T16:13:33.464441+00:00",
+      "payload_sha256": "fd9bb3986e0069e5e194b9aa40ddbc6a35ecd03ba3bda0d42a70e002c7c499d4"
+    },
+    "actions": {
+      "url": "https://api.sharadar.com/v1.0/data/actions?ticker=AAPL&format=json&limit=10000&sort=date.asc&from=2020-01-01&to=2025-12-31&api_key=test-api-key",
+      "retrieved_at_utc": "2026-09-13T16:13:33.608868+00:00",
+      "payload_sha256": "778de79f8aab94b41168991eb80e06472a6c8701783f72fbf793cf19c461eb72"
+    },
+    "fundamentals": {
+      "url": "https://api.sharadar.com/v1.0/data/fundamentals?ticker=AAPL&format=json&limit=10000&sort=date.asc&from=2020-01-01&to=2025-12-31&dimension=ART&api_key=test-api-key",
+      "retrieved_at_utc": "2026-09-13T16:13:33.760063+00:00",
+      "payload_sha256": "1e7a2d33a9cc872dfda06541650a8376081750f518574197de1315d7fdf64e9a"
+    },
+    "yahoo": {
+      "symbol": "AAPL",
+      "url": "https://query1.finance.yahoo.com/v8/finance/chart/AAPL?period1=1577836800&period2=1789257600&interval=1d&events=div%2Csplits&includeAdjustedClose=true",
+      "requested_start": "2020-01-01",
+      "requested_end_exclusive": "2026-09-13",
+      "retrieved_at_utc": "2026-09-13T16:04:14.607687+00:00",
+      "payload_sha256": "c8880b7bed334e1d39864bdcde872f09fe85efdf800fd037cfb697aaeb10338d"
+    }
+  },
+  "cross_source": {
+    "expected_price_sessions": 1508,
+    "compared_price_sessions": 1081,
+    "missing_price_sessions": 427,
+    "returned_first_date": "2021-09-13",
+    "returned_last_date": "2025-12-31",
+    "nominal_close_max_relative_error": 2.879441498060409e-05,
+    "price_discrepancies": [],
+    "compared_actions": 17,
+    "action_discrepancies": [],
+    "full_requested_price_history": false
+  },
+  "financial_timing": {
+    "observations": 17,
+    "security_coverage": 1,
+    "first_filing_date": "2021-10-29",
+    "last_filing_date": "2025-10-31",
+    "boundaries": [
+      {
+        "filing_date": "2021-10-29",
+        "reportperiod": "2021-09-25",
+        "available_on_close": "2021-11-01",
+        "withheld_on_filing_close": true,
+        "visible_after_delay": true
+      },
+      {
+        "filing_date": "2022-01-28",
+        "reportperiod": "2021-12-25",
+        "available_on_close": "2022-01-31",
+        "withheld_on_filing_close": true,
+        "visible_after_delay": true
+      },
+      {
+        "filing_date": "2022-04-29",
+        "reportperiod": "2022-03-26",
+        "available_on_close": "2022-05-02",
+        "withheld_on_filing_close": true,
+        "visible_after_delay": true
+      },
+      {
+        "filing_date": "2022-07-29",
+        "reportperiod": "2022-06-25",
+        "available_on_close": "2022-08-01",
+        "withheld_on_filing_close": true,
+        "visible_after_delay": true
+      },
+      {
+        "filing_date": "2022-10-28",
+        "reportperiod": "2022-09-24",
+        "available_on_close": "2022-10-31",
+        "withheld_on_filing_close": true,
+        "visible_after_delay": true
+      },
+      {
+        "filing_date": "2023-02-03",
+        "reportperiod": "2022-12-31",
+        "available_on_close": "2023-02-06",
+        "withheld_on_filing_close": true,
+        "visible_after_delay": true
+      },
+      {
+        "filing_date": "2023-05-05",
+        "reportperiod": "2023-04-01",
+        "available_on_close": "2023-05-08",
+        "withheld_on_filing_close": true,
+        "visible_after_delay": true
+      },
+      {
+        "filing_date": "2023-08-04",
+        "reportperiod": "2023-07-01",
+        "available_on_close": "2023-08-07",
+        "withheld_on_filing_close": true,
+        "visible_after_delay": true
+      },
+      {
+        "filing_date": "2023-11-03",
+        "reportperiod": "2023-09-30",
+        "available_on_close": "2023-11-06",
+        "withheld_on_filing_close": true,
+        "visible_after_delay": true
+      },
+      {
+        "filing_date": "2024-02-02",
+        "reportperiod": "2023-12-30",
+        "available_on_close": "2024-02-05",
+        "withheld_on_filing_close": true,
+        "visible_after_delay": true
+      },
+      {
+        "filing_date": "2024-05-03",
+        "reportperiod": "2024-03-30",
+        "available_on_close": "2024-05-06",
+        "withheld_on_filing_close": true,
+        "visible_after_delay": true
+      },
+      {
+        "filing_date": "2024-08-02",
+        "reportperiod": "2024-06-29",
+        "available_on_close": "2024-08-05",
+        "withheld_on_filing_close": true,
+        "visible_after_delay": true
+      },
+      {
+        "filing_date": "2024-11-01",
+        "reportperiod": "2024-09-28",
+        "available_on_close": "2024-11-04",
+        "withheld_on_filing_close": true,
+        "visible_after_delay": true
+      },
+      {
+        "filing_date": "2025-01-31",
+        "reportperiod": "2024-12-28",
+        "available_on_close": "2025-02-03",
+        "withheld_on_filing_close": true,
+        "visible_after_delay": true
+      },
+      {
+        "filing_date": "2025-05-02",
+        "reportperiod": "2025-03-29",
+        "available_on_close": "2025-05-05",
+        "withheld_on_filing_close": true,
+        "visible_after_delay": true
+      },
+      {
+        "filing_date": "2025-08-01",
+        "reportperiod": "2025-06-28",
+        "available_on_close": "2025-08-04",
+        "withheld_on_filing_close": true,
+        "visible_after_delay": true
+      },
+      {
+        "filing_date": "2025-10-31",
+        "reportperiod": "2025-09-27",
+        "available_on_close": "2025-11-03",
+        "withheld_on_filing_close": true,
+        "visible_after_delay": true
+      }
+    ]
+  },
+  "official_split_check": {
+    "date": "2020-08-31",
+    "ratio": 4,
+    "source": "https://www.apple.com/newsroom/2020/07/apple-reports-third-quarter-results/",
+    "evidence_type": "manually verified corporate announcement; trading effective date",
+    "matched": true
+  },
+  "artifact_sha256": {
+    "config.json": "58e9f0808ebddf928c6ec0ee83b56e2075bcc2467dba12b5e938c97ff55019ab",
+    "data.py": "d717b22abbe055b4eda78ec8a61f98af3f9a6988fe761839c8e160be133c5b3a",
+    "pit.py": "1b4e56653f6b1d85ba826ebfbcf196108bef9fbb82f5dd38e4185dbf3d464c86",
+    "report.md": "4d959866997a753a4e83b99e7d3f1c19c2ad340c56ec79cde2ce003086711a84",
+    "sample_audit.py": "5274b7097b3bfd948904ea6a8ea985d3d505adba48a81fee0d2689fa492fc8da"
+  }
+}

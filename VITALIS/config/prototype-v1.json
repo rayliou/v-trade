@@ -1,0 +1,43 @@
+{
+  "experiment_id": "P001-fixed-momentum-engineering-sample",
+  "frozen_before_first_full_download": true,
+  "purpose": "engineering validation; not unbiased strategy evidence",
+  "data_start": "2020-01-01",
+  "data_end_exclusive": "2026-09-13",
+  "evaluation_start": "2021-01-01",
+  "evaluation_end": "2025-12-31",
+  "benchmark": "QQQ",
+  "capital_scenarios_usd": [200000, 400000],
+  "execution_cost_bps": [5, 10, 25],
+  "annual_system_cash_cost_usd": 600,
+  "actual_data_purchase_usd": 0,
+  "annual_data_budget_usd": 1000,
+  "drawdown_research_limit": 0.30,
+  "volatility_target": 0.15,
+  "sector_weight_cap": 0.30,
+  "minimum_adv_usd": 20000000,
+  "cash_interest_rate": 0,
+  "symbols": {
+    "AAPL": "Technology", "MSFT": "Technology", "AMZN": "Consumer discretionary",
+    "GOOGL": "Communication", "META": "Communication", "NVDA": "Technology",
+    "JPM": "Financials", "BAC": "Financials", "V": "Financials", "MA": "Financials",
+    "UNH": "Healthcare", "JNJ": "Healthcare", "PG": "Consumer staples",
+    "KO": "Consumer staples", "WMT": "Consumer staples", "COST": "Consumer staples",
+    "XOM": "Energy", "CVX": "Energy", "CAT": "Industrials",
+    "HD": "Consumer discretionary", "PEP": "Consumer staples", "MCD": "Consumer discretionary",
+    "ABBV": "Healthcare", "MRK": "Healthcare", "LLY": "Healthcare",
+    "PFE": "Healthcare", "DIS": "Communication", "NKE": "Consumer discretionary",
+    "BA": "Industrials", "INTC": "Technology"
+  },
+  "known_limitations": [
+    "Thirty current survivor names, not a point-in-time market-cap universe; historical losers and delistings absent",
+    "Static contemporary sector labels; historical classifications not verified",
+    "Yahoo historical corporate actions and adjustment factors not reconciled to an independent source",
+    "Dividends credited as cash on ex-date, not actual payment date; dividend timing is approximate",
+    "Assumes every Yahoo bar is executable; spread/market impact approximated by fixed bps",
+    "Integer-share benchmark retains dividend cash; adjusted-close QQQ reference separately shows total-return proxy",
+    "No taxes, cash interest, quality factor, theme graph, LEAPS, or IBKR",
+    "No untouched holdout or statistical confidence test; this is a fixed-rule historical diagnostic",
+    "Daily 12-percent single-name hard review is recorded but not automatically executed"
+  ]
+}

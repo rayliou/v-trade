@@ -1,0 +1,86 @@
+{
+  "checked_at_utc": "2026-09-13T15:55:49.643921+00:00",
+  "purpose": "public sample access check, not a historical data audit or backtest",
+  "result": "sample_access_incomplete",
+  "formal_strategy_validation_ready": false,
+  "probes": [
+    {
+      "table": "stocks",
+      "ticker": "AAPL",
+      "query": {
+        "ticker": "AAPL",
+        "from": "2025-01-01",
+        "to": "2025-12-31",
+        "limit": 3,
+        "format": "json"
+      },
+      "source": "https://api.sharadar.com/v1.0/data/stocks",
+      "credential_type": "vendor-published public test-api-key",
+      "required_fields": [
+        "ticker",
+        "date",
+        "closeadj",
+        "closeunadj"
+      ],
+      "http_status": 200,
+      "status": "sample_access_passed",
+      "sample_rows": 3,
+      "sample_first_date": "2025-12-29",
+      "sample_last_date": "2025-12-31",
+      "response_sha256": "2ff8b6e2a6e89518a4714f78833417bf098e9d1f8ad88df3865d32cd4d094cba"
+    },
+    {
+      "table": "funds",
+      "ticker": "QQQ",
+      "query": {
+        "ticker": "QQQ",
+        "from": "2025-01-01",
+        "to": "2025-12-31",
+        "limit": 3,
+        "format": "json"
+      },
+      "source": "https://api.sharadar.com/v1.0/data/funds",
+      "credential_type": "vendor-published public test-api-key",
+      "required_fields": [
+        "ticker",
+        "date",
+        "closeadj",
+        "closeunadj"
+      ],
+      "status": "http_error",
+      "http_status": 403
+    },
+    {
+      "table": "fundamentals",
+      "ticker": "AAPL",
+      "query": {
+        "ticker": "AAPL",
+        "from": "2025-01-01",
+        "to": "2025-12-31",
+        "limit": 3,
+        "format": "json",
+        "dimension": "ARQ"
+      },
+      "source": "https://api.sharadar.com/v1.0/data/fundamentals",
+      "credential_type": "vendor-published public test-api-key",
+      "required_fields": [
+        "ticker",
+        "date",
+        "reportperiod",
+        "dimension"
+      ],
+      "http_status": 200,
+      "status": "sample_access_passed",
+      "sample_rows": 3,
+      "sample_first_date": "2025-05-02",
+      "sample_last_date": "2025-10-31",
+      "response_sha256": "8610716ca3ef58ff191c85b3d7415432ed54cf0bb4aa6b368a51fb507a4a82bc"
+    }
+  ],
+  "remaining_requirements": [
+    "QQQ total-return history access if its probe fails",
+    "full requested history and corporate-action reconciliation",
+    "point-in-time universe including delisted securities",
+    "as-of fundamentals and realistic transaction accounting"
+  ]
+}

@@ -1,0 +1,13 @@
+{
+  "experiment_id": "P002-public-sample-data-readiness",
+  "start": "2020-01-01",
+  "end": "2025-12-31",
+  "price_relative_tolerance": 0.0005,
+  "action_absolute_tolerance": 0.00001,
+  "official_split": {
+    "date": "2020-08-31",
+    "ratio": 4,
+    "source": "https://www.apple.com/newsroom/2020/07/apple-reports-third-quarter-results/",
+    "evidence_type": "manually verified corporate announcement; trading effective date"
+  }
+}
