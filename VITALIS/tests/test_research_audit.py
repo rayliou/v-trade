@@ -94,6 +94,29 @@ class ResearchAuditTests(unittest.TestCase):
         self.assertEqual(result[0]['category'], 'spinoff_context_unresolved')
         self.assertFalse(result[0]['resolved'])
 
+    def test_diagnose_ledger_handles_a_fund_ruined_to_exactly_zero(self):
+        """Regression: P006's H3 hit real total ruin (docs/review/08,
+        2026-09-14); diagnose_ledger()'s annual/period/cash-weight math must
+        not crash once nav_usd is exactly zero for part of the history.
+        """
+        from vitalis.research_audit import diagnose_ledger
+        dates = [f'2020-01-{d:02}' for d in range(2, 8)]  # 6 sessions, one year
+        navs = [500.0, 200.0, 0.0, 0.0, 0.0, 0.0]
+        cash = [100.0, 200.0, 0.0, 0.0, 0.0, 0.0]
+        nav = [{'date': d, 'nav_usd': n, 'cash_usd': c, 'dividend_cash_usd': 0.0,
+               'cash_interest_usd': 0.0, 'fixed_fee_usd': 0.0, 'pnl_usd': 0.0,
+               'price_pnl_usd': 0.0, 'execution_cost_usd': 0.0}
+              for d, n, c in zip(dates, navs, cash)]
+        reference_nav = [{'date': d, 'nav_usd': 1000.0 + i} for i, d in enumerate(dates)]
+        result = diagnose_ledger(nav, [], 1000.0, reference_nav, [], {})
+        self.assertEqual(len(result['annual']), 1)
+        self.assertEqual(result['annual'][0]['return'], -1.0)
+        self.assertTrue(0.0 <= result['average_cash_weight'] <= 1.0)
+        # Once nav is exactly zero, the fund holds no stock by construction,
+        # so its cash weight for that session reads as fully cash (1.0).
+        self.assertEqual(result['annual'][0]['average_cash_weight'],
+                         sum([100 / 500, 200 / 200, 1.0, 1.0, 1.0, 1.0]) / 6)
+
 
 if __name__ == '__main__':
     unittest.main()

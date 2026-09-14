@@ -38,6 +38,7 @@ eligibility date. This is a known, explicitly accepted gap (see docs/review/03:
 "当时有效上市"), not a silent one.
 """
 
+import bisect
 import csv
 import io
 import zipfile
@@ -192,10 +193,20 @@ def load_marketcap_snapshots(daily_zip_path, target_dates):
 
 def load_dollar_volume(stocks_zip_path, tickers, start_date, end_date):
     """One streaming pass over the (large) `stocks` bulk table, keeping only
-    rows for `tickers` within [start_date, end_date]. Dollar volume uses the
-    unadjusted close (actual traded price), matching how execution/liquidity
-    is measured elsewhere in this project (vitalis.data uses nominal prices
-    for the same reason). Returns {ticker: {date: dollar_volume}}.
+    rows for `tickers` within [start_date, end_date]. Returns
+    {ticker: {date: dollar_volume}}.
+
+    Both `close` and `volume` in this table are split-adjusted, so dollar
+    volume must pair them with each other. Pairing the *nominal* `closeunadj`
+    with split-adjusted volume (as this did before) overstates a pre-split
+    session by exactly that name's future split factor -- measured at 4.00x
+    on AAPL's 2020-08-03 session against its later 4:1 split. That is worse
+    than a units bug: the size of the error is a function of a future event,
+    so it systematically inflates the apparent liquidity of names that went on
+    to split, biasing any screen built on it. Same defect class as the one
+    fixed in vitalis.sharadar_prices during P004 (registered there as E-ADV);
+    this second code path was missed then because run_pit.py derives dollar
+    volume from the already-corrected bars instead of calling this.
     """
     wanted = set(tickers)
     result = {}
@@ -205,7 +216,7 @@ def load_dollar_volume(stocks_zip_path, tickers, start_date, end_date):
             for row in reader:
                 if row["ticker"] not in wanted or not (start_date <= row["date"] <= end_date):
                     continue
-                close, volume = row["closeunadj"], row["volume"]
+                close, volume = row["close"], row["volume"]
                 if close in ("", "N/A") or volume in ("", "N/A"):
                     continue
                 closing, shares = float(close), float(volume)
@@ -221,11 +232,19 @@ def trailing_average_dollar_volume(dollar_volume_by_date, trading_days_sorted, a
     not a naive N-calendar-day lookback). Returns None if fewer than `window`
     sessions of history exist yet, rather than a lookback into data that
     predates the security's own listing.
+
+    Locates the window with a binary search (`trading_days_sorted` is sorted
+    ascending) rather than rescanning the whole calendar per call. Same
+    result as the earlier linear-scan version, just not O(len(trading_days))
+    per call -- that only mattered for candidate-scale (hundreds of tickers)
+    but made a whole-market screen (P006's tens of thousands) impractically
+    slow: a full-history rescan on every one of ~17,000 tickers x 259 months
+    x 2 windows.
     """
-    eligible_days = [d for d in trading_days_sorted if d <= asof_date]
-    if len(eligible_days) < window:
+    position = bisect.bisect_right(trading_days_sorted, asof_date)
+    if position < window:
         return None
-    recent_days = eligible_days[-window:]
+    recent_days = trading_days_sorted[position - window:position]
     values = [dollar_volume_by_date[d] for d in recent_days if d in dollar_volume_by_date]
     if len(values) < window:
         return None
@@ -312,3 +331,96 @@ def monthly_universe(month_end, master, marketcap_by_ticker, dollar_volume_by_ti
     selected = ranked[:max_issuers]
     waterfall["selected"] = len(selected)
     return {"month_end": month_end, "selected": selected, "waterfall": waterfall}
+
+
+def volume_spike_ratio(dollar_volume_by_date, trading_days_sorted, asof_date,
+                       short_window=5, long_window=60):
+    """P006's attention proxy: recent turnover relative to the name's own norm.
+
+    Ranking on raw dollar volume would just re-select the mega caps the
+    already-stopped market-cap line held, so P006 registered a *relative*
+    burst instead. Returns None when either window is incomplete or the
+    baseline is zero, so an unrankable name is dropped rather than silently
+    scored. Both windows end at `asof_date`, which the caller sets to the
+    signal session -- never the execution session.
+
+    This stands in for the options volume the original design wanted; that
+    data is not licensed here, and this substitute is not a verified
+    equivalent (see the P006 entry in docs/review/08-decisions-and-coverage.md).
+    """
+    recent = trailing_average_dollar_volume(dollar_volume_by_date, trading_days_sorted,
+                                            asof_date, short_window)
+    baseline = trailing_average_dollar_volume(dollar_volume_by_date, trading_days_sorted,
+                                              asof_date, long_window)
+    if recent is None or not baseline:
+        return None
+    return recent / baseline
+
+
+def monthly_hot_universe(month_end, master, marketcap_by_ticker, dollar_volume_by_ticker,
+                         trading_days_sorted, max_issuers=100, minimum_trading_days=252,
+                         minimum_adv_usd=20_000_000, adv_window=63,
+                         short_window=5, long_window=60):
+    """P006's pool: the same docs/review/03 section 1 eligibility waterfall as
+    monthly_universe(), ranked by volume_spike_ratio() instead of market cap.
+
+    Every filter stage, the liquidity floor and the same-issuer dedup are
+    deliberately identical to monthly_universe() so that a P006-vs-stopped-line
+    comparison differs in the ranking key and nothing else. Dedup still keeps
+    the larger market-cap share class, not the spikier one: which listing is
+    the real one is a property of the issuer, not of this month's turnover.
+
+    Like monthly_universe() the result is capped but never padded, and
+    `waterfall` reports the count surviving each stage.
+    """
+    waterfall = {"tickers_with_marketcap_this_month": 0}
+    candidates = {}
+    for info in master.values():
+        ticker = info["ticker"]
+        if ticker not in marketcap_by_ticker or month_end not in marketcap_by_ticker[ticker]:
+            continue
+        waterfall["tickers_with_marketcap_this_month"] += 1
+        if info["category"] not in ELIGIBLE_CATEGORIES:
+            continue
+        if info["exchange"] not in ELIGIBLE_EXCHANGES:
+            continue
+        if not info["firstpricedate"] or info["firstpricedate"] > month_end:
+            continue
+        history = [d for d in trading_days_sorted if info["firstpricedate"] <= d <= month_end]
+        if len(history) < minimum_trading_days:
+            continue
+        candidates[ticker] = marketcap_by_ticker[ticker][month_end]
+    waterfall["after_category_exchange_history_filter"] = len(candidates)
+
+    liquid = {}
+    for ticker, marketcap in candidates.items():
+        adv = trailing_average_dollar_volume(dollar_volume_by_ticker.get(ticker, {}),
+                                             trading_days_sorted, month_end, adv_window)
+        if adv is not None and adv >= minimum_adv_usd:
+            liquid[ticker] = marketcap
+    waterfall["after_liquidity_filter"] = len(liquid)
+
+    ticker_to_permaticker = {info["ticker"]: p for p, info in master.items()}
+    group_of = group_share_classes(master)
+    best_in_group = {}
+    for ticker, marketcap in liquid.items():
+        group = group_of.get(ticker_to_permaticker[ticker], ticker)
+        current_best = best_in_group.get(group)
+        if current_best is None or marketcap > liquid[current_best]:
+            best_in_group[group] = ticker
+    deduped = list(best_in_group.values())
+    waterfall["after_same_issuer_dedup"] = len(deduped)
+
+    spikes = {}
+    for ticker in deduped:
+        ratio = volume_spike_ratio(dollar_volume_by_ticker.get(ticker, {}), trading_days_sorted,
+                                   month_end, short_window, long_window)
+        if ratio is not None:
+            spikes[ticker] = ratio
+    waterfall["with_computable_spike_ratio"] = len(spikes)
+
+    ranked = sorted(spikes, key=lambda t: (-spikes[t], t))
+    selected = ranked[:max_issuers]
+    waterfall["selected"] = len(selected)
+    return {"month_end": month_end, "selected": selected, "waterfall": waterfall,
+            "spike_ratio": {t: spikes[t] for t in selected}}

@@ -150,3 +150,26 @@ class RealDataSmokeTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class QualityThresholdExclusionTests(unittest.TestCase):
+    def test_na_is_never_excluded_and_only_scored_names_are_ranked(self):
+        from vitalis.quality import excluded_by_quality_threshold
+        scores = {f"S{i}": {"quality": i / 10, "na": False} for i in range(10)}
+        scores["BANK"] = {"quality": 0.5, "na": True}
+        excluded = excluded_by_quality_threshold(scores, 0.25)
+        # 10 scored names -> floor(10*0.25)=2 weakest excluded; the neutral-0.5
+        # N/A name is not a measured weakness and must survive.
+        self.assertEqual(excluded, {"S0", "S1"})
+        self.assertNotIn("BANK", excluded)
+
+    def test_floor_never_over_excludes_a_small_pool(self):
+        from vitalis.quality import excluded_by_quality_threshold
+        scores = {"A": {"quality": 0.1, "na": False}, "B": {"quality": 0.9, "na": False}}
+        self.assertEqual(excluded_by_quality_threshold(scores, 0.25), set())
+        self.assertEqual(excluded_by_quality_threshold(scores, 0.5), {"A"})
+
+    def test_rejects_a_fraction_that_would_empty_the_pool(self):
+        from vitalis.quality import excluded_by_quality_threshold
+        with self.assertRaises(ValueError):
+            excluded_by_quality_threshold({}, 1.0)

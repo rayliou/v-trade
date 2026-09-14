@@ -70,6 +70,33 @@ evidence, budget, acceptance and stop criteria. Read `docs/prototype/p005-closeo
 `vitalis/corporate_actions.py` and `scripts/closeout.py` implement scenarios, not verified broker settlements.
 The regular `run_pit` does not activate this optional action layer; P005 must use the dedicated runner.
 
+## P006 (user-authorized new hypothesis): rejected, not insufficient-evidence
+
+A genuinely different candidate — whole-market relative-volume-spike pool (`vitalis.universe.monthly_hot_universe`,
+`vitalis.run_p006`) instead of market cap, 1-month formation instead of 12-1/6-1, bottom-25% quality *exclusion*
+instead of a blend, 3/5-name concentrated books (H3/H5) instead of 10/20, primary cost 25bps, drawdown limit
+widened to 0.50 by explicit user decision. Full 2005-2025 real result: **H3 (3 names) was driven to real total
+ruin — ending NAV $0.00, CAGR -100.00%; H5 (5 names) to near-total ruin — ending NAV $599.57 from $300k,
+max drawdown -99.83%.** Both variants' paired block-bootstrap 90% CI for excess CAGR vs QQQ is entirely
+negative at both 21- and 63-day blocks — this is a statistically decisive rejection, not a zero-crossing
+"insufficient evidence" result like every prior candidate. See `docs/prototype/p006-hot-volume-results.md`.
+
+Do not retune this shape (window length, quality fraction, hold count) — none of those look like they could
+plausibly flip a -100pp-scale gap, and a parameter search here would just be overfitting to noise. The
+project's own read: relative-volume-spike is very likely selecting speculative, soon-to-mean-revert names, not
+the "healthy attention" the hypothesis assumed. Getting this pipeline (whole-market hot-volume screen +
+1-month formation + exclusion-based quality + concentrated books) working end to end surfaced four real, now-
+fixed engineering bugs worth knowing about if you touch this code again: (1) `vitalis.universe.load_dollar_volume`
+had the same nominal-close-times-adjusted-volume defect P004 fixed in `sharadar_prices.py`, in a second,
+previously-uncalled site; (2) a real ART fundamentals row (NGVT) has `reportperiod` after its own `date` —
+`run_pit.build_quality_by_review_month` now drops such rows explicitly rather than crashing; (3) `engine.choose()`'s
+sector cap and a small `count` can be arithmetically incompatible (`1/count > sector_cap` makes every slot
+unfillable) — found before any real H3 result existed, not a post-hoc tune; (4) `engine.simulate()` had no way
+to represent a fund driven to exactly zero NAV — a flat per-session fee capped at available cash, plus zero-
+NAV-safe division in `engine.metrics()`, `vitalis.stats.daily_returns()`, and `vitalis.research_audit.diagnose_ledger()`
+(all previously assumed nav_usd > 0). See the four 2026-09-14 entries in `08-decisions-and-coverage.md` for
+each fix's own registration.
+
 ## Commands
 
 ```sh

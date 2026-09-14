@@ -42,6 +42,24 @@ class BuildQualityByReviewMonthTests(unittest.TestCase):
             if bank in scores:
                 self.assertAlmostEqual(scores[bank], 0.5)
 
+    def test_a_reportperiod_after_filing_date_is_dropped_not_a_crash(self):
+        """Regression: NGVT has a real ART row filed 2015-12-10 for report
+        period 2015-12-31 -- the filing predates its own claimed period end,
+        most likely a spin-off-era pro-forma artifact (Ingevity's 2015-2016
+        separation from WestRock). pit.normalize_fundamentals() correctly
+        rejects that as invalid; build_quality_by_review_month() must drop
+        it explicitly rather than let one bad row crash the whole pass.
+        """
+        master = security_master(self.data_dir / "tickers-bulk-full.csv.zip")
+        all_days = distinct_trading_days(self.data_dir / "daily-bulk-full.csv.zip")
+        trading_days_sorted = sorted(d for d in all_days if d <= "2016-06-30")
+        months = [d for d in month_end_dates(all_days) if d[:7] == "2016-01"]
+        symbols_by_review_month = {m[:7]: {"NGVT": "x"} for m in months}
+
+        result = build_quality_by_review_month(
+            self.data_dir, ["NGVT"], master, months, trading_days_sorted, symbols_by_review_month)
+        self.assertEqual(set(result), {"2016-01"})
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -13,7 +13,8 @@ def percentile(values):
     return result
 
 
-def rank_signals(bars, dates, index, symbols, minimum_adv, quality_by_symbol=None):
+def rank_signals(bars, dates, index, symbols, minimum_adv, quality_by_symbol=None,
+                 formation="12-1/6-1"):
     """quality_by_symbol=None (default) ranks on momentum alone, unchanged from
     before -- P001's existing M10/M20/M10-risk15 behavior is untouched. When
     given a {symbol: quality-score-in-[0,1]} dict (vitalis.quality.quality_scores()'s
@@ -24,6 +25,16 @@ def rank_signals(bars, dates, index, symbols, minimum_adv, quality_by_symbol=Non
     from the ranking -- that keeps the eligible pool identical to the
     momentum-only run, so a quality-vs-momentum comparison is not silently
     also a universe change.
+
+    formation selects the momentum window and defaults to the original
+    "12-1/6-1" blend (12- and 6-month returns, both skipping the most recent
+    month). "1m" is P006's pre-registered single window: the plain trailing
+    21-session return as of the signal day, no skip. That window sits on the
+    boundary between documented short-horizon reversal and intermediate
+    momentum, so its sign is not assumed -- see the P006 entry in
+    docs/review/08-decisions-and-coverage.md. Either way the 252-session
+    history requirement below is unchanged, so the eligible pool does not
+    silently widen when the formation window shortens.
     """
     if index < 252:
         return []
@@ -36,15 +47,25 @@ def rank_signals(bars, dates, index, symbols, minimum_adv, quality_by_symbol=Non
         adv = statistics.mean(series[d]["dollar_volume"] for d in dates[index - 62:index + 1])
         if adv < minimum_adv:
             continue
+        if formation == "1m":
+            signals[symbol] = {
+                "m1": (series[dates[index]]["adjclose"]
+                       / series[dates[index - 21]]["adjclose"] - 1),
+                "adv_usd": adv,
+            }
+            continue
         price = series[dates[index - 21]]["adjclose"]
         signals[symbol] = {
             "m12_1": price / series[dates[index - 252]]["adjclose"] - 1,
             "m6_1": price / series[dates[index - 126]]["adjclose"] - 1,
             "adv_usd": adv,
         }
-    first = percentile({s: x["m12_1"] for s, x in signals.items()})
-    second = percentile({s: x["m6_1"] for s, x in signals.items()})
-    momentum_score = {s: (first[s] + second[s]) / 2 for s in signals}
+    if formation == "1m":
+        momentum_score = percentile({s: x["m1"] for s, x in signals.items()})
+    else:
+        first = percentile({s: x["m12_1"] for s, x in signals.items()})
+        second = percentile({s: x["m6_1"] for s, x in signals.items()})
+        momentum_score = {s: (first[s] + second[s]) / 2 for s in signals}
     if quality_by_symbol is None:
         total_score = momentum_score
     else:
@@ -96,7 +117,11 @@ def metrics(nav, initial):
     per rebalance; that definition must travel with any use of the number.
     """
     values = [initial] + [row["nav_usd"] for row in nav]
-    returns = [b / a - 1 for a, b in zip(values, values[1:])]
+    # A fund driven to exactly zero NAV and capped there (engine.simulate()'s
+    # fixed-fee-at-ruin handling) stays at zero every subsequent session --
+    # define that as a 0% return (no change) rather than an undefined 0/0,
+    # since a dead account cannot spontaneously move again either way.
+    returns = [0.0 if a == 0 else b / a - 1 for a, b in zip(values, values[1:])]
     high, worst, underwater, longest = initial, 0.0, 0, 0
     squared = []
     for value in values[1:]:
@@ -160,6 +185,12 @@ def simulate(bars, dates, config, capital, cost_bps, variant, cash_annual_rate=N
     {symbol: quality_score}} dict, e.g. from vitalis.quality.quality_scores());
     "M10"/"M20"/"M10-risk15" rank on momentum alone, exactly as before --
     quality_by_review_month is simply unused for those variants.
+
+    P006's "H3"/"H5" hold 3/5 names ranked on the 1-month formation window.
+    They deliberately do NOT use the 0.5/0.5 quality blend: P006 applies
+    quality as a bottom-quantile exclusion on the eligible pool itself
+    (vitalis.quality.excluded_by_quality_threshold), upstream of ranking, so
+    quality_by_review_month stays unused for them too.
     """
     start, end = config["evaluation_start"], config["evaluation_end"]
     sessions = [d for d in dates if start <= d <= end]
@@ -168,8 +199,10 @@ def simulate(bars, dates, config, capital, cost_bps, variant, cash_annual_rate=N
     symbols = config["symbols"]
     is_benchmark = variant in ("QQQ", "QQQ-cash15")
     risk_control = variant in ("QQQ-cash15", "M10-risk15")
-    count = 1 if is_benchmark else (20 if variant in ("M20", "Q20") else 10)
+    holdings_by_variant = {"H3": 3, "H5": 5, "M20": 20, "Q20": 20}
+    count = 1 if is_benchmark else holdings_by_variant.get(variant, 10)
     uses_quality = variant in ("Q10", "Q20")
+    formation = "1m" if variant in ("H3", "H5") else "12-1/6-1"
     cash, held = float(capital), {}
     trades, ledger, holdings, decisions, warnings = [], [], [], [], []
     contributions = {}
@@ -339,7 +372,7 @@ def simulate(bars, dates, config, capital, cost_bps, variant, cash_annual_rate=N
                 quality_for_month = (quality_by_review_month.get(day[:7])
                                      if uses_quality and quality_by_review_month is not None else None)
                 ranking = rank_signals(bars, dates, index - 1, active_symbols, config["minimum_adv_usd"],
-                                       quality_by_symbol=quality_for_month)
+                                       quality_by_symbol=quality_for_month, formation=formation)
                 ordinary_held = {s: q - inherited.get(s, (0, ''))[0] for s, q in held.items()
                                  if q - inherited.get(s, (0, ''))[0] > 1e-8}
                 selected = choose(ranking, ordinary_held, count, active_symbols, config["sector_weight_cap"])
@@ -355,6 +388,18 @@ def simulate(bars, dates, config, capital, cost_bps, variant, cash_annual_rate=N
             weights = {s: fraction / count for s in selected if s not in unavailable}
             # Reserve fees on a conservative upper bound of turnover (2*NAV).
             investable = pretrade_nav / (1 + 2 * cost_rate)
+            # The fixed system fee accrues every session, not just at rebalance,
+            # so investing right up to the turnover-cost margin leaves nothing
+            # for the sessions between now and the next monthly review. A
+            # concentrated, high-cost-rate book (P006's H3/H5 at 25bps) can run
+            # that gap to zero and push cash negative -- reserve worst-case-month
+            # (25 sessions, safely above any real month's ~19-23) of fixed fee
+            # up front, rather than relying on incidental floor()-rounding slack,
+            # which is what every P001-P005 variant happened to have enough of,
+            # not a designed-in guarantee. A 12-months-average reserve is not
+            # enough on its own: it matches a 21-session month almost exactly,
+            # so a longer real month still exhausts it (confirmed by test).
+            investable = max(0.0, investable - config["annual_system_cash_cost_usd"] / 252 * 25)
             # Newly received shares are held until the frozen next-session disposal.
             pending_value = sum(q * bars[s][day]['open'] for s, (q, _) in inherited.items())
             investable = max(0.0, investable - pending_value)
@@ -365,11 +410,17 @@ def simulate(bars, dates, config, capital, cost_bps, variant, cash_annual_rate=N
                               "selected": selected, "equity_fraction_multiplier": fraction,
                               "ranking": ranking, "target_weights": weights,
                               "unfilled_target_symbols": unavailable})
-            before = {s: q * bars[s][day]["open"] / pretrade_nav for s, q in held.items()}
-            before["CASH"] = cash / pretrade_nav
-            after = {s: targets[s] * bars[s][day]["open"] / pretrade_nav for s in targets}
-            after["CASH"] = 1 - sum(after.values())
-            turnover += 0.5 * sum(abs(after.get(s, 0) - before.get(s, 0)) for s in set(before) | set(after))
+            # A fund driven to exactly zero NAV (no cash, no holdings -- only
+            # reachable now that the fixed fee is capped at available cash
+            # rather than driving cash negative) has no meaningful weights to
+            # turn over; every target is already floor(0/price)=0, so there
+            # is nothing to divide by and nothing to record.
+            if pretrade_nav > 0:
+                before = {s: q * bars[s][day]["open"] / pretrade_nav for s, q in held.items()}
+                before["CASH"] = cash / pretrade_nav
+                after = {s: targets[s] * bars[s][day]["open"] / pretrade_nav for s in targets}
+                after["CASH"] = 1 - sum(after.values())
+                turnover += 0.5 * sum(abs(after.get(s, 0) - before.get(s, 0)) for s in set(before) | set(after))
             orders = [(s, targets.get(s, 0) - held.get(s, 0)) for s in set(held) | set(targets)]
             # Sell before buying; deterministic symbol order within each side.
             orders.sort(key=lambda x: (x[1] > 0, x[0]))
@@ -390,7 +441,17 @@ def simulate(bars, dates, config, capital, cost_bps, variant, cash_annual_rate=N
                 trades.append({"date": day, "signal_date": signal_day, "symbol": symbol,
                                "quantity": quantity, "price_usd": price, "notional_usd": amount,
                                "execution_cost_usd": fee, "cash_after_usd": cash})
-        fixed_fee = config["annual_system_cash_cost_usd"] / 252 if not is_benchmark else 0.0
+        # A flat per-session dollar fee cannot be collected once the account
+        # has been driven near zero -- there is no money left to take it
+        # from. This only matters for a book concentrated and unconstrained
+        # enough to approach real ruin (observed for real: P006's H3 fell
+        # from $300k to $2.13 over 18 years of real data, most of it in the
+        # last two), which none of P001-P005's diversified, risk-bounded
+        # variants ever came close to. Capping the fee at available cash is
+        # a bookkeeping convention for a fund that is effectively already
+        # closed, not a change to the accounting for any solvent day.
+        fixed_fee = min(config["annual_system_cash_cost_usd"] / 252 if not is_benchmark else 0.0,
+                        max(0.0, cash))
         cash -= fixed_fee
         fixed_total += fixed_fee
         if cash < -1e-6:

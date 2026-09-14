@@ -131,6 +131,22 @@ def held_event_dates(holdings, dates):
     return result
 
 
+def _growth_ratio(start, end):
+    """end/start, except a period that starts already at exactly zero NAV
+    (engine.simulate()'s fixed-fee-at-ruin handling can produce this) reads
+    as a 1.0 ratio (0% return) -- a dead fund staying dead is "no change",
+    not an undefined 0/0 or a fabricated -100% for a period that didn't
+    actually lose anything further."""
+    return 1.0 if start == 0 else end / start
+
+
+def _cash_weight(cash, nav_usd):
+    """cash/nav, except an exactly-zero-NAV fund (already fully out of
+    stocks by construction -- see engine.simulate()) reads as fully in cash
+    rather than an undefined 0/0."""
+    return 1.0 if nav_usd == 0 else cash / nav_usd
+
+
 def diagnose_ledger(nav, contributions, capital, reference_nav, holdings, sector_by_ticker,
                     quality_details=None):
     if [r['date'] for r in nav] != [r['date'] for r in reference_nav]:
@@ -143,11 +159,11 @@ def diagnose_ledger(nav, contributions, capital, reference_nav, holdings, sector
         a, b = indices[0], indices[-1]
         start = nav[a - 1]['nav_usd'] if a else capital
         ref_start = reference_nav[a - 1]['nav_usd'] if a else capital
-        sr = nav[b]['nav_usd'] / start - 1
-        br = reference_nav[b]['nav_usd'] / ref_start - 1
+        sr = _growth_ratio(start, nav[b]['nav_usd']) - 1
+        br = _growth_ratio(ref_start, reference_nav[b]['nav_usd']) - 1
         annual.append({'year': label, 'return': sr, 'qqq_return': br,
                        'relative_return_pp': (sr - br) * 100,
-                       'average_cash_weight': sum(nav[i]['cash_usd'] / nav[i]['nav_usd']
+                       'average_cash_weight': sum(_cash_weight(nav[i]['cash_usd'], nav[i]['nav_usd'])
                                                   for i in indices) / len(indices)})
     for label, lower, upper in [('2005-2014', '2005', '2014'), ('2015-2025', '2015', '2025')]:
         indices = [i for i, r in enumerate(nav) if lower <= r['date'][:4] <= upper]
@@ -157,8 +173,8 @@ def diagnose_ledger(nav, contributions, capital, reference_nav, holdings, sector
         start = nav[a - 1]['nav_usd'] if a else capital
         ref_start = reference_nav[a - 1]['nav_usd'] if a else capital
         n = len(indices)
-        s = (nav[b]['nav_usd'] / start) ** (252 / n) - 1
-        q = (reference_nav[b]['nav_usd'] / ref_start) ** (252 / n) - 1
+        s = _growth_ratio(start, nav[b]['nav_usd']) ** (252 / n) - 1
+        q = _growth_ratio(ref_start, reference_nav[b]['nav_usd']) ** (252 / n) - 1
         periods.append({'period': label, 'cagr': s, 'qqq_cagr': q, 'excess_cagr_pp': (s - q) * 100})
     rolling = []
     for i in range(755, len(nav)):
@@ -168,8 +184,8 @@ def diagnose_ledger(nav, contributions, capital, reference_nav, holdings, sector
         start = nav[prior]['nav_usd'] if prior >= 0 else capital
         ref_start = reference_nav[prior]['nav_usd'] if prior >= 0 else capital
         rolling.append({'end_date': nav[i]['date'], 'excess_cagr_pp':
-                        ((nav[i]['nav_usd'] / start) ** (1 / 3) -
-                         (reference_nav[i]['nav_usd'] / ref_start) ** (1 / 3)) * 100})
+                        (_growth_ratio(start, nav[i]['nav_usd']) ** (1 / 3) -
+                         _growth_ratio(ref_start, reference_nav[i]['nav_usd']) ** (1 / 3)) * 100})
     pos = sum(max(0, r['net_contribution_usd']) for r in contributions)
     neg = sum(max(0, -r['net_contribution_usd']) for r in contributions)
     top = sorted(contributions, key=lambda r: -r['net_contribution_usd'])[:5]
@@ -186,7 +202,7 @@ def diagnose_ledger(nav, contributions, capital, reference_nav, holdings, sector
                 na_weights[row['date']] += row['weight']
     n = len(nav)
     return {'annual': annual, 'periods': periods, 'rolling_36m': rolling,
-            'average_cash_weight': sum(r['cash_usd'] / r['nav_usd'] for r in nav) / n,
+            'average_cash_weight': sum(_cash_weight(r['cash_usd'], r['nav_usd']) for r in nav) / n,
             'average_position_hhi': sum(sum(w*w for w in daily_weights.get(r['date'], []))
                                         for r in nav) / n,
             'top5_positive_contributors': top,

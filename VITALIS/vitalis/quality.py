@@ -133,3 +133,24 @@ def quality_scores(rows_by_ticker, sic_by_ticker, minimum_group_size=10):
                           "group": assignment[ticker], "peer_count": peer['size'],
                           "metrics": eligible[ticker]}
     return result
+
+
+def excluded_by_quality_threshold(scores, fraction=0.25):
+    """P006's pre-registered use of quality: drop the weakest `fraction` of a
+    month's pool instead of blending quality into the score.
+
+    P003b showed the 0.5/0.5 blend dilutes the momentum signal without buying
+    a distinguishable drawdown improvement, so P006 registered exclusion
+    instead. `scores` is quality_scores()' output. Ranking is over computed
+    scores only: an `na` ticker (excluded sector, no filing, missing metric)
+    carries the neutral 0.5 fallback, which is not a measured quality and must
+    never be read as "weak" -- it is never excluded here. That means the
+    realised exclusion count is `fraction` of the *scored* names, not of the
+    pool, and the two diverge exactly when coverage is poor; report both.
+    """
+    if not 0.0 <= fraction < 1.0:
+        raise ValueError(f"fraction must be in [0, 1): {fraction}")
+    scored = sorted((entry["quality"], ticker) for ticker, entry in scores.items()
+                    if not entry["na"])
+    cutoff = int(len(scored) * fraction)
+    return {ticker for _, ticker in scored[:cutoff]}

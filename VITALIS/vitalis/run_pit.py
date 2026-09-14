@@ -144,10 +144,22 @@ def build_quality_by_review_month(data_dir, candidate_tickers, master, months, t
 
     lower_bound, upper_bound = trading_days_sorted[0], trading_days_sorted[-1]
     rows_by_ticker = _load_ticker_rows(data_dir / "fundamentals-bulk-full.csv.zip", candidate_tickers)
-    art_rows = [
+    in_window = [
         row for rows in rows_by_ticker.values() for row in rows
         if row["dimension"] == "ART" and lower_bound <= row["date"] < upper_bound
     ]
+    # Real vendor data contains at least one internally inconsistent ART row
+    # (NGVT filed 2015-12-10 for report period 2015-12-31 -- a filing date
+    # before its own claimed period end, most likely a spin-off-related
+    # pro-forma artifact around Ingevity's 2015-2016 separation from
+    # WestRock). normalize_fundamentals() correctly rejects this rather than
+    # silently accepting it; the caller's job is to explicitly drop and count
+    # such rows rather than let one bad filing crash the whole quality pass.
+    art_rows = [row for row in in_window if row["reportperiod"] <= row["date"]]
+    dropped = len(in_window) - len(art_rows)
+    if dropped:
+        print(f"  dropped {dropped} ART row(s) with reportperiod after filing date "
+             "(internally inconsistent vendor data, not accepted as a PIT input)", flush=True)
     normalized = normalize_fundamentals(art_rows, trading_days_sorted)
 
     quality_by_month = {}

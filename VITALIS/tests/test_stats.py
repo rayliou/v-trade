@@ -38,6 +38,18 @@ class StatsTests(unittest.TestCase):
         self.assertAlmostEqual(result[0], 0.1)
         self.assertAlmostEqual(result[1], 0.1)
 
+    def test_a_fund_ruined_to_exactly_zero_reads_as_zero_return_not_a_crash(self):
+        """Regression: engine.simulate() can drive NAV to exactly zero and
+        cap it there once a fund is ruined (see docs/review/08, 2026-09-14);
+        this function feeds run_p006.py's bootstrap and must not divide by
+        that zero on the following, still-zero session.
+        """
+        nav = [{"nav_usd": 50.0}, {"nav_usd": 0.0}, {"nav_usd": 0.0}]
+        result = daily_returns(nav, 100.0)
+        self.assertAlmostEqual(result[0], -0.5)
+        self.assertEqual(result[1], -1.0)
+        self.assertEqual(result[2], 0.0)
+
 
 if __name__ == "__main__":
     unittest.main()

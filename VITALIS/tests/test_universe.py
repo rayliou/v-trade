@@ -4,6 +4,7 @@ import unittest
 from pathlib import Path
 
 from vitalis.universe import (
+    monthly_hot_universe, load_dollar_volume,
     ELIGIBLE_CATEGORIES, ELIGIBLE_EXCHANGES, group_share_classes, load_sp500_table,
     month_end_dates, monthly_universe, reconstruct_membership, trailing_average_dollar_volume,
     validate_against_quarterly_snapshots,
@@ -191,3 +192,81 @@ class RealDataProofTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class MonthlyHotUniverseTests(unittest.TestCase):
+    """P006's volume-spike pool (docs/review/08, P006 entry)."""
+
+    def _market(self):
+        from datetime import date, timedelta
+        days = [(date(2019, 1, 1) + timedelta(days=i)).isoformat() for i in range(400)]
+        master, marketcap, volume = {}, {}, {}
+        # MEGA has huge absolute turnover but no burst; SMALL is far smaller in
+        # absolute terms but its last week is 10x its own baseline.
+        plan = {"MEGA": (1e12, 1e9, 1e9), "SMALL": (1e9, 5e7, 5e8), "FLAT": (5e11, 2e8, 2e8)}
+        for i, (ticker, (cap, base, recent)) in enumerate(plan.items()):
+            master[str(100 + i)] = {"ticker": ticker, "category": "Domestic Common Stock",
+                                    "exchange": "NASDAQ", "firstpricedate": days[0],
+                                    "sector": "Tech", "name": ticker, "isdelisted": False,
+                                    "relatedtickers": []}
+            marketcap[ticker] = {days[-1]: cap}
+            volume[ticker] = {d: (recent if j >= len(days) - 5 else base)
+                              for j, d in enumerate(days)}
+        return master, marketcap, volume, days
+
+    def test_ranks_by_relative_burst_not_absolute_turnover(self):
+        master, marketcap, volume, days = self._market()
+        result = monthly_hot_universe(days[-1], master, marketcap, volume, days,
+                                      max_issuers=3, minimum_adv_usd=1_000_000)
+        # The whole point of P006's pool: the small name that just woke up
+        # outranks the permanently-large one, which market-cap ranking never did.
+        self.assertEqual(result["selected"][0], "SMALL")
+        self.assertGreater(result["spike_ratio"]["SMALL"], result["spike_ratio"]["MEGA"])
+        self.assertAlmostEqual(result["spike_ratio"]["FLAT"], 1.0)
+
+    def test_liquidity_floor_and_waterfall_match_the_market_cap_screen(self):
+        master, marketcap, volume, days = self._market()
+        result = monthly_hot_universe(days[-1], master, marketcap, volume, days,
+                                      max_issuers=3, minimum_adv_usd=1e12)
+        self.assertEqual(result["selected"], [])
+        self.assertEqual(result["waterfall"]["after_liquidity_filter"], 0)
+        self.assertEqual(result["waterfall"]["after_category_exchange_history_filter"], 3)
+
+    def test_is_capped_but_never_padded(self):
+        master, marketcap, volume, days = self._market()
+        result = monthly_hot_universe(days[-1], master, marketcap, volume, days,
+                                      max_issuers=10, minimum_adv_usd=1_000_000)
+        self.assertEqual(len(result["selected"]), 3)
+        self.assertEqual(result["waterfall"]["selected"], 3)
+
+    def test_unrankable_name_is_dropped_not_scored_zero(self):
+        master, marketcap, volume, days = self._market()
+        volume["SMALL"] = {}  # no volume history at all
+        result = monthly_hot_universe(days[-1], master, marketcap, volume, days,
+                                      max_issuers=3, minimum_adv_usd=1_000_000)
+        self.assertNotIn("SMALL", result["selected"])
+        self.assertEqual(result["waterfall"]["with_computable_spike_ratio"], 2)
+
+
+class LoadDollarVolumeTests(unittest.TestCase):
+    def test_pairs_split_adjusted_close_with_split_adjusted_volume(self):
+        """Regression for the second E-ADV site (see load_dollar_volume's docstring).
+
+        A 4:1 split leaves dollar turnover unchanged; pairing the nominal close
+        with adjusted volume would report 4x, and the multiple is the *future*
+        split factor, so the error favours names that later split.
+        """
+        import io as _io, zipfile as _zipfile, tempfile, csv as _csv
+        from pathlib import Path as _Path
+        with tempfile.TemporaryDirectory() as tmp:
+            path = _Path(tmp) / "stocks.csv.zip"
+            buffer = _io.StringIO()
+            writer = _csv.DictWriter(buffer, fieldnames=["ticker", "date", "close",
+                                                         "closeunadj", "volume"])
+            writer.writeheader()
+            writer.writerow({"ticker": "AAPL", "date": "2020-08-03", "close": "25",
+                             "closeunadj": "100", "volume": "4000"})
+            with _zipfile.ZipFile(path, "w") as zf:
+                zf.writestr("stocks.csv", buffer.getvalue())
+            result = load_dollar_volume(path, ["AAPL"], "2020-01-01", "2020-12-31")
+        self.assertEqual(result["AAPL"]["2020-08-03"], 100_000)

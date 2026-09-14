@@ -17,7 +17,11 @@ import statistics
 
 def daily_returns(nav_rows, initial):
     values = [initial] + [row["nav_usd"] for row in nav_rows]
-    return [b / a - 1 for a, b in zip(values, values[1:])]
+    # Same convention as engine.metrics(): a fund driven to exactly zero NAV
+    # (engine.simulate()'s fixed-fee-at-ruin handling) and capped there stays
+    # at zero every subsequent session -- that is a 0% return (no change),
+    # not an undefined 0/0.
+    return [0.0 if a == 0 else b / a - 1 for a, b in zip(values, values[1:])]
 
 
 def _path_metrics(returns):

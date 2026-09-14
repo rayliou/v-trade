@@ -115,6 +115,24 @@ class EngineTests(unittest.TestCase):
         sectors = {s: "x" for s in "ABCDEF"}
         self.assertEqual(choose(ranking, ["D"], 2, sectors, 0.5), ["D"])
 
+    def test_a_sector_cap_below_one_over_count_makes_every_slot_unfillable(self):
+        """Regression: P006's H3 (count=3) ran real 21-year data 100% in cash
+        for every one of 251 review months -- 1/3=33.3% alone already exceeds
+        the 30% sector cap inherited from P001-P005's 10/20-name books, so
+        the very first entrant in choose()'s loop is rejected regardless of
+        which sector it's in, every single time. Found before any real H3
+        result existed (see docs/review/08, 2026-09-14): a single position's
+        weight alone breaching the cap is a config/count mismatch, not a
+        diversification finding, and count-based concentration already IS
+        the diversification control for a 3-5 name book -- stacking an
+        incompatible sector cap on top doesn't add real risk control, it
+        just makes the variant unable to ever hold anything.
+        """
+        ranking = [{"symbol": s, "rank": i + 1} for i, s in enumerate("ABC")]
+        sectors = {s: "distinct-sector-" + s for s in "ABC"}  # not a sector-concentration issue
+        self.assertEqual(choose(ranking, [], 3, sectors, 0.30), [])
+        self.assertEqual(choose(ranking, [], 3, sectors, 1.0), ["A", "B", "C"])
+
     def test_percentile_ties_use_average_rank(self):
         self.assertEqual(percentile({"A": 1, "B": 1, "C": 2}), {"A": 0.25, "B": 0.25, "C": 1.0})
 
@@ -307,6 +325,103 @@ class EngineTests(unittest.TestCase):
         self.assertEqual(bars[first]["open"], 100)
         self.assertEqual(bars[second]["split"], 2)
         self.assertEqual(bars[second]["open"], 50)
+
+
+class ShortHorizonFormationTests(unittest.TestCase):
+    """P006's 1-month formation window (docs/review/08, P006 entry)."""
+
+    def _bars(self):
+        from datetime import date, timedelta
+        dates = [(date(2019, 1, 1) + timedelta(days=i)).isoformat() for i in range(300)]
+        # STEADY climbs all year then goes flat for the last month; LATE is flat
+        # all year then jumps in the last month. 12-1/6-1 (which skips the most
+        # recent month) must prefer STEADY; a plain trailing-21-session window
+        # must prefer LATE. That makes the window choice, not noise, decide.
+        def bar(price):
+            return {"open": price, "close": price, "adjclose": price,
+                    "dollar_volume": 1e9, "split": 1, "dividend": 0}
+        steady, late = {}, {}
+        for i, day in enumerate(dates):
+            steady[day] = bar(100 + i if i < len(dates) - 21 else 100 + (len(dates) - 22))
+            late[day] = bar(100 if i < len(dates) - 21 else 100 + 5 * (i - (len(dates) - 22)))
+        return {"STEADY": steady, "LATE": late}, dates
+
+    def test_one_month_window_reorders_against_the_twelve_month_default(self):
+        bars, dates = self._bars()
+        index = len(dates) - 1
+        symbols = {"STEADY": "x", "LATE": "x"}
+        default = rank_signals(bars, dates, index, symbols, 0)
+        short = rank_signals(bars, dates, index, symbols, 0, formation="1m")
+        self.assertEqual(default[0]["symbol"], "STEADY")
+        self.assertEqual(short[0]["symbol"], "LATE")
+        # The 1m rows carry the single registered window, not the blend.
+        self.assertIn("m1", short[0])
+        self.assertNotIn("m12_1", short[0])
+
+    def test_one_month_window_keeps_the_252_session_history_requirement(self):
+        bars, dates = self._bars()
+        # A shorter formation must not silently admit names with under a year
+        # of history -- the eligible pool is meant to be unchanged.
+        self.assertEqual(rank_signals(bars, dates, 251, {"STEADY": "x"}, 0, formation="1m"), [])
+
+    def test_h3_and_h5_take_three_and_five_slots_on_the_short_window(self):
+        from datetime import date, timedelta
+        dates = [(date(2019, 1, 1) + timedelta(days=i)).isoformat() for i in range(300)]
+        bars = {}
+        for n in range(8):
+            series = {}
+            for i, day in enumerate(dates):
+                price = 100 + (n * i / 100)
+                series[day] = {"open": price, "close": price, "adjclose": price,
+                               "dollar_volume": 1e9, "split": 1, "dividend": 0}
+            bars[f"S{n}"] = series
+        config = {"evaluation_start": dates[260], "evaluation_end": dates[299],
+                  "symbols": {f"S{n}": "x" for n in range(8)}, "minimum_adv_usd": 0,
+                  "sector_weight_cap": 1, "volatility_target": .15,
+                  "annual_system_cash_cost_usd": 0}
+        for variant, expected in (("H3", 3), ("H5", 5)):
+            result = simulate(bars, dates, config, 500000, 0, variant)
+            self.assertEqual(len(result[4][0]["selected"]), expected, variant)
+
+
+class NearRuinFixedFeeTests(unittest.TestCase):
+    """Regression: P006's H3 (unconstrained, 3-name, no risk control) fell
+    from real $300,000 to real $2.13 over 18 real years -- genuine
+    catastrophic capital destruction, not a bug. Once NAV is that close to
+    zero, the flat per-session dollar fee can exceed the cash actually left
+    in the account, and there is nothing left to collect it from; a fund
+    that reaches exactly zero (no cash, no holdings) must then stay there
+    rather than crash on the next session's turnover/return arithmetic.
+    """
+
+    def test_fixed_fee_never_exceeds_cash_and_a_ruined_fund_stays_at_zero(self):
+        from datetime import date, timedelta
+        start = date(2019, 1, 1)
+        all_dates = [(start + timedelta(days=i)).isoformat() for i in range(700)]
+        # Three names (matching H3's count=3, so the book is fully invested,
+        # not cushioned by unused cash) crash at staggered offsets so the
+        # last one keeps falling well past when the first two hit near-zero.
+        def crash_series(offset):
+            prices = ([100.0] * (300 + offset) +
+                     [max(0.01, 100.0 * 0.9 ** i) for i in range(400 - offset)])
+            return {d: {"open": p, "close": p, "adjclose": p, "dollar_volume": 1e9,
+                       "split": 1, "dividend": 0} for d, p in zip(all_dates, prices)}
+        bars = {f"S{i}": crash_series(i * 5) for i in range(3)}
+        config = {"evaluation_start": all_dates[280], "evaluation_end": all_dates[-1],
+                 "symbols": {f"S{i}": "x" for i in range(3)}, "minimum_adv_usd": 0,
+                 "sector_weight_cap": 1.0, "volatility_target": 0.15,
+                 "annual_system_cash_cost_usd": 828}
+        summary, nav, *_ = simulate(bars, all_dates, config, 1_000, 0, "H3")
+        self.assertTrue(all(row["cash_usd"] >= -1e-6 for row in nav))
+        self.assertEqual(nav[-1]["nav_usd"], 0.0)
+        # The fee actually collected once cash ran thin must be less than
+        # the nominal daily fee, not silently waived to zero or paid from
+        # nowhere -- and cash must land at exactly zero, not go negative.
+        thin_days = [r for r in nav if 0 < r["fixed_fee_usd"] < 828 / 252 - 1e-9]
+        self.assertTrue(thin_days)
+        for row in thin_days:
+            self.assertEqual(row["cash_usd"], 0.0)
+        self.assertEqual(summary["cagr"], -1.0)
 
 
 if __name__ == "__main__":

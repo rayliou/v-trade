@@ -1,0 +1,3602 @@
+{
+  "run_id": "20260914T050130501992Z-p006-eed2d861",
+  "config": {
+    "data_dir": "data/authorized/sharadar",
+    "cache_dir": "data/public-yahoo",
+    "fred_cache_dir": "data/public-fred",
+    "benchmark_data_end": "2026-09-13",
+    "catalog_path": "data/catalog.sqlite",
+    "registry_path": "docs/prototype/experiments.jsonl",
+    "output_dir": "runs",
+    "universe_start_month": "2004-06",
+    "data_start": "2004-01-01",
+    "evaluation_start": "2005-01-03",
+    "evaluation_end": "2025-12-31",
+    "capital_usd": 300000,
+    "cost_bps": 25,
+    "secondary_cost_bps": 10,
+    "max_issuers": 100,
+    "minimum_trading_days": 252,
+    "minimum_adv_usd": 20000000,
+    "adv_window": 63,
+    "short_volume_window": 5,
+    "long_volume_window": 60,
+    "quality_exclude_fraction": 0.25,
+    "drawdown_research_limit": 0.5,
+    "bootstrap_replicates": 2000,
+    "bootstrap_seed": 20260913,
+    "sector_weight_cap": 1.0,
+    "annual_system_cash_cost_usd": 828,
+    "max_workers": null
+  },
+  "summary": [
+    {
+      "cagr": 0.1475783081048898,
+      "annual_volatility": 0.21641241042136097,
+      "sharpe_zero_rf": 0.7445177119401122,
+      "sortino_zero_target": 1.0598033435395817,
+      "max_drawdown": -0.5340398872677733,
+      "calmar_ratio": 0.27634323132663774,
+      "ulcer_index_percentage_points": 12.704811565460341,
+      "longest_underwater_trading_days": 781,
+      "current_underwater_trading_days": 43,
+      "worst_month": -0.15576315452507816,
+      "worst_quarter": -0.2345621150627415,
+      "hit_rate_positive_sessions": 0.5538519780427787,
+      "ending_nav_usd": 5375453.526416464,
+      "sessions": 5283,
+      "variant": "QQQ-total-return-proxy",
+      "capital_usd": 300000,
+      "cost_bps": 25
+    },
+    {
+      "cagr": 0.1412948413106001,
+      "annual_volatility": 0.20819192957595964,
+      "sharpe_zero_rf": 0.7391376566209534,
+      "sortino_zero_target": 1.0512752550141855,
+      "max_drawdown": -0.5277482425045648,
+      "calmar_ratio": 0.26773152410711815,
+      "ulcer_index_percentage_points": 12.444317343306746,
+      "longest_underwater_trading_days": 783,
+      "current_underwater_trading_days": 43,
+      "worst_month": -0.1535811488075629,
+      "worst_quarter": -0.23059376839638346,
+      "hit_rate_positive_sessions": 0.5587734241908007,
+      "ending_nav_usd": 4791001.099312502,
+      "sessions": 5283,
+      "variant": "QQQ",
+      "capital_usd": 300000,
+      "cost_bps": 25,
+      "execution_cost_usd": 746.0749028396607,
+      "fixed_cost_usd": 0.0,
+      "dividends_usd": 185281.16000000003,
+      "cash_interest_usd": 31972.353525034105,
+      "one_way_turnover_total": 0.9946749638689056,
+      "gross_traded_over_initial_nav": 0.9947665371195475,
+      "average_holdings": 1,
+      "hard_review_days": 0,
+      "top_positive_contributor": "QQQ",
+      "top_positive_contribution_share": 1.0,
+      "excess_cagr_pp": -0.6283466794289705,
+      "sample_return_pass": false,
+      "sample_drawdown_pass": false,
+      "sample_joint_pass": false,
+      "downside_capture_vs_qqq_total_return": 0.9999999998962735
+    },
+    {
+      "cagr": -1.0,
+      "annual_volatility": 0.5402812602857339,
+      "sharpe_zero_rf": -0.8903251374118103,
+      "sortino_zero_target": -1.087889432973982,
+      "max_drawdown": -1.0,
+      "calmar_ratio": -1.0,
+      "ulcer_index_percentage_points": 73.03457242181199,
+      "longest_underwater_trading_days": 5259,
+      "current_underwater_trading_days": 5259,
+      "worst_month": -1.0,
+      "worst_quarter": -1.0,
+      "hit_rate_positive_sessions": 0.4287336740488359,
+      "ending_nav_usd": 0.0,
+      "sessions": 5283,
+      "variant": "H3",
+      "capital_usd": 300000,
+      "cost_bps": 25,
+      "execution_cost_usd": 118124.49459625174,
+      "fixed_cost_usd": 15224.846120907932,
+      "dividends_usd": 17604.3825,
+      "cash_interest_usd": 736.7154371369312,
+      "one_way_turnover_total": 212.9841854977748,
+      "gross_traded_over_initial_nav": 157.49932612833592,
+      "average_holdings": 2.5773234904410374,
+      "hard_review_days": 4587,
+      "top_positive_contributor": "AXSM",
+      "top_positive_contribution_share": 0.045513628047681144,
+      "excess_cagr_pp": -114.75783081048898,
+      "sample_return_pass": false,
+      "sample_drawdown_pass": false,
+      "sample_joint_pass": false,
+      "downside_capture_vs_qqq_total_return": 1.000000000076058
+    },
+    {
+      "cagr": -0.2565635843736739,
+      "annual_volatility": 0.4383341385636587,
+      "sharpe_zero_rf": -0.45740670699465535,
+      "sortino_zero_target": -0.6430029557590546,
+      "max_drawdown": -0.998295081209416,
+      "calmar_ratio": -0.25700175148900045,
+      "ulcer_index_percentage_points": 67.78534251725915,
+      "longest_underwater_trading_days": 4714,
+      "current_underwater_trading_days": 4714,
+      "worst_month": -0.34026662239098415,
+      "worst_quarter": -0.6382578939398184,
+      "hit_rate_positive_sessions": 0.4953624834374408,
+      "ending_nav_usd": 599.5703179950958,
+      "sessions": 5283,
+      "variant": "H5",
+      "capital_usd": 300000,
+      "cost_bps": 25,
+      "execution_cost_usd": 157566.21034137608,
+      "fixed_cost_usd": 17358.428571427554,
+      "dividends_usd": 25605.1232675,
+      "cash_interest_usd": 775.7075336190107,
+      "one_way_turnover_total": 240.62000995073168,
+      "gross_traded_over_initial_nav": 210.08828045516773,
+      "average_holdings": 4.934317622562938,
+      "hard_review_days": 5263,
+      "top_positive_contributor": "AXSM",
+      "top_positive_contribution_share": 0.027403797419618476,
+      "excess_cagr_pp": -40.41418924785637,
+      "sample_return_pass": false,
+      "sample_drawdown_pass": false,
+      "sample_joint_pass": false,
+      "downside_capture_vs_qqq_total_return": 1.0000000000734621
+    }
+  ],
+  "decision": {
+    "experiment_id": "P006-hot-volume-short-momentum",
+    "run_id": "20260914T050130501992Z-p006-eed2d861",
+    "pre_registered": "Volume-spike pool (5d/60d, top 100), 1-month formation, bottom-25% quality exclusion, H3/H5 concentrated equal-weight, primary cost 25bps, drawdown research limit 0.50 -- all fixed before this ran; see docs/review/08-decisions-and-coverage.md's P006 entry.",
+    "investment_decision": "insufficient_evidence",
+    "engineering_decision": "completed_with_explicit_data_gaps",
+    "data_gate_pass": false,
+    "joint_sample_pass_variants": [],
+    "acceptance_blockers": [
+      "Unresolved corporate-action/exit and historical metadata gates",
+      "No multiple-comparison correction applied across the P001-P006 candidate sequence"
+    ],
+    "action_bridge_discrepancies": 8714
+  },
+  "bootstrap_by_variant": {
+    "H3": {
+      "21": {
+        "block_trading_days": 21,
+        "replicates": 2000,
+        "seed": 20260913,
+        "sessions": 5283,
+        "cagr_diff_pp": {
+          "p05": -122.27845755138614,
+          "p50": -111.27056577078156,
+          "p95": -40.80355320106134
+        },
+        "max_drawdown_diff_pp": {
+          "p05": -70.78276352175166,
+          "p50": -58.930512463785156,
+          "p95": -41.013481847998165
+        },
+        "sharpe_diff": {
+          "p05": -2.118116967116792,
+          "p50": -1.6198822827033106,
+          "p95": -1.131224843825589
+        },
+        "sharpe_undefined_replicate_count": 0
+      },
+      "63": {
+        "block_trading_days": 63,
+        "replicates": 2000,
+        "seed": 20260913,
+        "sessions": 5283,
+        "cagr_diff_pp": {
+          "p05": -121.76347879339977,
+          "p50": -111.60252476678991,
+          "p95": -36.938786779542056
+        },
+        "max_drawdown_diff_pp": {
+          "p05": -71.34590073934464,
+          "p50": -56.4677161106658,
+          "p95": -37.40691743344904
+        },
+        "sharpe_diff": {
+          "p05": -2.224133422018354,
+          "p50": -1.608272061736205,
+          "p95": -1.05551595361765
+        },
+        "sharpe_undefined_replicate_count": 0
+      }
+    },
+    "H5": {
+      "21": {
+        "block_trading_days": 21,
+        "replicates": 2000,
+        "seed": 20260913,
+        "sessions": 5283,
+        "cagr_diff_pp": {
+          "p05": -49.42832767007044,
+          "p50": -40.09146940751551,
+          "p95": -31.21369038021432
+        },
+        "max_drawdown_diff_pp": {
+          "p05": -70.44718748438916,
+          "p50": -58.600218543878626,
+          "p95": -40.618790609800136
+        },
+        "sharpe_diff": {
+          "p05": -1.5392600307373416,
+          "p50": -1.200996417326381,
+          "p95": -0.8778795010619762
+        },
+        "sharpe_undefined_replicate_count": 0
+      },
+      "63": {
+        "block_trading_days": 63,
+        "replicates": 2000,
+        "seed": 20260913,
+        "sessions": 5283,
+        "cagr_diff_pp": {
+          "p05": -49.19916724252491,
+          "p50": -40.29264523967558,
+          "p95": -31.209988707667335
+        },
+        "max_drawdown_diff_pp": {
+          "p05": -70.7449263914117,
+          "p50": -56.06411571954241,
+          "p95": -37.178664144322724
+        },
+        "sharpe_diff": {
+          "p05": -1.5255121481734164,
+          "p50": -1.207410242455969,
+          "p95": -0.919455873324228
+        },
+        "sharpe_undefined_replicate_count": 0
+      }
+    }
+  },
+  "diagnostics": {
+    "QQQ": {
+      "annual": [
+        {
+          "year": "2005",
+          "return": 0.00903342395428286,
+          "qqq_return": 0.008825519288900185,
+          "relative_return_pp": 0.020790466538267438,
+          "average_cash_weight": 0.0036050680774732447
+        },
+        {
+          "year": "2006",
+          "return": 0.07123887873198553,
+          "qqq_return": 0.07144023487866868,
+          "relative_return_pp": -0.02013561466831515,
+          "average_cash_weight": 0.0075262632354238575
+        },
+        {
+          "year": "2007",
+          "return": 0.1887736195121421,
+          "qqq_return": 0.19028085591648725,
+          "relative_return_pp": -0.15072364043451358,
+          "average_cash_weight": 0.009585027471562766
+        },
+        {
+          "year": "2008",
+          "return": -0.411962322074199,
+          "qqq_return": -0.417271645253375,
+          "relative_return_pp": 0.5309323179175984,
+          "average_cash_weight": 0.015338448643721461
+        },
+        {
+          "year": "2009",
+          "return": 0.5325868614930893,
+          "qqq_return": 0.5468414774889387,
+          "relative_return_pp": -1.425461599584943,
+          "average_cash_weight": 0.021295117193734336
+        },
+        {
+          "year": "2010",
+          "return": 0.1962835932381033,
+          "qqq_return": 0.20143749076155038,
+          "relative_return_pp": -0.5153897523447082,
+          "average_cash_weight": 0.02230456225015411
+        },
+        {
+          "year": "2011",
+          "return": 0.033722873781588225,
+          "qqq_return": 0.03475792643537945,
+          "relative_return_pp": -0.10350526537912241,
+          "average_cash_weight": 0.02658047227306084
+        },
+        {
+          "year": "2012",
+          "return": 0.17543397193156274,
+          "qqq_return": 0.18112526504787296,
+          "relative_return_pp": -0.5691293116310225,
+          "average_cash_weight": 0.03158891040866091
+        },
+        {
+          "year": "2013",
+          "return": 0.34972624807408925,
+          "qqq_return": 0.3663417669288658,
+          "relative_return_pp": -1.6615518854776523,
+          "average_cash_weight": 0.03898392322190005
+        },
+        {
+          "year": "2014",
+          "return": 0.18287328773404976,
+          "qqq_return": 0.19181413456112617,
+          "relative_return_pp": -0.894084682707641,
+          "average_cash_weight": 0.04362096834545134
+        },
+        {
+          "year": "2015",
+          "return": 0.08971719350125218,
+          "qqq_return": 0.09435904052593536,
+          "relative_return_pp": -0.46418470246831767,
+          "average_cash_weight": 0.04819233715470952
+        },
+        {
+          "year": "2016",
+          "return": 0.06689783869778831,
+          "qqq_return": 0.07097902031080183,
+          "relative_return_pp": -0.4081181613013518,
+          "average_cash_weight": 0.05661716606501847
+        },
+        {
+          "year": "2017",
+          "return": 0.3069936242386817,
+          "qqq_return": 0.3266351089258177,
+          "relative_return_pp": -1.9641484687136002,
+          "average_cash_weight": 0.054015487626497896
+        },
+        {
+          "year": "2018",
+          "return": 0.0005611215928955637,
+          "qqq_return": -0.0012619047249518012,
+          "relative_return_pp": 0.1823026317847365,
+          "average_cash_weight": 0.05252529330530516
+        },
+        {
+          "year": "2019",
+          "return": 0.3653654927717649,
+          "qqq_return": 0.3896158521279176,
+          "relative_return_pp": -2.4250359356152718,
+          "average_cash_weight": 0.056526887187919324
+        },
+        {
+          "year": "2020",
+          "return": 0.45599528673767886,
+          "qqq_return": 0.48406099028661687,
+          "relative_return_pp": -2.8065703548938004,
+          "average_cash_weight": 0.0494056053735069
+        },
+        {
+          "year": "2021",
+          "return": 0.2621417481020858,
+          "qqq_return": 0.2741972009965925,
+          "relative_return_pp": -1.2055452894506713,
+          "average_cash_weight": 0.039020060744712044
+        },
+        {
+          "year": "2022",
+          "return": -0.31242903854144977,
+          "qqq_return": -0.3257698370081602,
+          "relative_return_pp": 1.3340798466710435,
+          "average_cash_weight": 0.05026591725261304
+        },
+        {
+          "year": "2023",
+          "return": 0.5166769780227543,
+          "qqq_return": 0.548555318357167,
+          "relative_return_pp": -3.1878340334412725,
+          "average_cash_weight": 0.05272604592195718
+        },
+        {
+          "year": "2024",
+          "return": 0.2454236717308591,
+          "qqq_return": 0.25578264727390376,
+          "relative_return_pp": -1.0358975543044657,
+          "average_cash_weight": 0.047241699155514544
+        },
+        {
+          "year": "2025",
+          "return": 0.19940209869434744,
+          "qqq_return": 0.2077254825855681,
+          "relative_return_pp": -0.832338389122067,
+          "average_cash_weight": 0.04722143279506403
+        }
+      ],
+      "periods": [
+        {
+          "period": "2005-2014",
+          "cagr": 0.1040413638736144,
+          "qqq_cagr": 0.10751014851684526,
+          "excess_cagr_pp": -0.346878464323086
+        },
+        {
+          "period": "2015-2025",
+          "cagr": 0.17628599176788873,
+          "qqq_cagr": 0.18529784879863587,
+          "excess_cagr_pp": -0.9011857030747139
+        }
+      ],
+      "rolling_36m": [
+        {
+          "end_date": "2008-01-31",
+          "excess_cagr_pp": -0.0034628227855160176
+        },
+        {
+          "end_date": "2008-02-29",
+          "excess_cagr_pp": 0.020143457342669535
+        },
+        {
+          "end_date": "2008-03-31",
+          "excess_cagr_pp": 0.007647049740877598
+        },
+        {
+          "end_date": "2008-04-30",
+          "excess_cagr_pp": -0.03342785139099913
+        },
+        {
+          "end_date": "2008-05-30",
+          "excess_cagr_pp": -0.047451323669345236
+        },
+        {
+          "end_date": "2008-06-30",
+          "excess_cagr_pp": -0.002316978461291974
+        },
+        {
+          "end_date": "2008-07-31",
+          "excess_cagr_pp": 0.0036234013624625305
+        },
+        {
+          "end_date": "2008-08-29",
+          "excess_cagr_pp": -0.0059246053318418035
+        },
+        {
+          "end_date": "2008-09-30",
+          "excess_cagr_pp": 0.08030628500674819
+        },
+        {
+          "end_date": "2008-10-31",
+          "excess_cagr_pp": 0.17409535257244535
+        },
+        {
+          "end_date": "2008-11-28",
+          "excess_cagr_pp": 0.2475056806303444
+        },
+        {
+          "end_date": "2008-12-31",
+          "excess_cagr_pp": 0.23109832692890242
+        },
+        {
+          "end_date": "2009-01-30",
+          "excess_cagr_pp": 0.24869248499352903
+        },
+        {
+          "end_date": "2009-02-27",
+          "excess_cagr_pp": 0.28150888453136735
+        },
+        {
+          "end_date": "2009-03-31",
+          "excess_cagr_pp": 0.21883076383566458
+        },
+        {
+          "end_date": "2009-04-30",
+          "excess_cagr_pp": 0.1381327465658999
+        },
+        {
+          "end_date": "2009-05-29",
+          "excess_cagr_pp": 0.10653159685207747
+        },
+        {
+          "end_date": "2009-06-30",
+          "excess_cagr_pp": 0.0765114656775423
+        },
+        {
+          "end_date": "2009-07-31",
+          "excess_cagr_pp": 0.014869990440846692
+        },
+        {
+          "end_date": "2009-08-31",
+          "excess_cagr_pp": 0.015926420020462295
+        },
+        {
+          "end_date": "2009-09-30",
+          "excess_cagr_pp": -0.005909620903410406
+        },
+        {
+          "end_date": "2009-10-30",
+          "excess_cagr_pp": 0.0242352933583323
+        },
+        {
+          "end_date": "2009-11-30",
+          "excess_cagr_pp": -0.009017949458067775
+        },
+        {
+          "end_date": "2009-12-31",
+          "excess_cagr_pp": -0.049646816017800965
+        },
+        {
+          "end_date": "2010-01-29",
+          "excess_cagr_pp": -0.0009006559432811478
+        },
+        {
+          "end_date": "2010-02-26",
+          "excess_cagr_pp": -0.03660629135717741
+        },
+        {
+          "end_date": "2010-03-31",
+          "excess_cagr_pp": -0.0860571081464645
+        },
+        {
+          "end_date": "2010-04-30",
+          "excess_cagr_pp": -0.08364931384168273
+        },
+        {
+          "end_date": "2010-05-28",
+          "excess_cagr_pp": -0.022482199750628595
+        },
+        {
+          "end_date": "2010-06-30",
+          "excess_cagr_pp": 0.032121350242086955
+        },
+        {
+          "end_date": "2010-07-30",
+          "excess_cagr_pp": -0.02756012747757719
+        },
+        {
+          "end_date": "2010-08-31",
+          "excess_cagr_pp": 0.02006404499248493
+        },
+        {
+          "end_date": "2010-09-30",
+          "excess_cagr_pp": -0.05755274208008032
+        },
+        {
+          "end_date": "2010-10-29",
+          "excess_cagr_pp": -0.09497521942797293
+        },
+        {
+          "end_date": "2010-11-30",
+          "excess_cagr_pp": -0.1113773616463476
+        },
+        {
+          "end_date": "2010-12-31",
+          "excess_cagr_pp": -0.16039151422391207
+        },
+        {
+          "end_date": "2011-01-31",
+          "excess_cagr_pp": -0.2397721221440552
+        },
+        {
+          "end_date": "2011-02-28",
+          "excess_cagr_pp": -0.28199041250898116
+        },
+        {
+          "end_date": "2011-03-31",
+          "excess_cagr_pp": -0.2616241872895886
+        },
+        {
+          "end_date": "2011-04-29",
+          "excess_cagr_pp": -0.26891541828317767
+        },
+        {
+          "end_date": "2011-05-31",
+          "excess_cagr_pp": -0.2280751982914886
+        },
+        {
+          "end_date": "2011-06-30",
+          "excess_cagr_pp": -0.2607531440433908
+        },
+        {
+          "end_date": "2011-07-29",
+          "excess_cagr_pp": -0.2817958234954121
+        },
+        {
+          "end_date": "2011-08-31",
+          "excess_cagr_pp": -0.22786429111854023
+        },
+        {
+          "end_date": "2011-09-30",
+          "excess_cagr_pp": -0.28051172733050134
+        },
+        {
+          "end_date": "2011-10-31",
+          "excess_cagr_pp": -0.5426586872983918
+        },
+        {
+          "end_date": "2011-11-30",
+          "excess_cagr_pp": -0.7282192766936868
+        },
+        {
+          "end_date": "2011-12-30",
+          "excess_cagr_pp": -0.6019821658158397
+        },
+        {
+          "end_date": "2012-01-31",
+          "excess_cagr_pp": -0.7548836800216785
+        },
+        {
+          "end_date": "2012-02-29",
+          "excess_cagr_pp": -0.9722290697047109
+        },
+        {
+          "end_date": "2012-03-30",
+          "excess_cagr_pp": -0.845893380852325
+        },
+        {
+          "end_date": "2012-04-30",
+          "excess_cagr_pp": -0.6954464152396422
+        },
+        {
+          "end_date": "2012-05-31",
+          "excess_cagr_pp": -0.5259144322482534
+        },
+        {
+          "end_date": "2012-06-29",
+          "excess_cagr_pp": -0.5780343092349538
+        },
+        {
+          "end_date": "2012-07-31",
+          "excess_cagr_pp": -0.5110793455477713
+        },
+        {
+          "end_date": "2012-08-31",
+          "excess_cagr_pp": -0.5881817391833577
+        },
+        {
+          "end_date": "2012-09-28",
+          "excess_cagr_pp": -0.5266651412432211
+        },
+        {
+          "end_date": "2012-10-31",
+          "excess_cagr_pp": -0.44956470361334766
+        },
+        {
+          "end_date": "2012-11-30",
+          "excess_cagr_pp": -0.4379939243777331
+        },
+        {
+          "end_date": "2012-12-31",
+          "excess_cagr_pp": -0.3778673494592155
+        },
+        {
+          "end_date": "2013-01-31",
+          "excess_cagr_pp": -0.4886980004418895
+        },
+        {
+          "end_date": "2013-02-28",
+          "excess_cagr_pp": -0.45148214491885774
+        },
+        {
+          "end_date": "2013-03-28",
+          "excess_cagr_pp": -0.43634647560422124
+        },
+        {
+          "end_date": "2013-04-30",
+          "excess_cagr_pp": -0.45246807331178474
+        },
+        {
+          "end_date": "2013-05-31",
+          "excess_cagr_pp": -0.5856866545271844
+        },
+        {
+          "end_date": "2013-06-28",
+          "excess_cagr_pp": -0.5557614260326194
+        },
+        {
+          "end_date": "2013-07-31",
+          "excess_cagr_pp": -0.6499559653775799
+        },
+        {
+          "end_date": "2013-08-30",
+          "excess_cagr_pp": -0.7006481033568823
+        },
+        {
+          "end_date": "2013-09-30",
+          "excess_cagr_pp": -0.630610309554136
+        },
+        {
+          "end_date": "2013-10-31",
+          "excess_cagr_pp": -0.6515471065517531
+        },
+        {
+          "end_date": "2013-11-29",
+          "excess_cagr_pp": -0.6994557018161762
+        },
+        {
+          "end_date": "2013-12-31",
+          "excess_cagr_pp": -0.7050614265311062
+        },
+        {
+          "end_date": "2014-01-31",
+          "excess_cagr_pp": -0.6507967037187923
+        },
+        {
+          "end_date": "2014-02-28",
+          "excess_cagr_pp": -0.7006816049908382
+        },
+        {
+          "end_date": "2014-03-31",
+          "excess_cagr_pp": -0.6648502973739534
+        },
+        {
+          "end_date": "2014-04-30",
+          "excess_cagr_pp": -0.60499151659128
+        },
+        {
+          "end_date": "2014-05-30",
+          "excess_cagr_pp": -0.7323414924638838
+        },
+        {
+          "end_date": "2014-06-30",
+          "excess_cagr_pp": -0.831693656891197
+        },
+        {
+          "end_date": "2014-07-31",
+          "excess_cagr_pp": -0.7862765121344317
+        },
+        {
+          "end_date": "2014-08-29",
+          "excess_cagr_pp": -1.0150571992399993
+        },
+        {
+          "end_date": "2014-09-30",
+          "excess_cagr_pp": -0.9359031971602594
+        },
+        {
+          "end_date": "2014-10-31",
+          "excess_cagr_pp": -0.8993340430412777
+        },
+        {
+          "end_date": "2014-11-28",
+          "excess_cagr_pp": -1.160675884814344
+        },
+        {
+          "end_date": "2014-12-31",
+          "excess_cagr_pp": -1.0226728741385527
+        },
+        {
+          "end_date": "2015-01-30",
+          "excess_cagr_pp": -0.84433661241059
+        },
+        {
+          "end_date": "2015-02-27",
+          "excess_cagr_pp": -0.9090210231397
+        },
+        {
+          "end_date": "2015-03-31",
+          "excess_cagr_pp": -0.7661384090792867
+        },
+        {
+          "end_date": "2015-04-30",
+          "excess_cagr_pp": -0.8347111004701535
+        },
+        {
+          "end_date": "2015-05-29",
+          "excess_cagr_pp": -0.9922291713191811
+        },
+        {
+          "end_date": "2015-06-30",
+          "excess_cagr_pp": -0.9209256209435468
+        },
+        {
+          "end_date": "2015-07-31",
+          "excess_cagr_pp": -0.9617289181564237
+        },
+        {
+          "end_date": "2015-08-31",
+          "excess_cagr_pp": -0.7256333239612944
+        },
+        {
+          "end_date": "2015-09-30",
+          "excess_cagr_pp": -0.6752014132251238
+        },
+        {
+          "end_date": "2015-10-30",
+          "excess_cagr_pp": -0.9914401955765095
+        },
+        {
+          "end_date": "2015-11-30",
+          "excess_cagr_pp": -1.0007871514118083
+        },
+        {
+          "end_date": "2015-12-31",
+          "excess_cagr_pp": -0.9666817041452447
+        },
+        {
+          "end_date": "2016-01-29",
+          "excess_cagr_pp": -0.7370633127763426
+        },
+        {
+          "end_date": "2016-02-29",
+          "excess_cagr_pp": -0.6964038609757361
+        },
+        {
+          "end_date": "2016-03-31",
+          "excess_cagr_pp": -0.8203071315380672
+        },
+        {
+          "end_date": "2016-04-29",
+          "excess_cagr_pp": -0.6834954438557306
+        },
+        {
+          "end_date": "2016-05-31",
+          "excess_cagr_pp": -0.7106751587626858
+        },
+        {
+          "end_date": "2016-06-30",
+          "excess_cagr_pp": -0.699586235578642
+        },
+        {
+          "end_date": "2016-07-29",
+          "excess_cagr_pp": -0.773044726356753
+        },
+        {
+          "end_date": "2016-08-31",
+          "excess_cagr_pp": -0.8013722846119897
+        },
+        {
+          "end_date": "2016-09-30",
+          "excess_cagr_pp": -0.7536355665505923
+        },
+        {
+          "end_date": "2016-10-31",
+          "excess_cagr_pp": -0.6480343750792983
+        },
+        {
+          "end_date": "2016-11-30",
+          "excess_cagr_pp": -0.6043059727997013
+        },
+        {
+          "end_date": "2016-12-30",
+          "excess_cagr_pp": -0.5797273267903469
+        },
+        {
+          "end_date": "2017-01-31",
+          "excess_cagr_pp": -0.7266822690330521
+        },
+        {
+          "end_date": "2017-02-28",
+          "excess_cagr_pp": -0.7410776302384958
+        },
+        {
+          "end_date": "2017-03-31",
+          "excess_cagr_pp": -0.8082696449132509
+        },
+        {
+          "end_date": "2017-04-28",
+          "excess_cagr_pp": -0.9183212240385208
+        },
+        {
+          "end_date": "2017-05-31",
+          "excess_cagr_pp": -0.911797563708383
+        },
+        {
+          "end_date": "2017-06-30",
+          "excess_cagr_pp": -0.773030911562067
+        },
+        {
+          "end_date": "2017-07-31",
+          "excess_cagr_pp": -0.823257777845332
+        },
+        {
+          "end_date": "2017-08-31",
+          "excess_cagr_pp": -0.8086291927721145
+        },
+        {
+          "end_date": "2017-09-29",
+          "excess_cagr_pp": -0.8210266222449469
+        },
+        {
+          "end_date": "2017-10-31",
+          "excess_cagr_pp": -0.8999676128875755
+        },
+        {
+          "end_date": "2017-11-30",
+          "excess_cagr_pp": -0.8509152503143103
+        },
+        {
+          "end_date": "2017-12-29",
+          "excess_cagr_pp": -0.8628773377571841
+        },
+        {
+          "end_date": "2018-01-31",
+          "excess_cagr_pp": -1.1241720212603834
+        },
+        {
+          "end_date": "2018-02-28",
+          "excess_cagr_pp": -0.9423719419036969
+        },
+        {
+          "end_date": "2018-03-29",
+          "excess_cagr_pp": -0.8687459242305406
+        },
+        {
+          "end_date": "2018-04-30",
+          "excess_cagr_pp": -0.8273528726601365
+        },
+        {
+          "end_date": "2018-05-31",
+          "excess_cagr_pp": -0.9309147038565779
+        },
+        {
+          "end_date": "2018-06-29",
+          "excess_cagr_pp": -1.0149464978978617
+        },
+        {
+          "end_date": "2018-07-31",
+          "excess_cagr_pp": -0.9754671754607314
+        },
+        {
+          "end_date": "2018-08-31",
+          "excess_cagr_pp": -1.3507838989760712
+        },
+        {
+          "end_date": "2018-09-28",
+          "excess_cagr_pp": -1.383197759049959
+        },
+        {
+          "end_date": "2018-10-31",
+          "excess_cagr_pp": -0.8404424342350225
+        },
+        {
+          "end_date": "2018-11-30",
+          "excess_cagr_pp": -0.7961346916491197
+        },
+        {
+          "end_date": "2018-12-31",
+          "excess_cagr_pp": -0.5858382490252279
+        },
+        {
+          "end_date": "2019-01-31",
+          "excess_cagr_pp": -1.018636351025859
+        },
+        {
+          "end_date": "2019-02-28",
+          "excess_cagr_pp": -1.1095956538515361
+        },
+        {
+          "end_date": "2019-03-29",
+          "excess_cagr_pp": -1.0673125103699332
+        },
+        {
+          "end_date": "2019-04-30",
+          "excess_cagr_pp": -1.2321079700799986
+        },
+        {
+          "end_date": "2019-05-31",
+          "excess_cagr_pp": -0.9452511497319627
+        },
+        {
+          "end_date": "2019-06-28",
+          "excess_cagr_pp": -1.3309437469334329
+        },
+        {
+          "end_date": "2019-07-31",
+          "excess_cagr_pp": -1.0642055438417009
+        },
+        {
+          "end_date": "2019-08-30",
+          "excess_cagr_pp": -0.9695930216654824
+        },
+        {
+          "end_date": "2019-09-30",
+          "excess_cagr_pp": -0.9498154148906535
+        },
+        {
+          "end_date": "2019-10-31",
+          "excess_cagr_pp": -1.0886393705209496
+        },
+        {
+          "end_date": "2019-11-29",
+          "excess_cagr_pp": -1.1573240190880574
+        },
+        {
+          "end_date": "2019-12-31",
+          "excess_cagr_pp": -1.2149830190253397
+        },
+        {
+          "end_date": "2020-01-31",
+          "excess_cagr_pp": -1.1804431169664786
+        },
+        {
+          "end_date": "2020-02-28",
+          "excess_cagr_pp": -0.9116060393861147
+        },
+        {
+          "end_date": "2020-03-31",
+          "excess_cagr_pp": -0.6940763582438336
+        },
+        {
+          "end_date": "2020-04-30",
+          "excess_cagr_pp": -0.980103098447338
+        },
+        {
+          "end_date": "2020-05-29",
+          "excess_cagr_pp": -1.0446165073629388
+        },
+        {
+          "end_date": "2020-06-30",
+          "excess_cagr_pp": -1.2043768820893863
+        },
+        {
+          "end_date": "2020-07-31",
+          "excess_cagr_pp": -1.3157836759905672
+        },
+        {
+          "end_date": "2020-08-31",
+          "excess_cagr_pp": -1.5645831809723454
+        },
+        {
+          "end_date": "2020-09-30",
+          "excess_cagr_pp": -1.3960553387135644
+        },
+        {
+          "end_date": "2020-10-30",
+          "excess_cagr_pp": -1.1992501361982377
+        },
+        {
+          "end_date": "2020-11-30",
+          "excess_cagr_pp": -1.3540964126780075
+        },
+        {
+          "end_date": "2020-12-31",
+          "excess_cagr_pp": -1.4704787046685208
+        },
+        {
+          "end_date": "2021-01-29",
+          "excess_cagr_pp": -1.251084782784484
+        },
+        {
+          "end_date": "2021-02-26",
+          "excess_cagr_pp": -1.2463202138128127
+        },
+        {
+          "end_date": "2021-03-31",
+          "excess_cagr_pp": -1.445392345030383
+        },
+        {
+          "end_date": "2021-04-30",
+          "excess_cagr_pp": -1.5625277938825066
+        },
+        {
+          "end_date": "2021-05-28",
+          "excess_cagr_pp": -1.40773744137217
+        },
+        {
+          "end_date": "2021-06-30",
+          "excess_cagr_pp": -1.504932446815177
+        },
+        {
+          "end_date": "2021-07-30",
+          "excess_cagr_pp": -1.5072199170115042
+        },
+        {
+          "end_date": "2021-08-31",
+          "excess_cagr_pp": -1.4282912043108276
+        },
+        {
+          "end_date": "2021-09-30",
+          "excess_cagr_pp": -1.3188562270696869
+        },
+        {
+          "end_date": "2021-10-29",
+          "excess_cagr_pp": -1.8538241512828124
+        },
+        {
+          "end_date": "2021-11-30",
+          "excess_cagr_pp": -1.8003947207531512
+        },
+        {
+          "end_date": "2021-12-31",
+          "excess_cagr_pp": -2.0950204204025047
+        },
+        {
+          "end_date": "2022-01-31",
+          "excess_cagr_pp": -1.6168680088905152
+        },
+        {
+          "end_date": "2022-02-28",
+          "excess_cagr_pp": -1.4306676547120922
+        },
+        {
+          "end_date": "2022-03-31",
+          "excess_cagr_pp": -1.3807754280396711
+        },
+        {
+          "end_date": "2022-04-29",
+          "excess_cagr_pp": -0.974576200584476
+        },
+        {
+          "end_date": "2022-05-31",
+          "excess_cagr_pp": -1.1556419881617819
+        },
+        {
+          "end_date": "2022-06-30",
+          "excess_cagr_pp": -0.7255443001251916
+        },
+        {
+          "end_date": "2022-07-29",
+          "excess_cagr_pp": -0.9388181907695747
+        },
+        {
+          "end_date": "2022-08-31",
+          "excess_cagr_pp": -0.9001352101121851
+        },
+        {
+          "end_date": "2022-09-30",
+          "excess_cagr_pp": -0.6299056320438146
+        },
+        {
+          "end_date": "2022-10-31",
+          "excess_cagr_pp": -0.6006881430892452
+        },
+        {
+          "end_date": "2022-11-30",
+          "excess_cagr_pp": -0.6291150562468317
+        },
+        {
+          "end_date": "2022-12-30",
+          "excess_cagr_pp": -0.32500504627142046
+        },
+        {
+          "end_date": "2023-01-31",
+          "excess_cagr_pp": -0.4577992421672006
+        },
+        {
+          "end_date": "2023-02-28",
+          "excess_cagr_pp": -0.6175633921505552
+        },
+        {
+          "end_date": "2023-03-31",
+          "excess_cagr_pp": -1.0096099005790782
+        },
+        {
+          "end_date": "2023-04-28",
+          "excess_cagr_pp": -0.7410398748449065
+        },
+        {
+          "end_date": "2023-05-31",
+          "excess_cagr_pp": -0.677077359953504
+        },
+        {
+          "end_date": "2023-06-30",
+          "excess_cagr_pp": -0.7094938687103536
+        },
+        {
+          "end_date": "2023-07-31",
+          "excess_cagr_pp": -0.6618130635327457
+        },
+        {
+          "end_date": "2023-08-31",
+          "excess_cagr_pp": -0.3802871974112998
+        },
+        {
+          "end_date": "2023-09-29",
+          "excess_cagr_pp": -0.3614364404562087
+        },
+        {
+          "end_date": "2023-10-31",
+          "excess_cagr_pp": -0.34470326069189205
+        },
+        {
+          "end_date": "2023-11-30",
+          "excess_cagr_pp": -0.37769795469724254
+        },
+        {
+          "end_date": "2023-12-29",
+          "excess_cagr_pp": -0.39765928928567895
+        },
+        {
+          "end_date": "2024-01-31",
+          "excess_cagr_pp": -0.3797986308134327
+        },
+        {
+          "end_date": "2024-02-29",
+          "excess_cagr_pp": -0.5083069448390098
+        },
+        {
+          "end_date": "2024-03-28",
+          "excess_cagr_pp": -0.5132753173914262
+        },
+        {
+          "end_date": "2024-04-30",
+          "excess_cagr_pp": -0.30315727258747316
+        },
+        {
+          "end_date": "2024-05-31",
+          "excess_cagr_pp": -0.4318022157465684
+        },
+        {
+          "end_date": "2024-06-28",
+          "excess_cagr_pp": -0.46520753275425264
+        },
+        {
+          "end_date": "2024-07-31",
+          "excess_cagr_pp": -0.35427130041925103
+        },
+        {
+          "end_date": "2024-08-30",
+          "excess_cagr_pp": -0.3259766102236883
+        },
+        {
+          "end_date": "2024-09-30",
+          "excess_cagr_pp": -0.3880380522778948
+        },
+        {
+          "end_date": "2024-10-31",
+          "excess_cagr_pp": -0.3097031235495651
+        },
+        {
+          "end_date": "2024-11-29",
+          "excess_cagr_pp": -0.37200321469252895
+        },
+        {
+          "end_date": "2024-12-31",
+          "excess_cagr_pp": -0.3320223676843037
+        },
+        {
+          "end_date": "2025-01-31",
+          "excess_cagr_pp": -0.6171738630249779
+        },
+        {
+          "end_date": "2025-02-28",
+          "excess_cagr_pp": -0.6407972718888155
+        },
+        {
+          "end_date": "2025-03-31",
+          "excess_cagr_pp": -0.3156090806428091
+        },
+        {
+          "end_date": "2025-04-30",
+          "excess_cagr_pp": -0.4924607125105007
+        },
+        {
+          "end_date": "2025-05-30",
+          "excess_cagr_pp": -0.9783282293987172
+        },
+        {
+          "end_date": "2025-06-30",
+          "excess_cagr_pp": -1.1310054366923117
+        },
+        {
+          "end_date": "2025-07-31",
+          "excess_cagr_pp": -1.0978976881535596
+        },
+        {
+          "end_date": "2025-08-29",
+          "excess_cagr_pp": -0.952057242509774
+        },
+        {
+          "end_date": "2025-09-30",
+          "excess_cagr_pp": -1.417180639899418
+        },
+        {
+          "end_date": "2025-10-31",
+          "excess_cagr_pp": -1.5042154717804124
+        },
+        {
+          "end_date": "2025-11-28",
+          "excess_cagr_pp": -1.3856124108363232
+        },
+        {
+          "end_date": "2025-12-31",
+          "excess_cagr_pp": -1.5704251515666234
+        }
+      ],
+      "average_cash_weight": 0.0368583759417514,
+      "average_position_hhi": 0.9279392917147711,
+      "top5_positive_contributors": [
+        {
+          "symbol": "QQQ",
+          "price_pnl_usd": 4274493.660690308,
+          "dividends_usd": 185281.16000000003,
+          "execution_cost_usd": 746.0749028396607,
+          "net_contribution_usd": 4459028.745787468
+        }
+      ],
+      "top5_positive_share": 1.0,
+      "positive_contribution_hhi": 1.0,
+      "negative_contribution_hhi": null,
+      "sector_contribution_current_labels_usd": {
+        "Unknown": 4459028.745787468
+      },
+      "average_quality_na_nav_weight": 0.9631416240582487,
+      "ledger_reconciled": true,
+      "limitations": [
+        "Historical diagnostics, not untouched validation.",
+        "Sector attribution uses current labels.",
+        "Dollar contributions depend on portfolio wealth over time.",
+        "Quality N/A is neutral fallback, not a qualified company."
+      ]
+    },
+    "H3": {
+      "annual": [
+        {
+          "year": "2005",
+          "return": -0.26301505858726737,
+          "qqq_return": 0.008825519288900185,
+          "relative_return_pp": -27.184057787616755,
+          "average_cash_weight": 0.08049902429377748
+        },
+        {
+          "year": "2006",
+          "return": 0.24157311944420568,
+          "qqq_return": 0.07144023487866868,
+          "relative_return_pp": 17.0132884565537,
+          "average_cash_weight": 0.000648202262670366
+        },
+        {
+          "year": "2007",
+          "return": -0.09164086536382698,
+          "qqq_return": 0.19028085591648725,
+          "relative_return_pp": -28.192172128031423,
+          "average_cash_weight": 0.007511726988250117
+        },
+        {
+          "year": "2008",
+          "return": -0.649631717034478,
+          "qqq_return": -0.417271645253375,
+          "relative_return_pp": -23.236007178110295,
+          "average_cash_weight": 0.001806107329080931
+        },
+        {
+          "year": "2009",
+          "return": 0.510051661849805,
+          "qqq_return": 0.5468414774889387,
+          "relative_return_pp": -3.678981563913375,
+          "average_cash_weight": 0.0014080281050270025
+        },
+        {
+          "year": "2010",
+          "return": -0.2691408704231564,
+          "qqq_return": 0.20143749076155038,
+          "relative_return_pp": -47.057836118470675,
+          "average_cash_weight": 0.010445897122971766
+        },
+        {
+          "year": "2011",
+          "return": 0.0027921656380296422,
+          "qqq_return": 0.03475792643537945,
+          "relative_return_pp": -3.1965760797349807,
+          "average_cash_weight": 0.0036466260467681515
+        },
+        {
+          "year": "2012",
+          "return": 0.006086571631437998,
+          "qqq_return": 0.18112526504787296,
+          "relative_return_pp": -17.503869341643497,
+          "average_cash_weight": 0.004497542935113747
+        },
+        {
+          "year": "2013",
+          "return": 0.08691718003534543,
+          "qqq_return": 0.3663417669288658,
+          "relative_return_pp": -27.942458689352033,
+          "average_cash_weight": 0.0011267753301287657
+        },
+        {
+          "year": "2014",
+          "return": 0.09906999569924091,
+          "qqq_return": 0.19181413456112617,
+          "relative_return_pp": -9.274413886188526,
+          "average_cash_weight": 0.0018666621245930725
+        },
+        {
+          "year": "2015",
+          "return": -0.2753071237074719,
+          "qqq_return": 0.09435904052593536,
+          "relative_return_pp": -36.966616423340724,
+          "average_cash_weight": 0.0031031117135465833
+        },
+        {
+          "year": "2016",
+          "return": 0.08468256315922984,
+          "qqq_return": 0.07097902031080183,
+          "relative_return_pp": 1.3703542848428008,
+          "average_cash_weight": 0.008429983444065866
+        },
+        {
+          "year": "2017",
+          "return": 0.22323033125075353,
+          "qqq_return": 0.3266351089258177,
+          "relative_return_pp": -10.340477767506417,
+          "average_cash_weight": 0.0017531835026557618
+        },
+        {
+          "year": "2018",
+          "return": -0.45895800186651325,
+          "qqq_return": -0.0012619047249518012,
+          "relative_return_pp": -45.76960971415615,
+          "average_cash_weight": 0.003176332602218861
+        },
+        {
+          "year": "2019",
+          "return": 0.9523384080210242,
+          "qqq_return": 0.3896158521279176,
+          "relative_return_pp": 56.27225558931066,
+          "average_cash_weight": 0.011861429818949238
+        },
+        {
+          "year": "2020",
+          "return": -0.7752524092491813,
+          "qqq_return": 0.48406099028661687,
+          "relative_return_pp": -125.93133995357981,
+          "average_cash_weight": 0.012011711811050917
+        },
+        {
+          "year": "2021",
+          "return": -0.861319021921495,
+          "qqq_return": 0.2741972009965925,
+          "relative_return_pp": -113.55162229180875,
+          "average_cash_weight": 0.028039296760782016
+        },
+        {
+          "year": "2022",
+          "return": -0.9054232187380069,
+          "qqq_return": -0.3257698370081602,
+          "relative_return_pp": -57.96533817298467,
+          "average_cash_weight": 0.1540860164935288
+        },
+        {
+          "year": "2023",
+          "return": -1.0,
+          "qqq_return": 0.548555318357167,
+          "relative_return_pp": -154.8555318357167,
+          "average_cash_weight": 0.8587245112774975
+        },
+        {
+          "year": "2024",
+          "return": 0.0,
+          "qqq_return": 0.25578264727390376,
+          "relative_return_pp": -25.578264727390376,
+          "average_cash_weight": 1.0
+        },
+        {
+          "year": "2025",
+          "return": 0.0,
+          "qqq_return": 0.2077254825855681,
+          "relative_return_pp": -20.77254825855681,
+          "average_cash_weight": 1.0
+        }
+      ],
+      "periods": [
+        {
+          "period": "2005-2014",
+          "cagr": -0.09058609002680573,
+          "qqq_cagr": 0.10751014851684526,
+          "excess_cagr_pp": -19.8096238543651
+        },
+        {
+          "period": "2015-2025",
+          "cagr": -1.0,
+          "qqq_cagr": 0.18529784879863587,
+          "excess_cagr_pp": -118.52978487986358
+        }
+      ],
+      "rolling_36m": [
+        {
+          "end_date": "2008-01-31",
+          "excess_cagr_pp": -14.998826101157247
+        },
+        {
+          "end_date": "2008-02-29",
+          "excess_cagr_pp": -16.325939616306563
+        },
+        {
+          "end_date": "2008-03-31",
+          "excess_cagr_pp": -16.640789692776302
+        },
+        {
+          "end_date": "2008-04-30",
+          "excess_cagr_pp": -12.006278129566528
+        },
+        {
+          "end_date": "2008-05-30",
+          "excess_cagr_pp": -10.005621300594225
+        },
+        {
+          "end_date": "2008-06-30",
+          "excess_cagr_pp": -2.6377330226783124
+        },
+        {
+          "end_date": "2008-07-31",
+          "excess_cagr_pp": -8.2563005793326
+        },
+        {
+          "end_date": "2008-08-29",
+          "excess_cagr_pp": -9.740105345702688
+        },
+        {
+          "end_date": "2008-09-30",
+          "excess_cagr_pp": -23.940638480089603
+        },
+        {
+          "end_date": "2008-10-31",
+          "excess_cagr_pp": -22.822950728012636
+        },
+        {
+          "end_date": "2008-11-28",
+          "excess_cagr_pp": -19.68197250067285
+        },
+        {
+          "end_date": "2008-12-31",
+          "excess_cagr_pp": -17.453342195698962
+        },
+        {
+          "end_date": "2009-01-30",
+          "excess_cagr_pp": -23.05169359646111
+        },
+        {
+          "end_date": "2009-02-27",
+          "excess_cagr_pp": -23.102664928332594
+        },
+        {
+          "end_date": "2009-03-31",
+          "excess_cagr_pp": -25.40026141209496
+        },
+        {
+          "end_date": "2009-04-30",
+          "excess_cagr_pp": -18.844117006515305
+        },
+        {
+          "end_date": "2009-05-29",
+          "excess_cagr_pp": -17.098117564774128
+        },
+        {
+          "end_date": "2009-06-30",
+          "excess_cagr_pp": -21.83935613364978
+        },
+        {
+          "end_date": "2009-07-31",
+          "excess_cagr_pp": -21.982234226996113
+        },
+        {
+          "end_date": "2009-08-31",
+          "excess_cagr_pp": -19.170402446006552
+        },
+        {
+          "end_date": "2009-09-30",
+          "excess_cagr_pp": -19.814048000846007
+        },
+        {
+          "end_date": "2009-10-30",
+          "excess_cagr_pp": -19.818391831199754
+        },
+        {
+          "end_date": "2009-11-30",
+          "excess_cagr_pp": -19.42429532003409
+        },
+        {
+          "end_date": "2009-12-31",
+          "excess_cagr_pp": -24.044015394645633
+        },
+        {
+          "end_date": "2010-01-29",
+          "excess_cagr_pp": -19.961454386645684
+        },
+        {
+          "end_date": "2010-02-26",
+          "excess_cagr_pp": -22.863156383734594
+        },
+        {
+          "end_date": "2010-03-31",
+          "excess_cagr_pp": -19.158246454822457
+        },
+        {
+          "end_date": "2010-04-30",
+          "excess_cagr_pp": -22.43968959038102
+        },
+        {
+          "end_date": "2010-05-28",
+          "excess_cagr_pp": -19.423371094375717
+        },
+        {
+          "end_date": "2010-06-30",
+          "excess_cagr_pp": -19.578729044378264
+        },
+        {
+          "end_date": "2010-07-30",
+          "excess_cagr_pp": -19.244605117549064
+        },
+        {
+          "end_date": "2010-08-31",
+          "excess_cagr_pp": -20.679288126333272
+        },
+        {
+          "end_date": "2010-09-30",
+          "excess_cagr_pp": -22.023506653832527
+        },
+        {
+          "end_date": "2010-10-29",
+          "excess_cagr_pp": -25.41265446430937
+        },
+        {
+          "end_date": "2010-11-30",
+          "excess_cagr_pp": -26.663755605223383
+        },
+        {
+          "end_date": "2010-12-31",
+          "excess_cagr_pp": -30.051834407360502
+        },
+        {
+          "end_date": "2011-01-31",
+          "excess_cagr_pp": -37.44553503486359
+        },
+        {
+          "end_date": "2011-02-28",
+          "excess_cagr_pp": -33.402495397277306
+        },
+        {
+          "end_date": "2011-03-31",
+          "excess_cagr_pp": -33.26067876766564
+        },
+        {
+          "end_date": "2011-04-29",
+          "excess_cagr_pp": -30.493407332832344
+        },
+        {
+          "end_date": "2011-05-31",
+          "excess_cagr_pp": -30.572796922960144
+        },
+        {
+          "end_date": "2011-06-30",
+          "excess_cagr_pp": -33.724828604583834
+        },
+        {
+          "end_date": "2011-07-29",
+          "excess_cagr_pp": -30.62422988121091
+        },
+        {
+          "end_date": "2011-08-31",
+          "excess_cagr_pp": -25.090525264608367
+        },
+        {
+          "end_date": "2011-09-30",
+          "excess_cagr_pp": -14.333065141270096
+        },
+        {
+          "end_date": "2011-10-31",
+          "excess_cagr_pp": -7.927730090704843
+        },
+        {
+          "end_date": "2011-11-30",
+          "excess_cagr_pp": -13.829927633112437
+        },
+        {
+          "end_date": "2011-12-30",
+          "excess_cagr_pp": -20.91692975900894
+        },
+        {
+          "end_date": "2012-01-31",
+          "excess_cagr_pp": -20.507073417558395
+        },
+        {
+          "end_date": "2012-02-29",
+          "excess_cagr_pp": -21.799753455670825
+        },
+        {
+          "end_date": "2012-03-30",
+          "excess_cagr_pp": -26.632594827205214
+        },
+        {
+          "end_date": "2012-04-30",
+          "excess_cagr_pp": -35.841245730608485
+        },
+        {
+          "end_date": "2012-05-31",
+          "excess_cagr_pp": -33.29211575432169
+        },
+        {
+          "end_date": "2012-06-29",
+          "excess_cagr_pp": -31.560106211689064
+        },
+        {
+          "end_date": "2012-07-31",
+          "excess_cagr_pp": -31.452609972609057
+        },
+        {
+          "end_date": "2012-08-31",
+          "excess_cagr_pp": -30.494473553706804
+        },
+        {
+          "end_date": "2012-09-28",
+          "excess_cagr_pp": -29.077067211731134
+        },
+        {
+          "end_date": "2012-10-31",
+          "excess_cagr_pp": -27.677630552075318
+        },
+        {
+          "end_date": "2012-11-30",
+          "excess_cagr_pp": -27.959107304608743
+        },
+        {
+          "end_date": "2012-12-31",
+          "excess_cagr_pp": -23.34404782173086
+        },
+        {
+          "end_date": "2013-01-31",
+          "excess_cagr_pp": -21.764316693829123
+        },
+        {
+          "end_date": "2013-02-28",
+          "excess_cagr_pp": -17.47000988827586
+        },
+        {
+          "end_date": "2013-03-28",
+          "excess_cagr_pp": -19.109936942083483
+        },
+        {
+          "end_date": "2013-04-30",
+          "excess_cagr_pp": -17.515262294504762
+        },
+        {
+          "end_date": "2013-05-31",
+          "excess_cagr_pp": -20.50294624857414
+        },
+        {
+          "end_date": "2013-06-28",
+          "excess_cagr_pp": -21.41027704851406
+        },
+        {
+          "end_date": "2013-07-31",
+          "excess_cagr_pp": -19.923923329074654
+        },
+        {
+          "end_date": "2013-08-30",
+          "excess_cagr_pp": -17.37091075414583
+        },
+        {
+          "end_date": "2013-09-30",
+          "excess_cagr_pp": -14.040500433681768
+        },
+        {
+          "end_date": "2013-10-31",
+          "excess_cagr_pp": -13.67430784261816
+        },
+        {
+          "end_date": "2013-11-29",
+          "excess_cagr_pp": -15.205451383672063
+        },
+        {
+          "end_date": "2013-12-31",
+          "excess_cagr_pp": -15.370462740128321
+        },
+        {
+          "end_date": "2014-01-31",
+          "excess_cagr_pp": -8.231060204870854
+        },
+        {
+          "end_date": "2014-02-28",
+          "excess_cagr_pp": -9.348352594805664
+        },
+        {
+          "end_date": "2014-03-31",
+          "excess_cagr_pp": -8.233562025071283
+        },
+        {
+          "end_date": "2014-04-30",
+          "excess_cagr_pp": -17.176100099683044
+        },
+        {
+          "end_date": "2014-05-30",
+          "excess_cagr_pp": -17.15988759933054
+        },
+        {
+          "end_date": "2014-06-30",
+          "excess_cagr_pp": -15.94368537994928
+        },
+        {
+          "end_date": "2014-07-31",
+          "excess_cagr_pp": -19.656509417820832
+        },
+        {
+          "end_date": "2014-08-29",
+          "excess_cagr_pp": -22.229098274075064
+        },
+        {
+          "end_date": "2014-09-30",
+          "excess_cagr_pp": -25.023690879247983
+        },
+        {
+          "end_date": "2014-10-31",
+          "excess_cagr_pp": -18.832066210929277
+        },
+        {
+          "end_date": "2014-11-28",
+          "excess_cagr_pp": -20.35680118974814
+        },
+        {
+          "end_date": "2014-12-31",
+          "excess_cagr_pp": -17.092494768346956
+        },
+        {
+          "end_date": "2015-01-30",
+          "excess_cagr_pp": -14.962040633999752
+        },
+        {
+          "end_date": "2015-02-27",
+          "excess_cagr_pp": -11.032491417940715
+        },
+        {
+          "end_date": "2015-03-31",
+          "excess_cagr_pp": -7.095881350394628
+        },
+        {
+          "end_date": "2015-04-30",
+          "excess_cagr_pp": -6.55920965416199
+        },
+        {
+          "end_date": "2015-05-29",
+          "excess_cagr_pp": -9.447668272224764
+        },
+        {
+          "end_date": "2015-06-30",
+          "excess_cagr_pp": -10.835147519413235
+        },
+        {
+          "end_date": "2015-07-31",
+          "excess_cagr_pp": -13.501217726215575
+        },
+        {
+          "end_date": "2015-08-31",
+          "excess_cagr_pp": -11.786232561186782
+        },
+        {
+          "end_date": "2015-09-30",
+          "excess_cagr_pp": -13.28038038085908
+        },
+        {
+          "end_date": "2015-10-30",
+          "excess_cagr_pp": -18.14444218933493
+        },
+        {
+          "end_date": "2015-11-30",
+          "excess_cagr_pp": -20.1599950210285
+        },
+        {
+          "end_date": "2015-12-31",
+          "excess_cagr_pp": -25.931959908330647
+        },
+        {
+          "end_date": "2016-01-29",
+          "excess_cagr_pp": -27.886438656645275
+        },
+        {
+          "end_date": "2016-02-29",
+          "excess_cagr_pp": -30.55792340552167
+        },
+        {
+          "end_date": "2016-03-31",
+          "excess_cagr_pp": -32.11770926703065
+        },
+        {
+          "end_date": "2016-04-29",
+          "excess_cagr_pp": -22.043299298235052
+        },
+        {
+          "end_date": "2016-05-31",
+          "excess_cagr_pp": -25.38325820193451
+        },
+        {
+          "end_date": "2016-06-30",
+          "excess_cagr_pp": -22.649794722907668
+        },
+        {
+          "end_date": "2016-07-29",
+          "excess_cagr_pp": -24.256930007597056
+        },
+        {
+          "end_date": "2016-08-31",
+          "excess_cagr_pp": -23.999744411910573
+        },
+        {
+          "end_date": "2016-09-30",
+          "excess_cagr_pp": -18.91003359308302
+        },
+        {
+          "end_date": "2016-10-31",
+          "excess_cagr_pp": -15.036410469271445
+        },
+        {
+          "end_date": "2016-11-30",
+          "excess_cagr_pp": -14.320776435328098
+        },
+        {
+          "end_date": "2016-12-30",
+          "excess_cagr_pp": -16.543148279264763
+        },
+        {
+          "end_date": "2017-01-31",
+          "excess_cagr_pp": -20.048856301895622
+        },
+        {
+          "end_date": "2017-02-28",
+          "excess_cagr_pp": -20.402348046868568
+        },
+        {
+          "end_date": "2017-03-31",
+          "excess_cagr_pp": -15.216840355938466
+        },
+        {
+          "end_date": "2017-04-28",
+          "excess_cagr_pp": -9.291251776428844
+        },
+        {
+          "end_date": "2017-05-31",
+          "excess_cagr_pp": -10.232258205681166
+        },
+        {
+          "end_date": "2017-06-30",
+          "excess_cagr_pp": -10.332790297073945
+        },
+        {
+          "end_date": "2017-07-31",
+          "excess_cagr_pp": -9.987325348783394
+        },
+        {
+          "end_date": "2017-08-31",
+          "excess_cagr_pp": -11.1705770549279
+        },
+        {
+          "end_date": "2017-09-29",
+          "excess_cagr_pp": -7.772024079060946
+        },
+        {
+          "end_date": "2017-10-31",
+          "excess_cagr_pp": -16.945840406034108
+        },
+        {
+          "end_date": "2017-11-30",
+          "excess_cagr_pp": -16.256750905894023
+        },
+        {
+          "end_date": "2017-12-29",
+          "excess_cagr_pp": -16.959328254456874
+        },
+        {
+          "end_date": "2018-01-31",
+          "excess_cagr_pp": -19.248850542372843
+        },
+        {
+          "end_date": "2018-02-28",
+          "excess_cagr_pp": -19.50370392545554
+        },
+        {
+          "end_date": "2018-03-29",
+          "excess_cagr_pp": -17.893267983235972
+        },
+        {
+          "end_date": "2018-04-30",
+          "excess_cagr_pp": -16.75666812567226
+        },
+        {
+          "end_date": "2018-05-31",
+          "excess_cagr_pp": -13.363766773400387
+        },
+        {
+          "end_date": "2018-06-29",
+          "excess_cagr_pp": -9.265036162525476
+        },
+        {
+          "end_date": "2018-07-31",
+          "excess_cagr_pp": -9.498922731636817
+        },
+        {
+          "end_date": "2018-08-31",
+          "excess_cagr_pp": -18.243815580856793
+        },
+        {
+          "end_date": "2018-09-28",
+          "excess_cagr_pp": -27.083328532821625
+        },
+        {
+          "end_date": "2018-10-31",
+          "excess_cagr_pp": -27.594872791393186
+        },
+        {
+          "end_date": "2018-11-30",
+          "excess_cagr_pp": -24.70984072148845
+        },
+        {
+          "end_date": "2018-12-31",
+          "excess_cagr_pp": -21.88566216067508
+        },
+        {
+          "end_date": "2019-01-31",
+          "excess_cagr_pp": -23.754738627941286
+        },
+        {
+          "end_date": "2019-02-28",
+          "excess_cagr_pp": -23.767264567330237
+        },
+        {
+          "end_date": "2019-03-29",
+          "excess_cagr_pp": -21.317248841130354
+        },
+        {
+          "end_date": "2019-04-30",
+          "excess_cagr_pp": -33.00364727867131
+        },
+        {
+          "end_date": "2019-05-31",
+          "excess_cagr_pp": -25.165423242741834
+        },
+        {
+          "end_date": "2019-06-28",
+          "excess_cagr_pp": -28.975573301550206
+        },
+        {
+          "end_date": "2019-07-31",
+          "excess_cagr_pp": -20.80656506990074
+        },
+        {
+          "end_date": "2019-08-30",
+          "excess_cagr_pp": -20.49435005321165
+        },
+        {
+          "end_date": "2019-09-30",
+          "excess_cagr_pp": -30.761812601749085
+        },
+        {
+          "end_date": "2019-10-31",
+          "excess_cagr_pp": -27.671827736333142
+        },
+        {
+          "end_date": "2019-11-29",
+          "excess_cagr_pp": -26.664246429932405
+        },
+        {
+          "end_date": "2019-12-31",
+          "excess_cagr_pp": -14.210967648631945
+        },
+        {
+          "end_date": "2020-01-31",
+          "excess_cagr_pp": -20.94571210318792
+        },
+        {
+          "end_date": "2020-02-28",
+          "excess_cagr_pp": -24.144320292989985
+        },
+        {
+          "end_date": "2020-03-31",
+          "excess_cagr_pp": -35.076868610256376
+        },
+        {
+          "end_date": "2020-04-30",
+          "excess_cagr_pp": -36.73447286791204
+        },
+        {
+          "end_date": "2020-05-29",
+          "excess_cagr_pp": -43.86880013856539
+        },
+        {
+          "end_date": "2020-06-30",
+          "excess_cagr_pp": -51.23232196521321
+        },
+        {
+          "end_date": "2020-07-31",
+          "excess_cagr_pp": -53.74583362716932
+        },
+        {
+          "end_date": "2020-08-31",
+          "excess_cagr_pp": -70.06430467496928
+        },
+        {
+          "end_date": "2020-09-30",
+          "excess_cagr_pp": -66.78261642812726
+        },
+        {
+          "end_date": "2020-10-30",
+          "excess_cagr_pp": -64.48190279285359
+        },
+        {
+          "end_date": "2020-11-30",
+          "excess_cagr_pp": -65.41793265372408
+        },
+        {
+          "end_date": "2020-12-31",
+          "excess_cagr_pp": -65.31344208666792
+        },
+        {
+          "end_date": "2021-01-29",
+          "excess_cagr_pp": -65.48864731235327
+        },
+        {
+          "end_date": "2021-02-26",
+          "excess_cagr_pp": -74.78373847481691
+        },
+        {
+          "end_date": "2021-03-31",
+          "excess_cagr_pp": -80.38602239741482
+        },
+        {
+          "end_date": "2021-04-30",
+          "excess_cagr_pp": -84.57507112866655
+        },
+        {
+          "end_date": "2021-05-28",
+          "excess_cagr_pp": -86.44679022282003
+        },
+        {
+          "end_date": "2021-06-30",
+          "excess_cagr_pp": -84.32840023367194
+        },
+        {
+          "end_date": "2021-07-30",
+          "excess_cagr_pp": -86.92530467596147
+        },
+        {
+          "end_date": "2021-08-31",
+          "excess_cagr_pp": -84.55463715425991
+        },
+        {
+          "end_date": "2021-09-30",
+          "excess_cagr_pp": -81.30982008256595
+        },
+        {
+          "end_date": "2021-10-29",
+          "excess_cagr_pp": -86.48104942771086
+        },
+        {
+          "end_date": "2021-11-30",
+          "excess_cagr_pp": -95.32351455519728
+        },
+        {
+          "end_date": "2021-12-31",
+          "excess_cagr_pp": -98.23967458435634
+        },
+        {
+          "end_date": "2022-01-31",
+          "excess_cagr_pp": -93.16713093023716
+        },
+        {
+          "end_date": "2022-02-28",
+          "excess_cagr_pp": -90.5875217073663
+        },
+        {
+          "end_date": "2022-03-31",
+          "excess_cagr_pp": -95.30355177904252
+        },
+        {
+          "end_date": "2022-04-29",
+          "excess_cagr_pp": -91.68132967768547
+        },
+        {
+          "end_date": "2022-05-31",
+          "excess_cagr_pp": -94.66838436893575
+        },
+        {
+          "end_date": "2022-06-30",
+          "excess_cagr_pp": -89.90885508471138
+        },
+        {
+          "end_date": "2022-07-29",
+          "excess_cagr_pp": -95.93876792325162
+        },
+        {
+          "end_date": "2022-08-31",
+          "excess_cagr_pp": -96.13164743547809
+        },
+        {
+          "end_date": "2022-09-30",
+          "excess_cagr_pp": -92.75216147257623
+        },
+        {
+          "end_date": "2022-10-31",
+          "excess_cagr_pp": -93.76577582261363
+        },
+        {
+          "end_date": "2022-11-30",
+          "excess_cagr_pp": -95.10589543306344
+        },
+        {
+          "end_date": "2022-12-30",
+          "excess_cagr_pp": -94.09567315286611
+        },
+        {
+          "end_date": "2023-01-31",
+          "excess_cagr_pp": -96.02485703533557
+        },
+        {
+          "end_date": "2023-02-28",
+          "excess_cagr_pp": -99.83456622861566
+        },
+        {
+          "end_date": "2023-03-31",
+          "excess_cagr_pp": -106.04779046498834
+        },
+        {
+          "end_date": "2023-04-28",
+          "excess_cagr_pp": -105.10479406868258
+        },
+        {
+          "end_date": "2023-05-31",
+          "excess_cagr_pp": -114.9061021766531
+        },
+        {
+          "end_date": "2023-06-30",
+          "excess_cagr_pp": -115.65825530183315
+        },
+        {
+          "end_date": "2023-07-31",
+          "excess_cagr_pp": -114.96411728145016
+        },
+        {
+          "end_date": "2023-08-31",
+          "excess_cagr_pp": -109.53339490949439
+        },
+        {
+          "end_date": "2023-09-29",
+          "excess_cagr_pp": -109.59525159532156
+        },
+        {
+          "end_date": "2023-10-31",
+          "excess_cagr_pp": -109.57298334621379
+        },
+        {
+          "end_date": "2023-11-30",
+          "excess_cagr_pp": -109.81895267768063
+        },
+        {
+          "end_date": "2023-12-29",
+          "excess_cagr_pp": -110.10672108389181
+        },
+        {
+          "end_date": "2024-01-31",
+          "excess_cagr_pp": -109.76851666480789
+        },
+        {
+          "end_date": "2024-02-29",
+          "excess_cagr_pp": -112.51296617541016
+        },
+        {
+          "end_date": "2024-03-28",
+          "excess_cagr_pp": -112.71955723974001
+        },
+        {
+          "end_date": "2024-04-30",
+          "excess_cagr_pp": -108.48108860388277
+        },
+        {
+          "end_date": "2024-05-31",
+          "excess_cagr_pp": -111.21872661464349
+        },
+        {
+          "end_date": "2024-06-28",
+          "excess_cagr_pp": -111.81637219596603
+        },
+        {
+          "end_date": "2024-07-31",
+          "excess_cagr_pp": -109.50354395603779
+        },
+        {
+          "end_date": "2024-08-30",
+          "excess_cagr_pp": -108.9011642132111
+        },
+        {
+          "end_date": "2024-09-30",
+          "excess_cagr_pp": -110.36352385587975
+        },
+        {
+          "end_date": "2024-10-31",
+          "excess_cagr_pp": -108.70410486089558
+        },
+        {
+          "end_date": "2024-11-29",
+          "excess_cagr_pp": -109.94756494702347
+        },
+        {
+          "end_date": "2024-12-31",
+          "excess_cagr_pp": -109.10754049379103
+        },
+        {
+          "end_date": "2025-01-31",
+          "excess_cagr_pp": -115.64554906300448
+        },
+        {
+          "end_date": "2025-02-28",
+          "excess_cagr_pp": -116.32431829422931
+        },
+        {
+          "end_date": "2025-03-31",
+          "excess_cagr_pp": -109.99186913585422
+        },
+        {
+          "end_date": "2025-04-30",
+          "excess_cagr_pp": -113.76493652617484
+        },
+        {
+          "end_date": "2025-05-30",
+          "excess_cagr_pp": -122.63821321715724
+        },
+        {
+          "end_date": "2025-06-30",
+          "excess_cagr_pp": -125.46387733096947
+        },
+        {
+          "end_date": "2025-07-31",
+          "excess_cagr_pp": -125.09107745677551
+        },
+        {
+          "end_date": "2025-08-29",
+          "excess_cagr_pp": -122.68474640778024
+        },
+        {
+          "end_date": "2025-09-30",
+          "excess_cagr_pp": -130.46894727330368
+        },
+        {
+          "end_date": "2025-10-31",
+          "excess_cagr_pp": -132.1299160298505
+        },
+        {
+          "end_date": "2025-11-28",
+          "excess_cagr_pp": -130.19828710314937
+        },
+        {
+          "end_date": "2025-12-31",
+          "excess_cagr_pp": -132.7447222748815
+        }
+      ],
+      "average_cash_weight": 0.15165058207069093,
+      "average_position_hhi": 0.2841095409996442,
+      "top5_positive_contributors": [
+        {
+          "symbol": "AXSM",
+          "price_pnl_usd": 43169.15999999997,
+          "dividends_usd": 0.0,
+          "execution_cost_usd": 360.19185,
+          "net_contribution_usd": 42808.968149999964
+        },
+        {
+          "symbol": "APCC",
+          "price_pnl_usd": 30009.35999999994,
+          "dividends_usd": 287.40000000000003,
+          "execution_cost_usd": 472.0838,
+          "net_contribution_usd": 29824.67619999994
+        },
+        {
+          "symbol": "ISRG",
+          "price_pnl_usd": 27580.850910682948,
+          "dividends_usd": 0.0,
+          "execution_cost_usd": 1471.8611450540282,
+          "net_contribution_usd": 26108.98976562892
+        },
+        {
+          "symbol": "RDN",
+          "price_pnl_usd": 26407.949999999935,
+          "dividends_usd": 0.0,
+          "execution_cost_usd": 436.1538750000001,
+          "net_contribution_usd": 25971.796124999935
+        },
+        {
+          "symbol": "PBYI",
+          "price_pnl_usd": 20704.749999999953,
+          "dividends_usd": 0.0,
+          "execution_cost_usd": 701.361025,
+          "net_contribution_usd": 20003.388974999954
+        }
+      ],
+      "top5_positive_share": 0.15386105482787008,
+      "positive_contribution_hhi": 0.012685876278955338,
+      "negative_contribution_hhi": 0.01108969207815835,
+      "sector_contribution_current_labels_usd": {
+        "Technology": 1287.5049927654368,
+        "Healthcare": -18776.613403696818,
+        "Financial Services": -21898.088537763342,
+        "Industrials": 8023.2805421328785,
+        "Consumer Cyclical": 1016.8332699726207,
+        "Real Estate": -33309.13769515464,
+        "Consumer Defensive": -13049.966838683533,
+        "Basic Materials": -79988.16582808849,
+        "Energy": -58463.392448435996,
+        "Utilities": -11041.992574999957,
+        "Unknown": -12659.662199999988,
+        "Communication Services": -46652.46859427568
+      },
+      "average_quality_na_nav_weight": 0.18210837359087031,
+      "ledger_reconciled": true,
+      "limitations": [
+        "Historical diagnostics, not untouched validation.",
+        "Sector attribution uses current labels.",
+        "Dollar contributions depend on portfolio wealth over time.",
+        "Quality N/A is neutral fallback, not a qualified company."
+      ]
+    },
+    "H5": {
+      "annual": [
+        {
+          "year": "2005",
+          "return": -0.10712190185812709,
+          "qqq_return": 0.008825519288900185,
+          "relative_return_pp": -11.594742114702727,
+          "average_cash_weight": 0.08047423086530822
+        },
+        {
+          "year": "2006",
+          "return": 0.179660105926712,
+          "qqq_return": 0.07144023487866868,
+          "relative_return_pp": 10.821987104804332,
+          "average_cash_weight": 0.0007285102377150289
+        },
+        {
+          "year": "2007",
+          "return": 0.013602956097969798,
+          "qqq_return": 0.19028085591648725,
+          "relative_return_pp": -17.667789981851744,
+          "average_cash_weight": 0.004484933767228334
+        },
+        {
+          "year": "2008",
+          "return": -0.5667392376317282,
+          "qqq_return": -0.417271645253375,
+          "relative_return_pp": -14.946759237835316,
+          "average_cash_weight": 0.002903449749617825
+        },
+        {
+          "year": "2009",
+          "return": 0.34342600296277004,
+          "qqq_return": 0.5468414774889387,
+          "relative_return_pp": -20.341547452616872,
+          "average_cash_weight": 0.01755892661464639
+        },
+        {
+          "year": "2010",
+          "return": -0.18077572993205293,
+          "qqq_return": 0.20143749076155038,
+          "relative_return_pp": -38.22132206936033,
+          "average_cash_weight": 0.006682535237245171
+        },
+        {
+          "year": "2011",
+          "return": 0.0596247720740839,
+          "qqq_return": 0.03475792643537945,
+          "relative_return_pp": 2.486684563870445,
+          "average_cash_weight": 0.00260264803271761
+        },
+        {
+          "year": "2012",
+          "return": -0.04478084272198002,
+          "qqq_return": 0.18112526504787296,
+          "relative_return_pp": -22.590610776985297,
+          "average_cash_weight": 0.004119781274719733
+        },
+        {
+          "year": "2013",
+          "return": -0.004198175884839395,
+          "qqq_return": 0.3663417669288658,
+          "relative_return_pp": -37.053994281370514,
+          "average_cash_weight": 0.0015815191871935085
+        },
+        {
+          "year": "2014",
+          "return": 0.020364753982182515,
+          "qqq_return": 0.19181413456112617,
+          "relative_return_pp": -17.144938057894365,
+          "average_cash_weight": 0.0019005062146941342
+        },
+        {
+          "year": "2015",
+          "return": -0.13761489687620343,
+          "qqq_return": 0.09435904052593536,
+          "relative_return_pp": -23.19739374021388,
+          "average_cash_weight": 0.019242176611113968
+        },
+        {
+          "year": "2016",
+          "return": -0.10891102246227957,
+          "qqq_return": 0.07097902031080183,
+          "relative_return_pp": -17.98900427730814,
+          "average_cash_weight": 0.005860089764694287
+        },
+        {
+          "year": "2017",
+          "return": 0.1514698071254823,
+          "qqq_return": 0.3266351089258177,
+          "relative_return_pp": -17.51653018003354,
+          "average_cash_weight": 0.00479513360779383
+        },
+        {
+          "year": "2018",
+          "return": -0.4761137239506753,
+          "qqq_return": -0.0012619047249518012,
+          "relative_return_pp": -47.48518192257235,
+          "average_cash_weight": 0.0030977491491625455
+        },
+        {
+          "year": "2019",
+          "return": 0.6249868886954995,
+          "qqq_return": 0.3896158521279176,
+          "relative_return_pp": 23.537103656758184,
+          "average_cash_weight": 0.008796856608142745
+        },
+        {
+          "year": "2020",
+          "return": -0.6353121147808676,
+          "qqq_return": 0.48406099028661687,
+          "relative_return_pp": -111.93731050674845,
+          "average_cash_weight": 0.009846704721020819
+        },
+        {
+          "year": "2021",
+          "return": -0.6210416431376851,
+          "qqq_return": 0.2741972009965925,
+          "relative_return_pp": -89.52388441342775,
+          "average_cash_weight": 0.015728516876462127
+        },
+        {
+          "year": "2022",
+          "return": -0.7062213261444694,
+          "qqq_return": -0.3257698370081602,
+          "relative_return_pp": -38.045148913630925,
+          "average_cash_weight": 0.04800940605360936
+        },
+        {
+          "year": "2023",
+          "return": -0.14498934705672695,
+          "qqq_return": 0.548555318357167,
+          "relative_return_pp": -69.3544665413894,
+          "average_cash_weight": 0.07340941775058901
+        },
+        {
+          "year": "2024",
+          "return": -0.1509008781957878,
+          "qqq_return": 0.25578264727390376,
+          "relative_return_pp": -40.66835254696915,
+          "average_cash_weight": 0.09793026969320796
+        },
+        {
+          "year": "2025",
+          "return": -0.8280794615132443,
+          "qqq_return": 0.2077254825855681,
+          "relative_return_pp": -103.58049440988124,
+          "average_cash_weight": 0.1806623803980931
+        }
+      ],
+      "periods": [
+        {
+          "period": "2005-2014",
+          "cagr": -0.06273340626100321,
+          "qqq_cagr": 0.10751014851684526,
+          "excess_cagr_pp": -17.024355477784848
+        },
+        {
+          "period": "2015-2025",
+          "cagr": -0.39788084598924345,
+          "qqq_cagr": 0.18529784879863587,
+          "excess_cagr_pp": -58.317869478787934
+        }
+      ],
+      "rolling_36m": [
+        {
+          "end_date": "2008-01-31",
+          "excess_cagr_pp": -7.419529736531971
+        },
+        {
+          "end_date": "2008-02-29",
+          "excess_cagr_pp": -10.00744023138469
+        },
+        {
+          "end_date": "2008-03-31",
+          "excess_cagr_pp": -10.955358172911179
+        },
+        {
+          "end_date": "2008-04-30",
+          "excess_cagr_pp": -10.008254082172163
+        },
+        {
+          "end_date": "2008-05-30",
+          "excess_cagr_pp": -7.064884746821387
+        },
+        {
+          "end_date": "2008-06-30",
+          "excess_cagr_pp": 0.45424319241793576
+        },
+        {
+          "end_date": "2008-07-31",
+          "excess_cagr_pp": -4.044563633415366
+        },
+        {
+          "end_date": "2008-08-29",
+          "excess_cagr_pp": -5.227336274934524
+        },
+        {
+          "end_date": "2008-09-30",
+          "excess_cagr_pp": -13.410305117037346
+        },
+        {
+          "end_date": "2008-10-31",
+          "excess_cagr_pp": -13.810749348842965
+        },
+        {
+          "end_date": "2008-11-28",
+          "excess_cagr_pp": -11.914659069028344
+        },
+        {
+          "end_date": "2008-12-31",
+          "excess_cagr_pp": -10.126765722838293
+        },
+        {
+          "end_date": "2009-01-30",
+          "excess_cagr_pp": -15.2467253660874
+        },
+        {
+          "end_date": "2009-02-27",
+          "excess_cagr_pp": -15.032624358713932
+        },
+        {
+          "end_date": "2009-03-31",
+          "excess_cagr_pp": -17.98260743378972
+        },
+        {
+          "end_date": "2009-04-30",
+          "excess_cagr_pp": -12.392664376578889
+        },
+        {
+          "end_date": "2009-05-29",
+          "excess_cagr_pp": -11.372477364021783
+        },
+        {
+          "end_date": "2009-06-30",
+          "excess_cagr_pp": -13.922214881721162
+        },
+        {
+          "end_date": "2009-07-31",
+          "excess_cagr_pp": -15.231576770503441
+        },
+        {
+          "end_date": "2009-08-31",
+          "excess_cagr_pp": -13.011680319686715
+        },
+        {
+          "end_date": "2009-09-30",
+          "excess_cagr_pp": -13.87815785976163
+        },
+        {
+          "end_date": "2009-10-30",
+          "excess_cagr_pp": -14.615419088521797
+        },
+        {
+          "end_date": "2009-11-30",
+          "excess_cagr_pp": -14.453083899159846
+        },
+        {
+          "end_date": "2009-12-31",
+          "excess_cagr_pp": -18.50269082888699
+        },
+        {
+          "end_date": "2010-01-29",
+          "excess_cagr_pp": -18.446711944920036
+        },
+        {
+          "end_date": "2010-02-26",
+          "excess_cagr_pp": -20.619806852888
+        },
+        {
+          "end_date": "2010-03-31",
+          "excess_cagr_pp": -17.89310249768723
+        },
+        {
+          "end_date": "2010-04-30",
+          "excess_cagr_pp": -20.52444658741952
+        },
+        {
+          "end_date": "2010-05-28",
+          "excess_cagr_pp": -17.61880459022016
+        },
+        {
+          "end_date": "2010-06-30",
+          "excess_cagr_pp": -17.631859487363144
+        },
+        {
+          "end_date": "2010-07-30",
+          "excess_cagr_pp": -19.09186421356206
+        },
+        {
+          "end_date": "2010-08-31",
+          "excess_cagr_pp": -19.099721636469003
+        },
+        {
+          "end_date": "2010-09-30",
+          "excess_cagr_pp": -20.33364104802944
+        },
+        {
+          "end_date": "2010-10-29",
+          "excess_cagr_pp": -21.899131344975796
+        },
+        {
+          "end_date": "2010-11-30",
+          "excess_cagr_pp": -21.965086715666605
+        },
+        {
+          "end_date": "2010-12-31",
+          "excess_cagr_pp": -24.642039698905236
+        },
+        {
+          "end_date": "2011-01-31",
+          "excess_cagr_pp": -30.45605122307846
+        },
+        {
+          "end_date": "2011-02-28",
+          "excess_cagr_pp": -25.82103112609294
+        },
+        {
+          "end_date": "2011-03-31",
+          "excess_cagr_pp": -24.083782514691478
+        },
+        {
+          "end_date": "2011-04-29",
+          "excess_cagr_pp": -22.930828205175903
+        },
+        {
+          "end_date": "2011-05-31",
+          "excess_cagr_pp": -23.273951029093
+        },
+        {
+          "end_date": "2011-06-30",
+          "excess_cagr_pp": -26.944253585438872
+        },
+        {
+          "end_date": "2011-07-29",
+          "excess_cagr_pp": -23.524745305150642
+        },
+        {
+          "end_date": "2011-08-31",
+          "excess_cagr_pp": -20.829935544248467
+        },
+        {
+          "end_date": "2011-09-30",
+          "excess_cagr_pp": -16.358884098083372
+        },
+        {
+          "end_date": "2011-10-31",
+          "excess_cagr_pp": -12.832504416733093
+        },
+        {
+          "end_date": "2011-11-30",
+          "excess_cagr_pp": -15.514148503610903
+        },
+        {
+          "end_date": "2011-12-30",
+          "excess_cagr_pp": -19.09634940048366
+        },
+        {
+          "end_date": "2012-01-31",
+          "excess_cagr_pp": -17.83787464580595
+        },
+        {
+          "end_date": "2012-02-29",
+          "excess_cagr_pp": -20.104476096767755
+        },
+        {
+          "end_date": "2012-03-30",
+          "excess_cagr_pp": -22.912040891172268
+        },
+        {
+          "end_date": "2012-04-30",
+          "excess_cagr_pp": -29.87217374667258
+        },
+        {
+          "end_date": "2012-05-31",
+          "excess_cagr_pp": -26.9001775770489
+        },
+        {
+          "end_date": "2012-06-29",
+          "excess_cagr_pp": -25.57849982223692
+        },
+        {
+          "end_date": "2012-07-31",
+          "excess_cagr_pp": -25.421621656482042
+        },
+        {
+          "end_date": "2012-08-31",
+          "excess_cagr_pp": -23.84520299311237
+        },
+        {
+          "end_date": "2012-09-28",
+          "excess_cagr_pp": -23.99620139967554
+        },
+        {
+          "end_date": "2012-10-31",
+          "excess_cagr_pp": -21.63526325203907
+        },
+        {
+          "end_date": "2012-11-30",
+          "excess_cagr_pp": -21.90082745413885
+        },
+        {
+          "end_date": "2012-12-31",
+          "excess_cagr_pp": -19.80198150871333
+        },
+        {
+          "end_date": "2013-01-31",
+          "excess_cagr_pp": -17.868268921014064
+        },
+        {
+          "end_date": "2013-02-28",
+          "excess_cagr_pp": -14.454978513059258
+        },
+        {
+          "end_date": "2013-03-28",
+          "excess_cagr_pp": -16.25316159469111
+        },
+        {
+          "end_date": "2013-04-30",
+          "excess_cagr_pp": -15.903422025396818
+        },
+        {
+          "end_date": "2013-05-31",
+          "excess_cagr_pp": -16.993404709360107
+        },
+        {
+          "end_date": "2013-06-28",
+          "excess_cagr_pp": -17.87223336561211
+        },
+        {
+          "end_date": "2013-07-31",
+          "excess_cagr_pp": -15.874875332018124
+        },
+        {
+          "end_date": "2013-08-30",
+          "excess_cagr_pp": -15.550472307752683
+        },
+        {
+          "end_date": "2013-09-30",
+          "excess_cagr_pp": -14.621956452795892
+        },
+        {
+          "end_date": "2013-10-31",
+          "excess_cagr_pp": -17.670630806664
+        },
+        {
+          "end_date": "2013-11-29",
+          "excess_cagr_pp": -17.972012190611597
+        },
+        {
+          "end_date": "2013-12-31",
+          "excess_cagr_pp": -18.36207785419497
+        },
+        {
+          "end_date": "2014-01-31",
+          "excess_cagr_pp": -13.687892467455566
+        },
+        {
+          "end_date": "2014-02-28",
+          "excess_cagr_pp": -16.434963114214753
+        },
+        {
+          "end_date": "2014-03-31",
+          "excess_cagr_pp": -16.225963854439062
+        },
+        {
+          "end_date": "2014-04-30",
+          "excess_cagr_pp": -18.701370840274866
+        },
+        {
+          "end_date": "2014-05-30",
+          "excess_cagr_pp": -20.99106244258365
+        },
+        {
+          "end_date": "2014-06-30",
+          "excess_cagr_pp": -19.24630436684287
+        },
+        {
+          "end_date": "2014-07-31",
+          "excess_cagr_pp": -22.266643184012423
+        },
+        {
+          "end_date": "2014-08-29",
+          "excess_cagr_pp": -25.45311555217351
+        },
+        {
+          "end_date": "2014-09-30",
+          "excess_cagr_pp": -27.88329099168316
+        },
+        {
+          "end_date": "2014-10-31",
+          "excess_cagr_pp": -25.32804983132183
+        },
+        {
+          "end_date": "2014-11-28",
+          "excess_cagr_pp": -27.397210175907748
+        },
+        {
+          "end_date": "2014-12-31",
+          "excess_cagr_pp": -24.896368763090425
+        },
+        {
+          "end_date": "2015-01-30",
+          "excess_cagr_pp": -23.714573689065
+        },
+        {
+          "end_date": "2015-02-27",
+          "excess_cagr_pp": -20.234773378335767
+        },
+        {
+          "end_date": "2015-03-31",
+          "excess_cagr_pp": -16.82894980579961
+        },
+        {
+          "end_date": "2015-04-30",
+          "excess_cagr_pp": -17.522617119959595
+        },
+        {
+          "end_date": "2015-05-29",
+          "excess_cagr_pp": -22.076141550805307
+        },
+        {
+          "end_date": "2015-06-30",
+          "excess_cagr_pp": -23.206850755301677
+        },
+        {
+          "end_date": "2015-07-31",
+          "excess_cagr_pp": -22.8269998726326
+        },
+        {
+          "end_date": "2015-08-31",
+          "excess_cagr_pp": -19.979709839824366
+        },
+        {
+          "end_date": "2015-09-30",
+          "excess_cagr_pp": -19.15439594276094
+        },
+        {
+          "end_date": "2015-10-30",
+          "excess_cagr_pp": -25.130811416199663
+        },
+        {
+          "end_date": "2015-11-30",
+          "excess_cagr_pp": -25.00758807254291
+        },
+        {
+          "end_date": "2015-12-31",
+          "excess_cagr_pp": -25.546862711407293
+        },
+        {
+          "end_date": "2016-01-29",
+          "excess_cagr_pp": -26.442014825103765
+        },
+        {
+          "end_date": "2016-02-29",
+          "excess_cagr_pp": -28.045579488236104
+        },
+        {
+          "end_date": "2016-03-31",
+          "excess_cagr_pp": -29.49851643449064
+        },
+        {
+          "end_date": "2016-04-29",
+          "excess_cagr_pp": -21.429100723100404
+        },
+        {
+          "end_date": "2016-05-31",
+          "excess_cagr_pp": -25.331915764341616
+        },
+        {
+          "end_date": "2016-06-30",
+          "excess_cagr_pp": -23.50938707905157
+        },
+        {
+          "end_date": "2016-07-29",
+          "excess_cagr_pp": -24.489495837089127
+        },
+        {
+          "end_date": "2016-08-31",
+          "excess_cagr_pp": -24.89362206424054
+        },
+        {
+          "end_date": "2016-09-30",
+          "excess_cagr_pp": -19.73378032002644
+        },
+        {
+          "end_date": "2016-10-31",
+          "excess_cagr_pp": -18.29976491839842
+        },
+        {
+          "end_date": "2016-11-30",
+          "excess_cagr_pp": -18.31665667033423
+        },
+        {
+          "end_date": "2016-12-30",
+          "excess_cagr_pp": -19.571798312498643
+        },
+        {
+          "end_date": "2017-01-31",
+          "excess_cagr_pp": -22.726789601915787
+        },
+        {
+          "end_date": "2017-02-28",
+          "excess_cagr_pp": -23.36168390755321
+        },
+        {
+          "end_date": "2017-03-31",
+          "excess_cagr_pp": -19.54042562757533
+        },
+        {
+          "end_date": "2017-04-28",
+          "excess_cagr_pp": -19.561252304792298
+        },
+        {
+          "end_date": "2017-05-31",
+          "excess_cagr_pp": -18.193821605241645
+        },
+        {
+          "end_date": "2017-06-30",
+          "excess_cagr_pp": -18.34452245518239
+        },
+        {
+          "end_date": "2017-07-31",
+          "excess_cagr_pp": -17.086026317110935
+        },
+        {
+          "end_date": "2017-08-31",
+          "excess_cagr_pp": -17.35252375958194
+        },
+        {
+          "end_date": "2017-09-29",
+          "excess_cagr_pp": -12.963258149023282
+        },
+        {
+          "end_date": "2017-10-31",
+          "excess_cagr_pp": -19.00689728021009
+        },
+        {
+          "end_date": "2017-11-30",
+          "excess_cagr_pp": -18.368937285003362
+        },
+        {
+          "end_date": "2017-12-29",
+          "excess_cagr_pp": -19.551355091709066
+        },
+        {
+          "end_date": "2018-01-31",
+          "excess_cagr_pp": -21.60674346298912
+        },
+        {
+          "end_date": "2018-02-28",
+          "excess_cagr_pp": -25.1714126614905
+        },
+        {
+          "end_date": "2018-03-29",
+          "excess_cagr_pp": -24.276412854976126
+        },
+        {
+          "end_date": "2018-04-30",
+          "excess_cagr_pp": -22.694493484472844
+        },
+        {
+          "end_date": "2018-05-31",
+          "excess_cagr_pp": -19.10483544154633
+        },
+        {
+          "end_date": "2018-06-29",
+          "excess_cagr_pp": -18.167954949256714
+        },
+        {
+          "end_date": "2018-07-31",
+          "excess_cagr_pp": -19.525840103582514
+        },
+        {
+          "end_date": "2018-08-31",
+          "excess_cagr_pp": -26.20652503520543
+        },
+        {
+          "end_date": "2018-09-28",
+          "excess_cagr_pp": -32.08548905898394
+        },
+        {
+          "end_date": "2018-10-31",
+          "excess_cagr_pp": -31.796243904589183
+        },
+        {
+          "end_date": "2018-11-30",
+          "excess_cagr_pp": -30.174213251984405
+        },
+        {
+          "end_date": "2018-12-31",
+          "excess_cagr_pp": -30.40440196170967
+        },
+        {
+          "end_date": "2019-01-31",
+          "excess_cagr_pp": -32.24000463007852
+        },
+        {
+          "end_date": "2019-02-28",
+          "excess_cagr_pp": -32.43408160362
+        },
+        {
+          "end_date": "2019-03-29",
+          "excess_cagr_pp": -30.70386254116132
+        },
+        {
+          "end_date": "2019-04-30",
+          "excess_cagr_pp": -39.03698937563442
+        },
+        {
+          "end_date": "2019-05-31",
+          "excess_cagr_pp": -33.10554232855646
+        },
+        {
+          "end_date": "2019-06-28",
+          "excess_cagr_pp": -37.109447832539765
+        },
+        {
+          "end_date": "2019-07-31",
+          "excess_cagr_pp": -30.854426525853683
+        },
+        {
+          "end_date": "2019-08-30",
+          "excess_cagr_pp": -29.59147070224215
+        },
+        {
+          "end_date": "2019-09-30",
+          "excess_cagr_pp": -35.51508599240065
+        },
+        {
+          "end_date": "2019-10-31",
+          "excess_cagr_pp": -31.03179348291215
+        },
+        {
+          "end_date": "2019-11-29",
+          "excess_cagr_pp": -30.860797248926765
+        },
+        {
+          "end_date": "2019-12-31",
+          "excess_cagr_pp": -23.47667243086039
+        },
+        {
+          "end_date": "2020-01-31",
+          "excess_cagr_pp": -28.792552665481498
+        },
+        {
+          "end_date": "2020-02-28",
+          "excess_cagr_pp": -28.627935670416637
+        },
+        {
+          "end_date": "2020-03-31",
+          "excess_cagr_pp": -33.24415693724521
+        },
+        {
+          "end_date": "2020-04-30",
+          "excess_cagr_pp": -35.14203091875218
+        },
+        {
+          "end_date": "2020-05-29",
+          "excess_cagr_pp": -40.84786684428049
+        },
+        {
+          "end_date": "2020-06-30",
+          "excess_cagr_pp": -45.32287901543308
+        },
+        {
+          "end_date": "2020-07-31",
+          "excess_cagr_pp": -47.52551547808711
+        },
+        {
+          "end_date": "2020-08-31",
+          "excess_cagr_pp": -59.9975838875034
+        },
+        {
+          "end_date": "2020-09-30",
+          "excess_cagr_pp": -57.96969622460754
+        },
+        {
+          "end_date": "2020-10-30",
+          "excess_cagr_pp": -57.06313721685766
+        },
+        {
+          "end_date": "2020-11-30",
+          "excess_cagr_pp": -58.89073800521651
+        },
+        {
+          "end_date": "2020-12-31",
+          "excess_cagr_pp": -59.52029803860272
+        },
+        {
+          "end_date": "2021-01-29",
+          "excess_cagr_pp": -52.79212362172554
+        },
+        {
+          "end_date": "2021-02-26",
+          "excess_cagr_pp": -58.666805471898
+        },
+        {
+          "end_date": "2021-03-31",
+          "excess_cagr_pp": -64.33851700207495
+        },
+        {
+          "end_date": "2021-04-30",
+          "excess_cagr_pp": -69.46382356849674
+        },
+        {
+          "end_date": "2021-05-28",
+          "excess_cagr_pp": -70.86372118693306
+        },
+        {
+          "end_date": "2021-06-30",
+          "excess_cagr_pp": -65.80312516315804
+        },
+        {
+          "end_date": "2021-07-30",
+          "excess_cagr_pp": -70.99905411593696
+        },
+        {
+          "end_date": "2021-08-31",
+          "excess_cagr_pp": -66.91363179070935
+        },
+        {
+          "end_date": "2021-09-30",
+          "excess_cagr_pp": -64.84806176019656
+        },
+        {
+          "end_date": "2021-10-29",
+          "excess_cagr_pp": -66.83042424703646
+        },
+        {
+          "end_date": "2021-11-30",
+          "excess_cagr_pp": -73.97263081101813
+        },
+        {
+          "end_date": "2021-12-31",
+          "excess_cagr_pp": -76.71862813622408
+        },
+        {
+          "end_date": "2022-01-31",
+          "excess_cagr_pp": -73.56603666189689
+        },
+        {
+          "end_date": "2022-02-28",
+          "excess_cagr_pp": -70.45287542012524
+        },
+        {
+          "end_date": "2022-03-31",
+          "excess_cagr_pp": -75.13510634249843
+        },
+        {
+          "end_date": "2022-04-29",
+          "excess_cagr_pp": -69.8073835435431
+        },
+        {
+          "end_date": "2022-05-31",
+          "excess_cagr_pp": -71.91463656695292
+        },
+        {
+          "end_date": "2022-06-30",
+          "excess_cagr_pp": -68.66188450901893
+        },
+        {
+          "end_date": "2022-07-29",
+          "excess_cagr_pp": -75.17636363649503
+        },
+        {
+          "end_date": "2022-08-31",
+          "excess_cagr_pp": -74.18917660301639
+        },
+        {
+          "end_date": "2022-09-30",
+          "excess_cagr_pp": -70.99813368381986
+        },
+        {
+          "end_date": "2022-10-31",
+          "excess_cagr_pp": -71.95078833291913
+        },
+        {
+          "end_date": "2022-11-30",
+          "excess_cagr_pp": -74.3197348779296
+        },
+        {
+          "end_date": "2022-12-30",
+          "excess_cagr_pp": -74.06415669729557
+        },
+        {
+          "end_date": "2023-01-31",
+          "excess_cagr_pp": -74.08544983092125
+        },
+        {
+          "end_date": "2023-02-28",
+          "excess_cagr_pp": -76.59238113732533
+        },
+        {
+          "end_date": "2023-03-31",
+          "excess_cagr_pp": -78.9196241913902
+        },
+        {
+          "end_date": "2023-04-28",
+          "excess_cagr_pp": -75.26417983973643
+        },
+        {
+          "end_date": "2023-05-31",
+          "excess_cagr_pp": -72.65710566120396
+        },
+        {
+          "end_date": "2023-06-30",
+          "excess_cagr_pp": -70.77064942606381
+        },
+        {
+          "end_date": "2023-07-31",
+          "excess_cagr_pp": -68.91819549214395
+        },
+        {
+          "end_date": "2023-08-31",
+          "excess_cagr_pp": -61.81112722353092
+        },
+        {
+          "end_date": "2023-09-29",
+          "excess_cagr_pp": -63.17555259277058
+        },
+        {
+          "end_date": "2023-10-31",
+          "excess_cagr_pp": -63.06070311782943
+        },
+        {
+          "end_date": "2023-11-30",
+          "excess_cagr_pp": -64.31124094477974
+        },
+        {
+          "end_date": "2023-12-29",
+          "excess_cagr_pp": -65.64686125479182
+        },
+        {
+          "end_date": "2024-01-31",
+          "excess_cagr_pp": -69.62165000658422
+        },
+        {
+          "end_date": "2024-02-29",
+          "excess_cagr_pp": -65.03287794403501
+        },
+        {
+          "end_date": "2024-03-28",
+          "excess_cagr_pp": -62.75930254730122
+        },
+        {
+          "end_date": "2024-04-30",
+          "excess_cagr_pp": -60.142622455978966
+        },
+        {
+          "end_date": "2024-05-31",
+          "excess_cagr_pp": -61.73909751312612
+        },
+        {
+          "end_date": "2024-06-28",
+          "excess_cagr_pp": -68.42541040479628
+        },
+        {
+          "end_date": "2024-07-31",
+          "excess_cagr_pp": -62.94149179570739
+        },
+        {
+          "end_date": "2024-08-30",
+          "excess_cagr_pp": -63.77838284614169
+        },
+        {
+          "end_date": "2024-09-30",
+          "excess_cagr_pp": -63.11122053733052
+        },
+        {
+          "end_date": "2024-10-31",
+          "excess_cagr_pp": -61.235465173460135
+        },
+        {
+          "end_date": "2024-11-29",
+          "excess_cagr_pp": -57.825354648129505
+        },
+        {
+          "end_date": "2024-12-31",
+          "excess_cagr_pp": -49.59816165692617
+        },
+        {
+          "end_date": "2025-01-31",
+          "excess_cagr_pp": -59.5701886186619
+        },
+        {
+          "end_date": "2025-02-28",
+          "excess_cagr_pp": -67.79404127545769
+        },
+        {
+          "end_date": "2025-03-31",
+          "excess_cagr_pp": -61.79601023249677
+        },
+        {
+          "end_date": "2025-04-30",
+          "excess_cagr_pp": -66.40381400986546
+        },
+        {
+          "end_date": "2025-05-30",
+          "excess_cagr_pp": -76.44165673878256
+        },
+        {
+          "end_date": "2025-06-30",
+          "excess_cagr_pp": -77.0128518964982
+        },
+        {
+          "end_date": "2025-07-31",
+          "excess_cagr_pp": -76.51412501663502
+        },
+        {
+          "end_date": "2025-08-29",
+          "excess_cagr_pp": -75.63527901172537
+        },
+        {
+          "end_date": "2025-09-30",
+          "excess_cagr_pp": -80.1983640294981
+        },
+        {
+          "end_date": "2025-10-31",
+          "excess_cagr_pp": -82.31922955237759
+        },
+        {
+          "end_date": "2025-11-28",
+          "excess_cagr_pp": -82.21280235227796
+        },
+        {
+          "end_date": "2025-12-31",
+          "excess_cagr_pp": -82.77350627903834
+        }
+      ],
+      "average_cash_weight": 0.02805603224519822,
+      "average_position_hhi": 0.19496887369851454,
+      "top5_positive_contributors": [
+        {
+          "symbol": "AXSM",
+          "price_pnl_usd": 30309.989999999987,
+          "dividends_usd": 0.0,
+          "execution_cost_usd": 260.298875,
+          "net_contribution_usd": 30049.691124999987
+        },
+        {
+          "symbol": "XL1",
+          "price_pnl_usd": 21521.759999999977,
+          "dividends_usd": 0.0,
+          "execution_cost_usd": 167.85129999999998,
+          "net_contribution_usd": 21353.908699999978
+        },
+        {
+          "symbol": "APCC",
+          "price_pnl_usd": 21179.47999999997,
+          "dividends_usd": 194.60000000000002,
+          "execution_cost_usd": 333.35609999999997,
+          "net_contribution_usd": 21040.723899999968
+        },
+        {
+          "symbol": "ISRG",
+          "price_pnl_usd": 21240.459067221702,
+          "dividends_usd": 0.0,
+          "execution_cost_usd": 1143.5334338179305,
+          "net_contribution_usd": 20096.92563340377
+        },
+        {
+          "symbol": "NTY",
+          "price_pnl_usd": 20328.859999999917,
+          "dividends_usd": 0.0,
+          "execution_cost_usd": 355.32275000000004,
+          "net_contribution_usd": 19973.537249999918
+        }
+      ],
+      "top5_positive_share": 0.10260779074574584,
+      "positive_contribution_hhi": 0.007696453777663532,
+      "negative_contribution_hhi": 0.006683376657401129,
+      "sector_contribution_current_labels_usd": {
+        "Basic Materials": -105428.95685071035,
+        "Technology": 47726.55457159992,
+        "Healthcare": -10379.178102331767,
+        "Financial Services": -54357.631239463146,
+        "Communication Services": -40584.790928413895,
+        "Industrials": 4482.604665800497,
+        "Consumer Cyclical": -36151.186233067776,
+        "Real Estate": -11066.608147553081,
+        "Consumer Defensive": 11197.887973906612,
+        "Energy": -68126.7357664619,
+        "Utilities": -9172.2099875,
+        "Unknown": -10957.458599999998
+      },
+      "average_quality_na_nav_weight": 0.20138725419707892,
+      "ledger_reconciled": true,
+      "limitations": [
+        "Historical diagnostics, not untouched validation.",
+        "Sector attribution uses current labels.",
+        "Dollar contributions depend on portfolio wealth over time.",
+        "Quality N/A is neutral fallback, not a qualified company."
+      ]
+    }
+  },
+  "secondary_cost_scenario": [
+    {
+      "cagr": -1.0,
+      "annual_volatility": 0.5518377553503113,
+      "sharpe_zero_rf": -0.8625141315521465,
+      "sortino_zero_target": -1.0610796796048758,
+      "max_drawdown": -1.0,
+      "calmar_ratio": -1.0,
+      "ulcer_index_percentage_points": 66.68285103347011,
+      "longest_underwater_trading_days": 4714,
+      "current_underwater_trading_days": 4714,
+      "worst_month": -1.0,
+      "worst_quarter": -1.0,
+      "hit_rate_positive_sessions": 0.44293015332197616,
+      "ending_nav_usd": 0.0,
+      "sessions": 5283,
+      "variant": "H3",
+      "capital_usd": 300000,
+      "cost_bps": 10,
+      "execution_cost_usd": 60260.568922232924,
+      "fixed_cost_usd": 15796.4970909244,
+      "dividends_usd": 23081.855000000007,
+      "cash_interest_usd": 759.8104958968586,
+      "one_way_turnover_total": 220.14057804248756,
+      "gross_traded_over_initial_nav": 200.86856307410974,
+      "average_holdings": 2.661934506908953,
+      "hard_review_days": 4741,
+      "top_positive_contributor": "AXSM",
+      "top_positive_contribution_share": 0.058348614327922814,
+      "annual_system_cash_cost_usd": 828,
+      "excess_cagr_pp": -114.76602771280523,
+      "qqq_reference_cagr": 0.1476602771280522
+    },
+    {
+      "cagr": -0.19645187395567276,
+      "annual_volatility": 0.4443877055597246,
+      "sharpe_zero_rf": -0.270580250625185,
+      "sortino_zero_target": -0.3845548928840682,
+      "max_drawdown": -0.9929824186238945,
+      "calmar_ratio": -0.19784023389650926,
+      "ulcer_index_percentage_points": 61.379214261350654,
+      "longest_underwater_trading_days": 4714,
+      "current_underwater_trading_days": 4714,
+      "worst_month": -0.3362670581940973,
+      "worst_quarter": -0.6293656599764628,
+      "hit_rate_positive_sessions": 0.5016089343176225,
+      "ending_nav_usd": 3060.295981127883,
+      "sessions": 5283,
+      "variant": "H5",
+      "capital_usd": 300000,
+      "cost_bps": 10,
+      "execution_cost_usd": 80597.63901560413,
+      "fixed_cost_usd": 17358.428571427554,
+      "dividends_usd": 33574.893205625005,
+      "cash_interest_usd": 803.0387267198149,
+      "one_way_turnover_total": 242.16467692508144,
+      "gross_traded_over_initial_nav": 268.65879671867975,
+      "average_holdings": 4.950406965739163,
+      "hard_review_days": 5263,
+      "top_positive_contributor": "AXSM",
+      "top_positive_contribution_share": 0.03448523252891513,
+      "annual_system_cash_cost_usd": 828,
+      "excess_cagr_pp": -34.411215108372495,
+      "qqq_reference_cagr": 0.1476602771280522
+    }
+  ],
+  "data_audit_summary": {
+    "gates": {
+      "month_end_timing": true,
+      "source_checksums": true,
+      "price_completeness": true,
+      "corporate_action_bridge": false,
+      "economic_exit_settlement": false,
+      "execution_quote_coverage": false,
+      "historical_security_metadata": false
+    },
+    "data_gate_pass": false,
+    "bridge_total": 8714,
+    "bridge_in_evaluation": 8250,
+    "bridge_held_events": 4,
+    "limitations": [
+      "Action proximity does not certify economic settlement.",
+      "Current exchange/category/sector snapshots remain a PIT limitation.",
+      "SIC reconstructed chains have unresolved discrepancies.",
+      "Options volume was the original hot-pool proxy; ordinary dollar volume spike ratio is an unverified substitute.",
+      "No cost-scenario grid across capital levels was run (single primary + one diagnostic-only cost point, per registration).",
+      "No corporate-action (spin-off/acquisition) equity accounting layer applied here -- last-price forced-exit proxy only, as in P004."
+    ],
+    "exit_proxy_count": 26,
+    "unfilled_orders_count": 2
+  }
+}
