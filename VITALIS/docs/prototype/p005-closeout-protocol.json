@@ -1,0 +1,61 @@
+{
+  "experiment_id": "P005",
+  "registered_at_utc": "2026-09-13T23:15:14.874637+00:00",
+  "parent_run_id": "20260913T230115679698Z-pit-170d681b",
+  "scope": "Bounded economic corporate-action accounting closeout; no new signals, sources, tuning, execution or UI.",
+  "rules": "Reuse parent universe, quality, prices, timing, ranking, hysteresis, sector cap and risk target; fractional corporate entitlements permitted, ordinary target orders integer.",
+  "period": [
+    "2005-01-03",
+    "2025-12-31"
+  ],
+  "capital_cost_cases": [
+    [
+      300000,
+      10
+    ],
+    [
+      200000,
+      10
+    ],
+    [
+      400000,
+      10
+    ],
+    [
+      200000,
+      25
+    ],
+    [
+      400000,
+      25
+    ]
+  ],
+  "variants": [
+    "M10",
+    "M20",
+    "M10-risk15",
+    "Q10",
+    "Q20"
+  ],
+  "annual_fee_usd": 828,
+  "cash_yield_scenarios": [
+    "FRED",
+    "zero"
+  ],
+  "accounting_stages": [
+    "spinoff shares only",
+    "spinoff plus unambiguous acquisitioncash/acquisitionstock"
+  ],
+  "inherited_share_policy": "Book distributed/exchanged shares as holdings at event session open, dispose only inherited quantity at next equity-session open with same bps fee; do not substitute ranking candidates. Acquisition events mapped from last trade date to following equity session. No immediate sale or spinoffdividend cash credit.",
+  "ambiguous_terms": "Election-only, missing recipient quote, ambiguous share units, missing settlement/proration/CVR remain unverified; retain flagged legacy last-price proxy for unresolved exits only. No alternatives summed or invented.",
+  "acceptance": "Net CAGR above QQQ TR proxy and maximum drawdown no worse than -30%, plus all economic/PIT/data gates. Previously inspected history is diagnostic, not holdout.",
+  "stop_rule": "Complete these accounting stages once, register all attempts; stop current equity alpha development if no credible joint pass. Unresolved gates mean investment evidence insufficient, not automatic scope extension. Reopening requires separately authorized evidence-driven hypothesis.",
+  "excluded": [
+    "new data subscription",
+    "parameter search",
+    "LEAPS",
+    "IBKR integration",
+    "paper/shadow trading",
+    "database platform expansion"
+  ]
+}

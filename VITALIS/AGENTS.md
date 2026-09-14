@@ -2,29 +2,31 @@
 
 ## Objective & Scope
 
-VITALIS is a personal US-equity research system. Total investment capital is USD 200,000–400,000; strategy allocation and tax treatment remain unspecified. Prioritize net returns above QQQ, with approximately 30% maximum drawdown as a research limit. Measure holdability through underwater duration, Ulcer, turnover, concentration, and forward operational experience. Annual aggregate data fees, including relevant broker subscriptions and taxes, must not exceed USD 1,000.
+VITALIS researches personal US equities. Total capital is USD 200,000–400,000; allocation and tax treatment remain unspecified. Prioritize net returns above QQQ, with approximately 30% maximum drawdown as a research limit. Measure holdability through underwater duration, Ulcer, turnover and concentration. Annual aggregate data fees, including relevant broker subscriptions and taxes, must not exceed USD 1,000.
 
-Current scope: daily equities, historical universe including exits, point-in-time fundamentals, fixed momentum baseline, quality increment, corporate actions, integer-share accounting, costs, and reproducible evaluation. LEAPS, automatic execution, news/graphs, dynamic signal weighting, commercial products, and elaborate UI require separate evidence and scope decisions. IBKR read-only integration follows historical validation; Gateway is not a backtest prerequisite.
+## Bounded Closeout
+
+P005 is the last authorized equity-alpha accounting replay. Follow `docs/prototype/p005-closeout-protocol.json`: no new signals or parameter searches. Credit spinoffs as stock holdings, never `spinoffdividend` cash. Keep ambiguous elections and conflicting dates unverified. Stop current equity-alpha development without a credible joint return/risk/data pass. Missing evidence does not authorize more engineering. Reopening requires a user-authorized hypothesis, budget, acceptance and stop criteria. LEAPS, IBKR, shadow trading, automatic execution, database platforms and product UI are outside this closeout.
 
 ## Required Research Loop
 
-Every experiment must deliver versioned data → frozen rules → holdings/trade/cash ledger → QQQ and risk/cost comparison → continue/revise/stop/insufficient-evidence decision. Record all attempts and failures. Separate engineering success from investment evidence. Never certify survivor samples, synthetic fixtures, or repeatedly inspected periods as untouched validation. Missing critical data blocks new recommendations; report gaps explicitly.
+Deliver versioned data → frozen rules → holdings/trade/cash ledger → QQQ and risk/cost comparison → continue/revise/stop/insufficient-evidence decision. Register every attempt and failure. Separate engineering success from investment evidence. Month-end M inputs drive only M+1 trades; missing months fail. Unverified settlements fail the data gate. Broader quality peer groups include all matching eligible members. Survivor samples and repeatedly inspected periods are never untouched validation. Critical gaps block recommendations.
 
-## Structure & Data Architecture
+## Structure & Data
 
-`vitalis/` contains adapters, simulation, timing, and CLIs; `config/` holds experiment inputs and proposed source policy; `tests/` contains checks. `docs/requirements/` preserves the original baseline; `docs/review/` contains evolving specifications. `docs/prototype/` holds experiment summaries and onboarding/storage contracts. Record decisions in review module 08 and sources in 07.
+`vitalis/` contains adapters, simulation and CLIs; `config/` holds inputs and proposed source policy; `tests/` contains checks. `docs/requirements/` preserves the original vision; `docs/review/` evolves specifications. `docs/prototype/` holds protocols and results. Record decisions in review module 08 and sources in 07.
 
-Use immutable raw files, versioned Parquet/DuckDB research data, and a SQLite ingestion catalog; deployment remains incremental. No database service is required initially. All research reads pinned local snapshots; remote acquisition belongs in explicit ingestion jobs. Share limits across workers, coalesce duplicate requests, fetch gaps/updates, checkpoint pagination, respect Retry-After, and preserve revisions. Distinguish official limits from provisional project caps. Never log credentials or signed URLs. Raw data, databases, and private runs stay in ignored `data/` and `runs/`.
+Read pinned local snapshots; acquisition uses separate explicit jobs. Preserve immutable raw files and revisions. Share source limits, coalesce requests, fetch gaps, checkpoint pagination and respect Retry-After. Distinguish official limits from project caps. SQLite is currently a snapshot catalog; Parquet/DuckDB remain proposed. Keep credentials, raw data, databases and private runs in ignored `.env`, `data/`, `runs/`.
 
 ## Development & Verification
 
-Use four-space Python, `snake_case`, explicit units, and Chinese documentation. Existing CLIs use the standard library; justify and lock new dependencies before adoption.
+Use four-space Python, `snake_case`, explicit units and Chinese documentation. Standard library only; justify and lock new dependencies.
 
 ```sh
-python3 -m vitalis.run --offline
-python3 -m vitalis.sample_audit --offline
 python3 -m unittest discover -s tests -v
+python3 -m scripts.closeout --stage spinoff
+python3 -m scripts.closeout --stage acquisition
 git diff --check
 ```
 
-Use `unittest`, `tests/test_*.py`; no coverage minimum. Check accounting, future-data isolation, zero-network replay, idempotency, revisions, rate limits, and interrupted ingestion when implementing them. Verify documentation links and numerical claims. Commits use concise imperative subjects; PRs explain scope, assumptions, evidence, and validation.
+Use `unittest`, `tests/test_*.py`; no coverage minimum. Verify accounting, future-data isolation, offline replay, revisions and limits. Check document links and numerical claims. Use imperative commits; PRs explain scope, assumptions, evidence and validation.

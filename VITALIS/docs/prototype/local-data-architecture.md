@@ -2,6 +2,10 @@
 
 状态：2026-09-13设计决定。现有实现是不可变JSON缓存、CSV/JSON结果和显式`--offline`；下述共享目录、调度器与Parquet/DuckDB尚待实现。
 
+## 实施进度（P004）
+
+`vitalis.research_audit.pin_inputs()`现已实现SQLite的`snapshot`/`artifact`最小目录：实际文件SHA-256核验、原始侧录哈希比对、代码复制、运行状态与文件路径登记。历史池runner只读精确本地缓存，完成前再次核验源文件，保存输出哈希和实验登记。当前目录没有`ingestion_job`、`rate_state`、`coverage`等表，也没有协调远程worker；不可将此宣称为完整采集平台。新增`data/authorized/sharadar/derived-cache/`的校验gzip JSON快照，缓存日历、市值切片和标准化bar；键包含源哈希、规范化代码及范围。单CLI协调，尚无并发发布租约。Parquet/DuckDB继续按实测扫描/查询瓶颈逐步实施，原始zip不重拉。
+
 ## 技术选择
 
 采用**原始文件 + Parquet/DuckDB研究层 + SQLite采集目录**。单机日频/月度决策需要按稳定证券ID、日期查询和跨截面扫描；时序持久化必需，独立TimescaleDB/InfluxDB服务不是当前前置依赖。

@@ -1,0 +1,65 @@
+{
+  "command": "python3 -m unittest discover -s tests -v",
+  "python_version": "3.14.7",
+  "tests_passed": 113,
+  "elapsed_seconds": 164.497,
+  "test_log_sha256": "efed02b6c5d4a5cfb50d6f477caa4799cdfe52b02fa1096689fe5f554783bc7f",
+  "test_artifacts": [
+    {
+      "path": "tests/test_corporate_actions.py",
+      "sha256": "d12e6e5733b2e39621674866526dd24dacacdc1ca0ad6ec35ec9329aab842c15"
+    },
+    {
+      "path": "tests/test_engine.py",
+      "sha256": "f088b70de0311df0984223c75d8a7251232566cff35545f2be0dca150c8d8387"
+    },
+    {
+      "path": "tests/test_macro.py",
+      "sha256": "3f0f2393a1c652d189d24f0150748038950cfd9dcc7c3db26f635fbdf1584d3c"
+    },
+    {
+      "path": "tests/test_pit.py",
+      "sha256": "689a78779d6dc8d0974bdb800855b5a0d3dec93fb818e6c41a74fd5d9194c752"
+    },
+    {
+      "path": "tests/test_quality.py",
+      "sha256": "f61a81d81578bd3897d87af58f5e8a07d4436ffba6d56785b5ec1db0712aa168"
+    },
+    {
+      "path": "tests/test_reconcile.py",
+      "sha256": "39680d976c9a2369d5786c86a6abc8d042a06bfeab42e98b7165e1b80f97baf3"
+    },
+    {
+      "path": "tests/test_research_audit.py",
+      "sha256": "070677c5f41da52a2a3a8e8c9a83a02acca88d8d4e854892f4f0d7218660b416"
+    },
+    {
+      "path": "tests/test_run_pit.py",
+      "sha256": "4b20fb66a00e39637f67368d69c14fa851e965bedaf32b1c7e22a3399639a3a6"
+    },
+    {
+      "path": "tests/test_sharadar.py",
+      "sha256": "061d24f04a89a447da1c0a7dda140d53873f9cc4069813d1024f8af64ed1a992"
+    },
+    {
+      "path": "tests/test_sharadar_prices.py",
+      "sha256": "4b3248f95ca5eff3e4197162c765df3481856e7953451da8e85f37d8290e10bb"
+    },
+    {
+      "path": "tests/test_sic_history.py",
+      "sha256": "6800ef36bfc654a2add9f8e1e5b44851737bf8b5e8173b958700b4ec5033949a"
+    },
+    {
+      "path": "tests/test_stats.py",
+      "sha256": "5131180581a345cd3fbd63900d01c512db923534635756e882a7ff2e0a8a9cfe"
+    },
+    {
+      "path": "tests/test_universe.py",
+      "sha256": "8cd97b60c374c641866a2cc747bc73169fc06139b7ac53113006470c681d90d3"
+    }
+  ],
+  "git_diff_check": "passed",
+  "document_links": "passed",
+  "script_syntax": "passed",
+  "remote_requests": 0
+}

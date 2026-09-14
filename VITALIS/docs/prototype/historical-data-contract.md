@@ -26,6 +26,14 @@ CSV采用UTF-8、带表头；日期`YYYY-MM-DD`，时间用带时区ISO8601，�
 
 P002仅完成公开AAPL适配和检查，**不是全量CSV导入器，也没有历史股票池或退市结算实现**。拿到供应商实际样本后，先建立稳定ID映射、字段/分页/覆盖验收，再把合格数据连接到模拟器；这些工作完成前不生成正式质量组合结果。
 
+**2026-09-13更新（真实Sharadar个人订阅接入）**：`vitalis/sharadar.py`已用真实API key验证可用，key只从`SHARADAR_API_KEY`环境变量读取，落盘前一律剥离；已完整拉取`tickers`主表（74,150行，20,480个不同代码，14,642个已退市，18,087个有基本面覆盖）及P001现有30只样本+QQQ的完整`fundamentals`（6个维度）与`actions`。原始响应缓存于`data/authorized/sharadar/`（忽略版本控制），配套`subscription-status.json`记录订阅状态；`check_retention()`可据此算出个人许可第10条终止后30日的删除期限，但**只读、不删除任何文件、不被任何代码自动调用**——用户已明确选择本订阅数据长期保留，不论订阅状态如何变化。`vitalis/quality.py`已用这批真实数据跑通03第2节三指标与SIC分组回退，见[08决策记录](../review/08-decisions-and-coverage.md)。
+
+**2026-09-13更新（Bulk整表全量下载）**：官方Bulk导出确认与按ticker查询同一REST端点、加`years=full`参数重定向到签名zip，`vitalis/sharadar.download_bulk_table()`已实现（下载中原子发布，避免中断传输被误认完整）。A档7张表Full History已全部下载并通过zip完整性校验：`stocks`日线OHLCV 4,532万行、`daily`每日估值指标3,980万行、`fundamentals`全维度财务322万行、`actions`公司行动69.8万行、`sp500`历史标普500成分股（日频进出）5.97万行、`tickers`证券母表7.4万行（与此前REST分页结果行数一致）、`descriptions`字段定义。详见[08决策记录](../review/08-decisions-and-coverage.md)。
+
+**2026-09-13再更新**：`vitalis/universe.py`已用`daily`历史市值+`stocks`成交额跑通按月PIT资格判定（2019-06至2025-12共79个月，每月恰好200只，与真实标普500历史成分股重建交叉比对88%–95%重叠）；`vitalis/reconcile.py`已独立核对Yahoo与Sharadar`stocks`收盘价（30只样本50,460交易日仅2处超差，公司行动本身未核对）；`vitalis/sic_history.py`已用`actions`表`sicchangefrom/sicchangeto`重建历史SIC分类，98.2%自校验通过。详见[08决策记录](../review/08-decisions-and-coverage.md)。
+
+**仍不满足本清单的验收门槛**：以上仍是分散的能力验证，不是本清单要求的统一规范化输出——尚未生成正式`universe_evidence.csv`/`securities.csv`；`fundamentals`全市场尚未跑ARQ/ART截至日过滤（只对P001现有30只样本做过，历史SIC对这30只样本恰好没有变化，价值要在扩大候选池后才体现）；`sp500`历史成分股尚未接入`universe_snapshot`；稳定`security_id`映射、退市结算重放均未开始；历史交易所/类别标签仍缺（`universe.py`的资格筛选只用当前快照）。下一步：把`fundamentals`/`actions`拼接扩展到真实200只候选池而非仅30只样本，再冻结P003。
+
 ## 每批验收与下一轮闭环
 
 1. 冻结请求范围和配置；记录源文件及代码哈希、失败和重跑，保留原始响应。

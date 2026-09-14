@@ -2,9 +2,10 @@
 
 import copy
 import unittest
+from datetime import date, timedelta
 
 from vitalis.data import normalize
-from vitalis.engine import choose, percentile, rank_signals, simulate
+from vitalis.engine import choose, downside_capture_ratio, metrics, percentile, rank_signals, simulate
 
 
 class EngineTests(unittest.TestCase):
@@ -50,6 +51,65 @@ class EngineTests(unittest.TestCase):
         self.assertEqual(before, rank_signals(changed, dates, 252, changed, 0))
         self.assertEqual(before[0]["symbol"], "A")
 
+    def test_quality_blend_can_reorder_ranking_per_03_section_2_formula(self):
+        dates = [f"session-{i:03}" for i in range(270)]
+        # A best momentum, B middle, C worst (momentum-only order: A, B, C).
+        bars = {s: {d: {"adjclose": 100 + i * slope, "dollar_volume": 1e8}
+                    for i, d in enumerate(dates)} for s, slope in (("A", 3), ("B", 2), ("C", 1))}
+        momentum_only = rank_signals(bars, dates, 252, bars, 0)
+        self.assertEqual([r["symbol"] for r in momentum_only], ["A", "B", "C"])
+        # Total Score = 0.5*momentum + 0.5*quality (docs/review/03 section 2):
+        # A=0.5*1.0+0.5*0.0=0.5, B=0.5*0.5+0.5*1.0=0.75, C=0.5*0.0+0.5*0.3=0.15
+        # -> order flips to B, A, C.
+        quality = {"A": 0.0, "B": 1.0, "C": 0.3}
+        blended = rank_signals(bars, dates, 252, bars, 0, quality_by_symbol=quality)
+        self.assertEqual([r["symbol"] for r in blended], ["B", "A", "C"])
+        scores = {r["symbol"]: r["score"] for r in blended}
+        self.assertAlmostEqual(scores["A"], 0.5)
+        self.assertAlmostEqual(scores["B"], 0.75)
+        self.assertAlmostEqual(scores["C"], 0.15)
+        momentum_scores = {r["symbol"]: r["momentum_score"] for r in blended}
+        self.assertAlmostEqual(momentum_scores["A"], 1.0)
+
+    def test_quality_missing_for_a_symbol_defaults_to_neutral_not_exclusion(self):
+        dates = [f"session-{i:03}" for i in range(270)]
+        bars = {s: {d: {"adjclose": 100 + i * slope, "dollar_volume": 1e8}
+                    for i, d in enumerate(dates)} for s, slope in (("A", 2), ("B", 1))}
+        quality = {"A": 0.0}  # B is momentum-eligible but missing from the quality dict
+        result = rank_signals(bars, dates, 252, bars, 0, quality_by_symbol=quality)
+        self.assertEqual({r["symbol"] for r in result}, {"A", "B"})  # neither excluded
+        scores = {r["symbol"]: r["score"] for r in result}
+        self.assertAlmostEqual(scores["B"], 0.5 * 0.0 + 0.5 * 0.5)  # neutral 0.5, matching quality.py's own fallback
+
+    def test_variant_q10_uses_quality_blend_q_variants_get_top_10_slots(self):
+        from datetime import date, timedelta
+        start = date(2019, 1, 1)
+        dates = [(start + timedelta(days=i)).isoformat() for i in range(280)]
+        # Momentum-only order is A, B, C (slopes 3, 2, 1); with a big enough
+        # quality gap for B, the blended order should become B, A, C -- with
+        # exactly 2 candidates a full [0,1] momentum swing can never be
+        # overcome by an equally-capped [0,1] quality score at 50/50 weight,
+        # so this needs 3 to actually flip anything (see the equivalent
+        # rank_signals()-level test above for the arithmetic).
+        bars = {s: {d: {"open": p, "close": p, "adjclose": p, "dollar_volume": 1e8,
+                        "split": 1, "dividend": 0}
+                    for d, p in zip(dates, prices)}
+                for s, prices in (("A", [100 + 3 * i for i in range(280)]),
+                                  ("B", [100 + 2 * i for i in range(280)]),
+                                  ("C", [100 + 1 * i for i in range(280)]))}
+        config = {"evaluation_start": dates[260], "evaluation_end": dates[260],
+                 "symbols": {"A": "x", "B": "x", "C": "x"}, "minimum_adv_usd": 0,
+                 "sector_weight_cap": 1.0, "volatility_target": 0.15,
+                 "annual_system_cash_cost_usd": 0}
+        quality_by_month = {dates[260][:7]: {"A": 0.0, "B": 1.0, "C": 0.3}}
+        _, _, _, _, decisions_q, *_ = simulate(
+            bars, dates, config, 100_000, 0, "Q10", quality_by_review_month=quality_by_month)
+        # All three get bought (3 candidates for 10 slots either way), but the
+        # ranking inside Q10's decisions.json should show B outranking A once
+        # quality is blended in, unlike a momentum-only ranking.
+        ranks_q = {r["symbol"]: r["rank"] for r in decisions_q[0]["ranking"]}
+        self.assertLess(ranks_q["B"], ranks_q["A"])
+
     def test_hysteresis_and_sector_cap_leave_cash(self):
         ranking = [{"symbol": s, "rank": i + 1} for i, s in enumerate("ABCDEF")]
         sectors = {s: "x" for s in "ABCDEF"}
@@ -57,6 +117,184 @@ class EngineTests(unittest.TestCase):
 
     def test_percentile_ties_use_average_rank(self):
         self.assertEqual(percentile({"A": 1, "B": 1, "C": 2}), {"A": 0.25, "B": 0.25, "C": 1.0})
+
+    def test_cash_interest_accrues_on_beginning_of_day_balance(self):
+        dates = ["2024-12-31", "2025-01-02", "2025-01-03"]
+        series = {d: {"open": 100, "close": 100, "split": 1, "dividend": 0,
+                      "adjclose": 100, "dollar_volume": 1e8} for d in dates}
+        config = self.config()
+        config["evaluation_end"] = "2025-01-03"
+        # index-1 stays below the 63-session risk_fraction warmup, so the risk overlay
+        # holds 100% cash throughout: interest is isolated from any price/trading effect.
+        rates = {"2025-01-02": 0.0, "2025-01-03": 0.05}
+        summary, nav, trades, *_ = simulate(
+            {"QQQ": series}, dates, config, 1000, 0, "QQQ-cash15", cash_annual_rate=rates)
+        expected_day2_interest = 1000 * 0.05 / 252
+        self.assertEqual(trades, [])
+        self.assertEqual(nav[0]["cash_interest_usd"], 0.0)
+        self.assertAlmostEqual(nav[1]["cash_interest_usd"], expected_day2_interest)
+        self.assertAlmostEqual(nav[1]["nav_usd"], 1000 + expected_day2_interest)
+        self.assertAlmostEqual(summary["cash_interest_usd"], expected_day2_interest)
+
+    def test_missing_cash_rate_defaults_to_zero_interest(self):
+        dates = ["2024-12-31", "2025-01-02"]
+        series = {d: {"open": 100, "close": 100, "split": 1, "dividend": 0,
+                      "adjclose": 100, "dollar_volume": 1e8} for d in dates}
+        config = self.config()
+        config["evaluation_end"] = "2025-01-02"
+        summary, nav, *_ = simulate({"QQQ": series}, dates, config, 1000, 0, "QQQ")
+        self.assertEqual(nav[0]["cash_interest_usd"], 0.0)
+        self.assertEqual(summary["cash_interest_usd"], 0.0)
+
+    def test_sortino_and_calmar_are_undefined_without_downside_or_drawdown(self):
+        nav = [{"date": f"2025-01-{i:02}", "nav_usd": 1000 * (1.01 ** i)} for i in range(1, 6)]
+        result = metrics(nav, 1000)
+        self.assertIsNone(result["sortino_zero_target"])  # no session below the zero target
+        self.assertIsNone(result["calmar_ratio"])  # max_drawdown is exactly 0
+
+    def test_calmar_and_worst_quarter_with_a_single_drawdown_day(self):
+        returns = [-0.10] + [0.0] * 251
+        day, nav_value, rows = date(2021, 1, 4), 1000.0, []
+        for r in returns:
+            nav_value *= (1 + r)
+            rows.append({"date": day.isoformat(), "nav_usd": nav_value})
+            day += timedelta(days=1)
+        result = metrics(rows, 1000.0)
+        self.assertAlmostEqual(result["max_drawdown"], -0.10)
+        self.assertAlmostEqual(result["cagr"], -0.10)
+        self.assertAlmostEqual(result["calmar_ratio"], -1.0)
+        self.assertAlmostEqual(result["worst_quarter"], -0.10)
+        self.assertEqual(result["hit_rate_positive_sessions"], 0.0)
+
+    def test_downside_capture_ratio_uses_compounded_benchmark_down_days(self):
+        strategy = [0.02, -0.01, -0.03, 0.01]
+        benchmark = [0.01, -0.02, -0.01, 0.03]
+        expected = ((1 - 0.01) * (1 - 0.03) - 1) / ((1 - 0.02) * (1 - 0.01) - 1)
+        self.assertAlmostEqual(downside_capture_ratio(strategy, benchmark), expected)
+
+    def test_downside_capture_ratio_is_none_without_benchmark_down_days(self):
+        self.assertIsNone(downside_capture_ratio([0.01, 0.02], [0.01, 0.02]))
+
+    def test_symbols_by_review_month_drops_a_name_that_leaves_the_real_universe(self):
+        from datetime import date, timedelta
+        start = date(2019, 1, 1)
+        dates = [(start + timedelta(days=i)).isoformat() for i in range(400)]
+        # Two symbols, both trending up so both always qualify; A always
+        # ranks above B on momentum, so a fixed-universe run would keep A.
+        bars = {
+            "A": {d: {"open": 100 + i, "close": 100 + i, "adjclose": 100 + i,
+                      "dollar_volume": 1e8, "split": 1, "dividend": 0} for i, d in enumerate(dates)},
+            "B": {d: {"open": 50 + 0.1 * i, "close": 50 + 0.1 * i, "adjclose": 50 + 0.1 * i,
+                      "dollar_volume": 1e8, "split": 1, "dividend": 0} for i, d in enumerate(dates)},
+        }
+        eval_start, eval_end = dates[280], dates[300]
+        config = {"evaluation_start": eval_start, "evaluation_end": eval_end,
+                 "symbols": {"A": "x", "B": "x"}, "minimum_adv_usd": 0,
+                 "sector_weight_cap": 1.0, "volatility_target": 0.15,
+                 "annual_system_cash_cost_usd": 0}
+        review_month = eval_start[:7]
+        # Real point-in-time universe for that month excludes A entirely,
+        # even though it would win on momentum in a fixed-universe run.
+        symbols_by_review_month = {review_month: {"B": "x"}}
+        summary, nav, trades, holdings, *_ = simulate(
+            bars, dates, config, 1000, 0, "M10", symbols_by_review_month=symbols_by_review_month)
+        held_symbols = {h["symbol"] for h in holdings}
+        self.assertEqual(held_symbols, {"B"})
+        self.assertNotIn("A", {t["symbol"] for t in trades})
+
+        with self.assertRaisesRegex(ValueError, 'Missing point-in-time universe'):
+            simulate(bars, dates, config, 1000, 0, "M10", symbols_by_review_month={})
+
+        # Regression: modifying the current month's future roster cannot
+        # change its initial execution based on the preceding month-end.
+        from vitalis.research_audit import execution_month, shift_month_end_inputs
+        prior_month = dates[250][:7]
+        self.assertEqual(execution_month(prior_month + '-01'), review_month)
+        raw = {prior_month: {"B": "x"}, review_month: {"A": "x"}}
+        result = simulate(bars, dates, config, 1000, 0, "M10",
+                          symbols_by_review_month=shift_month_end_inputs(raw))
+        self.assertEqual({h['symbol'] for h in result[3]}, {'B'})
+        raw[review_month] = {"FUTURE": "x"}
+        changed = simulate(bars, dates, config, 1000, 0, "M10",
+                           symbols_by_review_month=shift_month_end_inputs(raw))
+        self.assertEqual(result, changed)
+
+    def test_symbols_by_review_month_omitted_matches_prior_static_behavior(self):
+        from datetime import date, timedelta
+        start = date(2019, 1, 1)
+        dates = [(start + timedelta(days=i)).isoformat() for i in range(400)]
+        bars = {
+            "A": {d: {"open": 100 + i, "close": 100 + i, "adjclose": 100 + i,
+                      "dollar_volume": 1e8, "split": 1, "dividend": 0} for i, d in enumerate(dates)},
+            "B": {d: {"open": 50 + 0.1 * i, "close": 50 + 0.1 * i, "adjclose": 50 + 0.1 * i,
+                      "dollar_volume": 1e8, "split": 1, "dividend": 0} for i, d in enumerate(dates)},
+        }
+        eval_start, eval_end = dates[280], dates[300]
+        config = {"evaluation_start": eval_start, "evaluation_end": eval_end,
+                 "symbols": {"A": "x", "B": "x"}, "minimum_adv_usd": 0,
+                 "sector_weight_cap": 1.0, "volatility_target": 0.15,
+                 "annual_system_cash_cost_usd": 0}
+        with_none, without_param = (
+            simulate(bars, dates, config, 1000, 0, "M10", symbols_by_review_month=None),
+            simulate(bars, dates, config, 1000, 0, "M10"),
+        )
+        self.assertEqual(with_none[0], without_param[0])
+
+    def test_missing_next_open_leaves_cash_and_does_not_replace_selected_name(self):
+        from datetime import date, timedelta
+        dates = [(date(2019, 1, 1) + timedelta(days=i)).isoformat() for i in range(300)]
+        series = {d: {"open": 100+i, "close": 100+i, "adjclose": 100+i,
+                      "dollar_volume": 1e8, "split": 1, "dividend": 0} for i,d in enumerate(dates)}
+        execution = dates[280]
+        bars = {"A": {d:b for d,b in series.items() if d < execution}, "B": series}
+        config = {"evaluation_start": execution, "evaluation_end": execution,
+                  "symbols": {"A":"x", "B":"x"}, "minimum_adv_usd":0,
+                  "sector_weight_cap":1, "volatility_target":.15, "annual_system_cash_cost_usd":0}
+        result = simulate(bars, dates, config, 100000, 0, "M10")
+        self.assertIn('A', result[4][0]['selected'])
+        self.assertEqual(result[4][0]['unfilled_target_symbols'], ['A'])
+        self.assertNotIn('A', {r['symbol'] for r in result[2]})
+        self.assertGreater(result[1][0]['cash_usd'] / result[1][0]['nav_usd'], .89)
+        self.assertTrue(any(r['flag']=='unfilled_order_no_execution_bar' for r in result[5]))
+
+    def test_delisted_holding_is_settled_at_last_known_price_not_a_crash(self):
+        from datetime import date, timedelta
+        start = date(2019, 1, 1)
+        all_dates = [(start + timedelta(days=i)).isoformat() for i in range(400)]
+        # A and B both trend up so both qualify and both get selected (only
+        # 2 candidates, M10's count=10 has no reason to exclude either).
+        full_series = lambda base, slope: {d: {"open": base + slope * i, "close": base + slope * i,
+                                                "adjclose": base + slope * i, "dollar_volume": 1e8,
+                                                "split": 1, "dividend": 0} for i, d in enumerate(all_dates)}
+        bars = {"A": full_series(100, 1), "B": full_series(50, 0.5)}
+        eval_start = all_dates[280]
+        delist_index = 290  # inside the evaluation window
+        last_trading_day = all_dates[delist_index - 1]
+        # A's data simply ends -- as if delisted/acquired -- from delist_index on.
+        dates_for_sim = all_dates  # engine's own `dates` calendar keeps going
+        del_bars_a = {d: b for d, b in bars["A"].items() if d < all_dates[delist_index]}
+        bars_with_delisting = {"A": del_bars_a, "B": bars["B"]}
+        config = {"evaluation_start": eval_start, "evaluation_end": all_dates[300],
+                 "symbols": {"A": "x", "B": "x"}, "minimum_adv_usd": 0,
+                 "sector_weight_cap": 1.0, "volatility_target": 0.15,
+                 "annual_system_cash_cost_usd": 0}
+        summary, nav, trades, holdings, decisions, warnings, contributions = simulate(
+            bars_with_delisting, dates_for_sim, config, 100_000, 0, "M10")
+        forced = [w for w in warnings if w["flag"] == "forced_exit_data_discontinued"]
+        self.assertEqual(len(forced), 1)
+        self.assertEqual(forced[0]["symbol"], "A")
+        self.assertEqual(forced[0]["last_known_date"], last_trading_day)
+        self.assertAlmostEqual(forced[0]["last_price_usd"], del_bars_a[last_trading_day]["close"])
+        # B keeps trading normally through the end of the window.
+        held_at_end = {h["symbol"] for h in holdings if h["date"] == all_dates[300]}
+        self.assertEqual(held_at_end, {"B"})
+        # No PNL distortion: the day of forced exit has zero net gain/loss
+        # attributable to A beyond what was already marked the prior day.
+        exit_day_ledger = next(r for r in nav if r["date"] == all_dates[delist_index])
+        self.assertAlmostEqual(exit_day_ledger["pnl_usd"],
+                               exit_day_ledger["price_pnl_usd"] + exit_day_ledger["dividend_cash_usd"]
+                               + exit_day_ledger["cash_interest_usd"] - exit_day_ledger["execution_cost_usd"]
+                               - exit_day_ledger["fixed_fee_usd"])
 
     def test_provider_split_units_reconstruct_nominal_prices(self):
         payload = {"chart": {"result": [{"meta": {"currency": "USD"},

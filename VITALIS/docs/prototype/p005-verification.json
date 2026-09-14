@@ -1,0 +1,28 @@
+{
+  "verification_script_sha256": "1d7e2e2d2a6ffaac135db526adcff56d4d08ea9149ad3c43b82203266ba4ad21",
+  "runs": [
+    {
+      "run_id": "20260913T232015882204Z-p005-spinoff-34165337",
+      "manifest_sha256": "71d60b43f4e4460172d0078115e08405e844cd7e82d10b0cd9364be650e1f416",
+      "scenario_count": 50,
+      "daily_rows_checked": 264150,
+      "source_checksums": true,
+      "output_checksums": true,
+      "code_identity": true,
+      "independent_pnl_and_wealth_reconciliation": true,
+      "remote_requests": 0
+    },
+    {
+      "run_id": "20260913T232207552486Z-p005-acquisition-b01d22c4",
+      "manifest_sha256": "4c73fc8d0fced0ec4a08d87772ec44bc1a52693f78797249094d835adcbc63e7",
+      "scenario_count": 50,
+      "daily_rows_checked": 264150,
+      "source_checksums": true,
+      "output_checksums": true,
+      "code_identity": true,
+      "independent_pnl_and_wealth_reconciliation": true,
+      "remote_requests": 0
+    }
+  ],
+  "scope": "Artifact and accounting identities only; economic/PIT gates remain unverified."
+}

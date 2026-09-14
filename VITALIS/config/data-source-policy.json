@@ -20,6 +20,9 @@
     "sharadar": {
       "purpose": "historical_equities_funds_actions_and_ar_fundamentals",
       "production_ingestion_enabled": false,
+      "adapter_implemented": true,
+      "adapter_module": "vitalis.sharadar",
+      "adapter_note": "per-request REST caching with a self-imposed daily quota, not the coordinated SQLite catalog this policy file otherwise describes",
       "official_requests_per_second": null,
       "official_max_concurrency": null,
       "official_daily_request_quota": null,
@@ -27,6 +30,12 @@
       "project_caps": {"requests_per_second": 1, "max_concurrency": 1, "requests_per_utc_day": 200},
       "initial_load": "authorized_bulk",
       "history_tier_required": "full_history",
+      "subscription_status_file": "data/authorized/sharadar/subscription-status.json",
+      "license_retention": "license_text_requires_deletion_within_30_days_of_termination_or_pause_see_review_07_E10_E17; user has chosen to retain this personal-use subscription's data indefinitely regardless of subscription status; check_retention() in vitalis/sharadar.py is informational only, deletes nothing, and is not called automatically by any code path",
+      "table_tiers": {"A_feeds_ranking_once_validated": ["tickers", "fundamentals", "daily", "actions", "stocks", "sp500", "descriptions"],
+                      "B_downloaded_not_yet_scored": ["events", "funds", "metrics"],
+                      "C_isolated_13f_disclosure_lag_risk": ["insiders", "holdings", "holdings_ticker", "holdings_investor"]},
+      "bulk_zip_export_endpoint": "confirmed_2026_09_13: same REST base URL with years=5|10|full instead of row filters, redirects to a signed zip download; vitalis.sharadar.download_bulk_table() implements this",
       "source": "https://sharadar.com/docs/getting-started"
     },
     "sec": {
@@ -43,6 +52,16 @@
       "official_chart_requests_per_second": null,
       "project_caps": {"requests_per_second": 0.5, "max_concurrency": 1},
       "formal_historical_universe_source": false
+    },
+    "fred": {
+      "purpose": "cash_yield_accounting_reference_series_dgs3mo_not_a_trading_signal",
+      "production_ingestion_enabled": false,
+      "endpoint": "public_graph_csv_download_undocumented_rate_limit_not_the_keyed_fred_api",
+      "official_requests_per_second": null,
+      "project_caps": {"requests_per_second": 0.5, "max_concurrency": 1},
+      "revision_semantics": "single_market_observed_daily_rate_no_meaningful_restatement_plain_fred_not_alfred_vintage",
+      "formal_macro_regime_source": false,
+      "source": "https://fred.stlouisfed.org/series/DGS3MO"
     },
     "ibkr_tws_socket": {
       "purpose": "later_read_only_positions_cash_and_quotes",

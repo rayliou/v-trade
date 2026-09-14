@@ -15,7 +15,7 @@ def fingerprint(value):
     return hashlib.sha256(json.dumps(value, sort_keys=True).encode()).hexdigest()
 
 
-def download(symbol, start, end, cache_dir):
+def download(symbol, start, end, cache_dir, offline=False):
     cache_dir = Path(cache_dir)
     cache_dir.mkdir(parents=True, exist_ok=True)
     target = cache_dir / f"{symbol}-{start}-{end}.json"
@@ -24,6 +24,8 @@ def download(symbol, start, end, cache_dir):
         if envelope["payload_sha256"] != fingerprint(envelope["payload"]):
             raise ValueError(f"Cached payload checksum failed: {symbol}")
         return envelope
+    if offline:
+        raise FileNotFoundError(f"Offline cache missing: {target}")
     timestamp = lambda day: int(datetime.fromisoformat(day).replace(tzinfo=timezone.utc).timestamp())
     query = urllib.parse.urlencode({
         "period1": timestamp(start), "period2": timestamp(end), "interval": "1d",

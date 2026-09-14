@@ -10,16 +10,17 @@
 | E04 | [Bailey / López de Prado：Deflated Sharpe Ratio，2014 作者论文](https://www.davidhbailey.com/dhbpapers/deflated-sharpe.pdf) | 选模次数和非正态会影响 Sharpe 可信程度 | 通过一个统计量即可保证可实现 alpha |
 | E05 | [Moreira / Muir：Volatility Managed Portfolios，NBER 2016，期刊版2017](https://www.nber.org/papers/w22208) | 简单波动管理值得作为独立对照研究 | 降风险必然提高 CAGR，或不加杠杆个股版有同样效果 |
 | E06 | [Morningstar：Mind the Gap 2026](https://www.morningstar.com/business/insights/research/mind-the-gap) | 时间加权与资金加权结果不同，执行体验有衡量必要 | 全部差额都是行为错误，或系统能确定追回差额 |
-| E07 | [Sharadar 订阅表](https://sharadar.com/subscribe) | 当前个人版完整历史 Bundle 标价69美元/月、499美元/年 | 税/券商行情全包，或未来价格不变 |
+| E07 | [Sharadar 订阅表](https://sharadar.com/subscribe) | 当前个人版完整历史（Full History）档：Fundamentals单独39美元/月（399美元/年）、Prices单独39美元/月（299美元/年）、Bundle 69美元/月（499美元/年）；5年、10年为更低档，不是同一产品 | 税/券商行情全包，或未来价格不变；不能把5年档价格当完整历史价 |
 | E08 | [Sharadar 基本面字段及维度](https://sharadar.com/docs/fundamentals) | AR/MR 和当前日期字段语义不同，历史需按可得性选值 | 所有修订、历史日内到达时间都已完整可回放 |
 | E09 | [Sharadar 证券母表](https://sharadar.com/docs/tickers) | 具有永久标识和存续信息，下载母表是快照 | 当前行业、规模字段可以任意回填历史 |
-| E10 | [Sharadar 个人许可](https://sharadar.com/terms) | 个人用途与商业/机构用途范围有明确区分 | 个人订阅自动允许收费分发衍生排名 |
+| E10 | [Sharadar 个人许可](https://sharadar.com/terms) | 条款第2条明确禁止将服务或衍生数据用于“专业、商业、机构或组织目的”，逐项列出的禁止用途包含面向他人的研究/交易/咨询与**“为企业进行技术开发”**；第10条要求终止后30日内删除本机所有Services Data副本（含downloads、bulk files、caches、extracts）及任何能重建Sharadar表的数据集，可能被要求提交删除声明；终止后允许保留不含、且不能重建Services Data的研究产出、回测结果、模型、汇总统计和交易日志，但不授予终止后再访问或重新下载的权利 | 个人订阅自动允许收费分发衍生排名；日后若VITALIS产品化，本许可本身即禁止继续使用同一订阅产出的原始数据支撑该产品技术开发 |
 | E11 | [SEC EDGAR 读取接口](https://www.sec.gov/search-filings/edgar-application-programming-interfaces) | 有公开 filings/XBRL、bulk 与更新机制 | 官方原始事实等于已整理完毕的研究级 PIT 数据库 |
 | E12 | [FRED：ALFRED 接口说明](https://fred.stlouisfed.org/docs/api/fred/alfred.html) | 可处理宏观历史修订/vintage | 任意当前 FRED 序列都可直接用于历史决策 |
 | E13 | [IBKR：Unavailable Historical Data](https://ibkrcampus.com/docs/web-api/v1/endpoints/market-data/unavailable-historical-data) | 到期期权和停止交易证券等存在历史供给限制 | 当前可调用券商工具就代表有全历史研究数据 |
 | E14 | [Alpha Vantage：API 文档](https://www.alphavantage.co/documentation/) | 有预测及修正接口；公开所列请求参数未展示任意历史 as-of 查询 | 已经满足逐日多年共识快照的严格需求 |
 | E15 | [Alpha Vantage：支持与额度](https://www.alphavantage.co/support/) | 常规免费档25次请求/日 | 本账户一定有付费或特殊项目额度 |
 | E16 | [ORATS：Options Data API](https://orats.com/data-api) | Delayed 档199美元/月，有历史及 near-EOD 数据 | 基础股票研究必须采购，或 mid/拟合价都能真实成交 |
+| E17 | [Sharadar：Upgrade — Pause & Resume（2026-08-07博文）](https://sharadar.com/blog/posts/upgrade-pause-resume) | 2026-08-07起支持订阅暂停1、2或3个月，当期访问权持续到当前计费周期结束，到选定日期自动恢复计费与访问 | 暂停期间原始数据保留是否豁免E10终止后30日删除义务；博文未提及暂停与终止在数据留存上的区别待遇，不能假设暂停可以规避删除条款 |
 
 ## 核查中需要特别防止的误读
 

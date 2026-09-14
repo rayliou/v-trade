@@ -16,7 +16,12 @@
   "volatility_target": 0.15,
   "sector_weight_cap": 0.30,
   "minimum_adv_usd": 20000000,
-  "cash_interest_rate": 0,
+  "cash_yield_series_id": "DGS3MO",
+  "bootstrap_primary_capital_usd": 200000,
+  "bootstrap_primary_cost_bps": 10,
+  "bootstrap_replicates": 2000,
+  "bootstrap_seed": 20260913,
+  "bootstrap_block_trading_days": [21, 63],
   "symbols": {
     "AAPL": "Technology", "MSFT": "Technology", "AMZN": "Consumer discretionary",
     "GOOGL": "Communication", "META": "Communication", "NVDA": "Technology",
@@ -32,11 +37,13 @@
   "known_limitations": [
     "Thirty current survivor names, not a point-in-time market-cap universe; historical losers and delistings absent",
     "Static contemporary sector labels; historical classifications not verified",
-    "Yahoo historical corporate actions and adjustment factors not reconciled to an independent source",
+    "Yahoo unadjusted closing prices independently cross-checked against real Sharadar stocks data for these 30 symbols: 50,460 compared sessions, 2 discrepancies over 0.05% relative tolerance (one, XOM 2020-02-07, unexplained by any known corporate action)",
+    "Yahoo-derived split/dividend corporate-action events themselves (as distinct from closing prices) have not been reconciled against Sharadar's real actions table, despite that data now being available locally for these symbols",
     "Dividends credited as cash on ex-date, not actual payment date; dividend timing is approximate",
     "Assumes every Yahoo bar is executable; spread/market impact approximated by fixed bps",
     "Integer-share benchmark retains dividend cash; adjusted-close QQQ reference separately shows total-return proxy",
-    "No taxes, cash interest, quality factor, theme graph, LEAPS, or IBKR",
+    "No taxes, quality factor, theme graph, LEAPS, or IBKR",
+    "Cash yield uses FRED's 3-month Treasury bill secondary-market rate (DGS3MO), forward-filled over bond-market holidays, as an upper-bound proxy for obtainable short-duration cash yield; actual brokerage sweep crediting, minimum-balance thresholds, and any account-level haircut are unverified",
     "No untouched holdout or statistical confidence test; this is a fixed-rule historical diagnostic",
     "Daily 12-percent single-name hard review is recorded but not automatically executed"
   ]

@@ -32,3 +32,15 @@
 ```sh
 python3 docs/review/roi_scenarios.py
 ```
+
+## 最新核验
+
+- [P004收益、回撤与继续/停止判断](prototype/p004-audit-and-diagnostics.md)
+- [P004工程审计与未通过的数据门槛](prototype/p004-engineering-audit.md)
+- [全部本金、费用和零现金收益情景](prototype/p004-metadata.json)
+- [可重跑本地核验Notebook](prototype/p004-audit.ipynb)
+
+
+## 当前收尾决定
+
+[P005有边界收尾](prototype/p005-closeout-results.md)完成分拆股票及明确收购对价记账重算；全部最终场景无收益/回撤联合达标。停止当前股票动量/质量超额收益主线开发。剩余数据缺口不自动授权采购或扩工程，重启遵守[冻结协议](prototype/p005-closeout-protocol.json)和AGENTS.md。

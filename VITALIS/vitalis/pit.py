@@ -32,7 +32,8 @@ def normalize_fundamentals(rows, sessions):
         if index == len(sessions):
             raise ValueError("Calendar must extend beyond the latest filing")
         normalized = dict(row, available_on_close=sessions[index], filing_date=filing)
-        for field in ("roic", "roa", "ncfo", "netinc", "assets", "de"):
+        for field in ("roic", "roa", "ncfo", "netinc", "assets", "de",
+                     "opinc", "revenue", "assetsavg", "debt"):
             value = row.get(field)
             if value in (None, "", "N/A"):
                 normalized[field] = None
