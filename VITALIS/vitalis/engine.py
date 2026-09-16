@@ -35,6 +35,17 @@ def rank_signals(bars, dates, index, symbols, minimum_adv, quality_by_symbol=Non
     docs/review/08-decisions-and-coverage.md. Either way the 252-session
     history requirement below is unchanged, so the eligible pool does not
     silently widen when the formation window shortens.
+
+    "1m-sharpe" is P007's pre-registered ranking key: the same trailing
+    21-session window as "1m", but ranked on daily-return Sharpe (mean daily
+    return / daily return stdev, zero risk-free rate -- matching metrics()'s
+    own sharpe_zero_rf convention, not a new one invented for this) instead
+    of raw cumulative return. This is meant to down-rank names that only
+    look good on total return because of one or two extreme days, which
+    P006's raw-1-month-return ranking could not distinguish from steadier
+    gains. A symbol whose 21-session daily returns have zero variance (flat
+    price, or too little history to tell) has no defined Sharpe and is
+    dropped from the ranking outright, not given a placeholder score.
     """
     if index < 252:
         return []
@@ -54,6 +65,17 @@ def rank_signals(bars, dates, index, symbols, minimum_adv, quality_by_symbol=Non
                 "adv_usd": adv,
             }
             continue
+        if formation == "1m-sharpe":
+            prices = [series[dates[i]]["adjclose"] for i in range(index - 21, index + 1)]
+            daily = [b / a - 1 for a, b in zip(prices, prices[1:])]
+            stdev = statistics.stdev(daily) if len(daily) > 1 else 0.0
+            if stdev == 0.0:
+                continue
+            signals[symbol] = {
+                "sharpe_1m": statistics.mean(daily) / stdev,
+                "adv_usd": adv,
+            }
+            continue
         price = series[dates[index - 21]]["adjclose"]
         signals[symbol] = {
             "m12_1": price / series[dates[index - 252]]["adjclose"] - 1,
@@ -62,6 +84,8 @@ def rank_signals(bars, dates, index, symbols, minimum_adv, quality_by_symbol=Non
         }
     if formation == "1m":
         momentum_score = percentile({s: x["m1"] for s, x in signals.items()})
+    elif formation == "1m-sharpe":
+        momentum_score = percentile({s: x["sharpe_1m"] for s, x in signals.items()})
     else:
         first = percentile({s: x["m12_1"] for s, x in signals.items()})
         second = percentile({s: x["m6_1"] for s, x in signals.items()})
@@ -199,10 +223,17 @@ def simulate(bars, dates, config, capital, cost_bps, variant, cash_annual_rate=N
     symbols = config["symbols"]
     is_benchmark = variant in ("QQQ", "QQQ-cash15")
     risk_control = variant in ("QQQ-cash15", "M10-risk15")
-    holdings_by_variant = {"H3": 3, "H5": 5, "M20": 20, "Q20": 20}
+    holdings_by_variant = {"H3": 3, "H5": 5, "H3S": 3, "H5S": 5, "M20": 20, "Q20": 20}
     count = 1 if is_benchmark else holdings_by_variant.get(variant, 10)
     uses_quality = variant in ("Q10", "Q20")
-    formation = "1m" if variant in ("H3", "H5") else "12-1/6-1"
+    # "S" suffix (P007) ranks the same 1-month window on Sharpe instead of
+    # raw return -- see rank_signals()'s "1m-sharpe" docstring.
+    if variant in ("H3S", "H5S"):
+        formation = "1m-sharpe"
+    elif variant in ("H3", "H5"):
+        formation = "1m"
+    else:
+        formation = "12-1/6-1"
     cash, held = float(capital), {}
     trades, ledger, holdings, decisions, warnings = [], [], [], [], []
     contributions = {}

@@ -383,6 +383,25 @@ class ShortHorizonFormationTests(unittest.TestCase):
             result = simulate(bars, dates, config, 500000, 0, variant)
             self.assertEqual(len(result[4][0]["selected"]), expected, variant)
 
+    def test_h3s_and_h5s_take_three_and_five_slots_on_the_sharpe_ranking(self):
+        from datetime import date, timedelta
+        dates = [(date(2019, 1, 1) + timedelta(days=i)).isoformat() for i in range(300)]
+        bars = {}
+        for n in range(8):
+            series = {}
+            for i, day in enumerate(dates):
+                price = 100 + (n * i / 100)
+                series[day] = {"open": price, "close": price, "adjclose": price,
+                               "dollar_volume": 1e9, "split": 1, "dividend": 0}
+            bars[f"S{n}"] = series
+        config = {"evaluation_start": dates[260], "evaluation_end": dates[299],
+                  "symbols": {f"S{n}": "x" for n in range(8)}, "minimum_adv_usd": 0,
+                  "sector_weight_cap": 1, "volatility_target": .15,
+                  "annual_system_cash_cost_usd": 0}
+        for variant, expected in (("H3S", 3), ("H5S", 5)):
+            result = simulate(bars, dates, config, 500000, 0, variant)
+            self.assertEqual(len(result[4][0]["selected"]), expected, variant)
+
 
 class NearRuinFixedFeeTests(unittest.TestCase):
     """Regression: P006's H3 (unconstrained, 3-name, no risk control) fell
@@ -422,6 +441,57 @@ class NearRuinFixedFeeTests(unittest.TestCase):
         for row in thin_days:
             self.assertEqual(row["cash_usd"], 0.0)
         self.assertEqual(summary["cagr"], -1.0)
+
+
+class SharpeFormationTests(unittest.TestCase):
+    """P007's Sharpe-ranked 1-month window (docs/review/08, 2026-09-16 P007 entry)."""
+
+    def _bars(self):
+        from datetime import date, timedelta
+        dates = [(date(2019, 1, 1) + timedelta(days=i)).isoformat() for i in range(300)]
+
+        def bar(price):
+            return {"open": price, "close": price, "adjclose": price,
+                    "dollar_volume": 1e9, "split": 1, "dividend": 0}
+        # STEADY and JUMPY both end the 21-session window up ~10% in total,
+        # but STEADY gets there in small, even daily steps while JUMPY sits
+        # flat then makes the whole move in one giant single-day spike (P006's
+        # real failure mode: names that "look hot" on raw return but got
+        # there via one violent day). Raw 1-month return ranks them equally;
+        # only Sharpe should separate them.
+        steady, jumpy = {}, {}
+        for i, day in enumerate(dates):
+            if i < len(dates) - 21:
+                steady[day] = bar(100.0)
+                jumpy[day] = bar(100.0)
+            else:
+                k = i - (len(dates) - 22)
+                steady[day] = bar(100.0 * (1 + 0.10) ** (k / 21))
+                jumpy[day] = bar(100.0 if k < 20 else 110.0)
+        return {"STEADY": steady, "JUMPY": jumpy}, dates
+
+    def test_sharpe_prefers_the_steady_path_over_a_single_day_spike_to_the_same_total_return(self):
+        bars, dates = self._bars()
+        index = len(dates) - 1
+        symbols = {"STEADY": "x", "JUMPY": "x"}
+        raw = rank_signals(bars, dates, index, symbols, 0, formation="1m")
+        sharpe = rank_signals(bars, dates, index, symbols, 0, formation="1m-sharpe")
+        raw_m1 = {r["symbol"]: r["m1"] for r in raw}
+        self.assertAlmostEqual(raw_m1["STEADY"], raw_m1["JUMPY"], places=3)
+        self.assertEqual(sharpe[0]["symbol"], "STEADY")
+        self.assertIn("sharpe_1m", sharpe[0])
+        self.assertNotIn("m1", sharpe[0])
+
+    def test_zero_variance_symbol_is_dropped_not_scored(self):
+        bars, dates = self._bars()
+        index = len(dates) - 1
+        flat = {d: {"open": 50.0, "close": 50.0, "adjclose": 50.0, "dollar_volume": 1e9,
+                    "split": 1, "dividend": 0} for d in dates}
+        bars = dict(bars, FLAT=flat)
+        result = rank_signals(bars, dates, index, {"STEADY": "x", "JUMPY": "x", "FLAT": "x"},
+                              0, formation="1m-sharpe")
+        self.assertNotIn("FLAT", {r["symbol"] for r in result})
+        self.assertEqual(len(result), 2)
 
 
 if __name__ == "__main__":
