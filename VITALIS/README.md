@@ -4,7 +4,7 @@
 
 ## 当前研究状态
 
-已接入Sharadar Full History Bundle（月付69美元，全年828美元，税费待核实），本地缓存包含全历史价格、财务和公司行动；已实现月度历史股票池与质量比较。P003/P003b因月末输入提前用于同月月初交易及成交额单位错误，已撤回投资证据，原记录保留。最新收尾见[P005报告](docs/prototype/p005-closeout-results.md)：补记分拆权益和明确收购对价后，全部最终情景仍无收益/回撤联合达标。**停止当前股票动量/质量超额收益开发**，保留数据、代码和审计记录；投资证据仍不足。
+已接入Sharadar Full History Bundle（月付69美元，全年828美元，税费待核实），本地缓存包含全历史价格、财务和公司行动；已实现月度历史股票池与质量比较。P003/P003b因前视与成交额单位错误撤回；P005补账后仍无收益/回撤联合达标；P006的热点放量短动量使H3归零、H5最大回撤-99.83%，该具体假设被拒绝。P007只实现了夏普排序，没有期权数据或投资结果，现已冻结且不授权购买ORATS。当前结论见[全项目复审](docs/review/10-project-stop-review.md)：**冻结VITALIS主动开发，保留代码、数据和审计记录**。
 
 ## 运行
 
@@ -17,6 +17,7 @@ python3 -m vitalis.run --offline
 python3 -m vitalis.sample_audit
 python3 -m vitalis.sample_audit --offline
 python3 -m vitalis.run_pit --offline --max-workers 4
+python3 -m scripts.review_project_viability
 ```
 
 P001首次初始化需要联网；P004历史池研究只读取已有Sharadar/Yahoo/FRED精确缓存，缺文件即失败，不自动联网。遇到HTTP错误或缺失交易日会停止并记录失败，不绕过权限、不用虚构行情补缺。

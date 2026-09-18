@@ -46,14 +46,11 @@ a cash-yield-assumption artifact (a zero-cash-yield replay moves CAGR by well un
 the look-ahead bias.** See `docs/prototype/p004-audit-and-diagnostics.md` (results) and
 `docs/prototype/p004-engineering-audit.md` (what was fixed and what data gates still fail).
 
-Investment decision remains `insufficient_evidence` regardless — the data gates below are unmet
-independent of the sign of the result. Corporate-action/exit settlement (last-price proxy) is
-unverified — one confirmed case (MRO's 2011 Marathon Petroleum spinoff) shows an 8-to-39pp difference
-between the cash-settlement proxy and the split/dividend-adjusted return, so this is not a rounding
-concern. Current sector/exchange/category metadata and unresolved SIC chains remain limitations. Do
-not tune a new signal, adjust risk thresholds, or add LEAPS before the corporate-action/exit ledger
-(P005, proposed) and the historical-metadata gaps are closed — a new positive-looking result on this
-same incomplete ledger would not be trustworthy either way.
+The formal investment decision remains `insufficient_evidence` because corporate-action/exit settlement,
+historical metadata and multiple-comparison gates remain unmet independent of a result's sign. P005 later
+bounded the action ledger without clearing every gate. P006 then produced a directionally decisive negative
+result, which rejects that candidate while leaving the formal data-gate label unchanged. Keep those two
+verdict levels separate.
 
 ## Bounded closeout decision (P005)
 
@@ -70,7 +67,7 @@ evidence, budget, acceptance and stop criteria. Read `docs/prototype/p005-closeo
 `vitalis/corporate_actions.py` and `scripts/closeout.py` implement scenarios, not verified broker settlements.
 The regular `run_pit` does not activate this optional action layer; P005 must use the dedicated runner.
 
-## P006 (user-authorized new hypothesis): rejected, not insufficient-evidence
+## P006: hypothesis rejected; formal data gate still failed
 
 A genuinely different candidate — whole-market relative-volume-spike pool (`vitalis.universe.monthly_hot_universe`,
 `vitalis.run_p006`) instead of market cap, 1-month formation instead of 12-1/6-1, bottom-25% quality *exclusion*
@@ -78,8 +75,9 @@ instead of a blend, 3/5-name concentrated books (H3/H5) instead of 10/20, primar
 widened to 0.50 by explicit user decision. Full 2005-2025 real result: **H3 (3 names) was driven to real total
 ruin — ending NAV $0.00, CAGR -100.00%; H5 (5 names) to near-total ruin — ending NAV $599.57 from $300k,
 max drawdown -99.83%.** Both variants' paired block-bootstrap 90% CI for excess CAGR vs QQQ is entirely
-negative at both 21- and 63-day blocks — this is a statistically decisive rejection, not a zero-crossing
-"insufficient evidence" result like every prior candidate. See `docs/prototype/p006-hot-volume-results.md`.
+negative at both 21- and 63-day blocks. This rejects the P006 hypothesis even though its formal metadata
+retains `investment_decision=insufficient_evidence` because the independent data gate failed. See
+`docs/prototype/p006-hot-volume-results.md`.
 
 Do not retune this shape (window length, quality fraction, hold count) — none of those look like they could
 plausibly flip a -100pp-scale gap, and a parameter search here would just be overfitting to noise. The
@@ -97,10 +95,20 @@ NAV-safe division in `engine.metrics()`, `vitalis.stats.daily_returns()`, and `v
 (all previously assumed nav_usd > 0). See the four 2026-09-14 entries in `08-decisions-and-coverage.md` for
 each fix's own registration.
 
+## Current project decision (R010, 2026-09-17)
+
+Freeze the entire active project, including P007. P007 added only the tested 21-session Sharpe ranking and
+H3S/H5S variants; no ORATS adapter, options filter, sentiment diagnostic or P007 backtest exists. ORATS was
+never purchased. The recorded budget exception is superseded: total annual data spend remains capped at
+USD 1,000 and the research drawdown target remains approximately 30%. Retain P007 code as unvalidated audit
+material, not investment evidence. Do not acquire data, run variants, tune signals or build product layers.
+Read `docs/review/10-project-stop-review.md` before proposing any work. Reopening requires a new explicit
+user authorization with mechanism, evidence, budget, joint QQQ/~30% acceptance, data gate and stop rule.
+
 ## Commands
 
 ```sh
-python3 -m unittest discover -s tests -v          # all tests (113, some skip without licensed data present; ~180s)
+python3 -m unittest discover -s tests -v          # all tests (134 at R010; licensed-data checks may be slow)
 python3 -m unittest tests.test_engine -v          # one module
 python3 -m unittest tests.test_engine.EngineTests.test_split_and_dividend_preserve_real_wealth
 python3 -m vitalis.run                            # P001 fixed-rule loop, fixed 30-symbol Yahoo sample
