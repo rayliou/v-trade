@@ -13,6 +13,9 @@ COSTS = Path('runs/m2-smallcap-cost-calibration.json')
 OUT = Path('runs/m2-required-ic-with-costs.json')
 
 TRANSFER_COEFFICIENT = 0.40       # Grinold-Clarke mid-range for this constraint set
+# A binding turnover cap is itself a constraint on how well the book can express
+# the signal, so it cannot be assumed to leave the transfer coefficient alone.
+TRANSFER_SENSITIVITY = (0.40, 0.35, 0.30, 0.25)
 TARGET_ABS_T = 2.0
 TARGET_EXCESS = 0.02
 CEILING_SCREEN = 'adv>=$5000k, end price required'
@@ -49,6 +52,16 @@ def main():
                    else 'all above range')
         print(f'{label:>10}{reference[label]:11.2f}p{row["qqq_parity"]:13.3f}'
               f'{row["qqq_plus_2pp"]:10.3f}{row["prove_vs_qqq"]:15.3f}{verdict:>16}')
+
+    print(f'\nTransfer-coefficient sensitivity at the 25% turnover cap '
+          f'(a binding cap lowers tc; the 0.40 row assumes it does not bind):')
+    capped = reference['25%'] / 100
+    print(f'{"tc":>6}{"capacity":>11}{"QQQ parity":>13}{"QQQ+2pp":>10}{"prove vs QQQ":>15}')
+    for transfer in TRANSFER_SENSITIVITY:
+        cap = transfer * screened
+        print(f'{transfer:6.2f}{cap * 100:10.0f}%{(-gap + capped) / cap:13.3f}'
+              f'{(-gap + capped + TARGET_EXCESS) / cap:10.3f}'
+              f'{(detection - gap + capped) / cap:15.3f}')
 
     print(f'\nPublished cross-sectional signals report about '
           f'{LITERATURE_IC[0]:.2f}-{LITERATURE_IC[1]:.2f} in sample, before the '
