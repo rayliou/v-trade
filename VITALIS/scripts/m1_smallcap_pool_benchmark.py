@@ -17,6 +17,7 @@ to prior artifacts. This measures a pool, not a strategy.
 """
 import bisect
 import csv
+import gzip
 import io
 import json
 import zipfile
@@ -26,6 +27,7 @@ from pathlib import Path
 SHARADAR = Path('data/authorized/sharadar')
 QQQ = Path('data/public-yahoo/QQQ-1999-01-01-2026-09-20.json')
 OUT = Path('runs/m1-smallcap-pool-benchmark.json')
+RETURNS_CACHE = Path('runs/m1-primary-band-returns.json.gz')
 
 SIZE_BANDS = ((1000, 3000), (1, 200), (200, 1000), (3000, 6000))
 PRIMARY_BAND = (1000, 3000)
@@ -210,6 +212,31 @@ def main():
               f'{row["pool_cagr_last_price_proxy"] * 100:8.2f}%{row["qqq_cagr"] * 100:8.2f}%'
               f'{row["gap_pp_primary"]:+9.2f}{row["pool_cagr_dropped"] * 100:9.2f}%'
               f'{row["pool_cagr_delisted_to_zero"] * 100:9.2f}%')
+
+    # Cache the primary band's per-window return vectors so the ex-ante power
+    # calculation can run without rescanning the multi-GB bulk files.
+    cached = []
+    for w in windows:
+        start, end = w['start'], w['end']
+        names = []
+        for ticker in w['bands'][PRIMARY_BAND]:
+            series = quotes.get(ticker, {})
+            if start not in series:
+                continue
+            first = series[start][0]
+            if end in series:
+                names.append(series[end][0] / first - 1)
+            else:
+                last = last_price_before(series, sessions, start, end)
+                names.append((last / first - 1) if last else -1.0)
+        if len(names) >= 30:
+            cached.append({'month_end': w['month_end'], 'start': start, 'end': end,
+                           'benchmark': qqq[end] / qqq[start] - 1, 'returns': names})
+    RETURNS_CACHE.parent.mkdir(exist_ok=True)
+    with gzip.open(RETURNS_CACHE, 'wt') as stream:
+        json.dump({'band': list(PRIMARY_BAND), 'convention': 'last_price_proxy',
+                   'windows': cached}, stream)
+    print(f'returns cache: {RETURNS_CACHE} ({len(cached)} windows)')
 
     OUT.parent.mkdir(exist_ok=True)
     OUT.write_text(json.dumps({'method': 'equal-weight forward 21-session total return, '
