@@ -2,15 +2,15 @@
 
 ## Objective & Scope
 
-VITALIS researches personal US equities. Total capital is USD 200,000–400,000; allocation and tax treatment remain unspecified. Prioritize net returns above QQQ, with approximately 30% maximum drawdown as a research limit. Measure holdability through underwater duration, Ulcer, turnover and concentration. Annual aggregate data fees, including relevant broker subscriptions and taxes, must not exceed USD 1,000.
+VITALIS researches US equities/options for USD 200,000–400,000 retail capital; allocation and tax treatment remain unspecified. R011 prioritizes whole-account net compound annual growth against QQQ. On 2026-09-19, the user removed the 30% drawdown screen. Still report drawdowns, ruin/financing risk, underwater duration, turnover and concentration. Annual aggregate data fees, including relevant broker subscriptions and taxes, must not exceed USD 1,000.
 
 ## Frozen Checkpoint
 
-R010 is the current project decision. P005 closed the original momentum/quality line; P006 decisively rejected the hot-volume/short-momentum hypothesis; P007 implemented only Sharpe ranking and produced no investment result. P007 is frozen unexecuted. Do not subscribe to ORATS, add sources, run new alpha variants, tune parameters, or extend options, LEAPS, IBKR, shadow trading, automatic execution, databases or UI. Retain existing code and evidence for audit. Reopening requires a new user-authorized hypothesis with a mechanism, budget within the USD 1,000 annual cap, approximately 30% drawdown acceptance, data gate and stop rule.
+R011 authorizes public-source retail research; see review module 12. R010 still freezes implementation: P005 closed the original momentum/quality line; P006 rejected hot-volume/short-momentum; P007 only implemented Sharpe ranking and remains unexecuted. Do not purchase data, acquire market datasets, run new variants, tune parameters, or extend execution, databases or UI under the research authorization. Retain prior evidence. A new experiment requires a user-authorized hypothesis, mechanism, budget, data gate and stop rule. Separate leverage/risk premiums from stock-selection alpha.
 
 ## Required Research Loop
 
-Deliver versioned data → frozen rules → holdings/trade/cash ledger → QQQ and risk/cost comparison → continue/revise/stop/insufficient-evidence decision. Register every attempt and failure. Separate engineering success from investment evidence. Month-end M inputs drive only M+1 trades; missing months fail. Unverified settlements fail the data gate. Broader quality peer groups include all matching eligible members. Survivor samples and repeatedly inspected periods are never untouched validation. Critical gaps block recommendations.
+Deliver versioned data → frozen rules → holdings/trade/cash ledger → QQQ and risk/cost comparison → continue/revise/stop/insufficient-evidence decision. Register every attempt and failure. Separate engineering success from investment evidence. For monthly rules, month-end M inputs drive only M+1 trades; missing months fail. Event rules must respect public disclosure times. Unverified settlements fail the data gate. Broader quality peer groups include all matching eligible members. Survivor samples and repeatedly inspected periods are never untouched validation. Critical gaps block investment recommendations.
 
 ## Structure & Data
 
